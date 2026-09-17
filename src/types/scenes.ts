@@ -13,37 +13,37 @@ export interface AmbientScene {
 export const AMBIENT_SCENES: AmbientScene[] = [
   {
     id: 'rainy-city',
-    name: 'Rainy Tokyo Night',
+    name: 'Gentle Rain Drops',
     icon: '🌧️',
     type: 'video',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-rain-falling-on-the-water-of-a-lake-seen-up-18312-large.mp4',
-    description: 'Gentle raindrops on glass with shimmering city lights',
+    videoUrl: '/videos/rain.webm',
+    description: 'Calming rain falling on road with soft reflective ripples',
     accentColor: '#6366f1', // Indigo
   },
   {
     id: 'cozy-study',
-    name: 'Cozy Room Ambiance',
-    icon: '☕',
+    name: 'Warm Hearth Fireplace',
+    icon: '🔥',
     type: 'video',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-coffee-cup-with-steam-rising-in-a-warm-room-42999-large.mp4',
-    description: 'Warm coffee steam and peaceful twilight shadows',
+    videoUrl: '/videos/fireplace.webm',
+    description: 'Warm glowing fireplace embers and cozy tranquil hearth',
     accentColor: '#f59e0b', // Amber
   },
   {
     id: 'deep-cosmos',
-    name: 'Starlit Nebula',
+    name: 'Starry Night Sky',
     icon: '🌌',
     type: 'video',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4',
-    description: 'Slow drifting starfield and deep celestial indigo clouds',
+    videoUrl: '/videos/night-sky.webm',
+    description: 'Time-lapse of shimmering stars across the deep night sky',
     accentColor: '#a855f7', // Purple
   },
   {
     id: 'fireflies',
-    name: 'Glowing Fireflies',
+    name: 'Floating Fireflies',
     icon: '✨',
     type: 'canvas',
-    description: 'Procedural drifting twilight particles and soft bokeh',
+    description: 'Procedural drifting twilight bokeh particles',
     accentColor: '#10b981', // Emerald
   },
 ];

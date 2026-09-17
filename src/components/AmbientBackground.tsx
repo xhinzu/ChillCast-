@@ -19,19 +19,35 @@ export default function AmbientBackground({
   const activeScene: AmbientScene =
     AMBIENT_SCENES.find((s) => s.id === activeSceneId) || AMBIENT_SCENES[0];
 
-  // Pause / resume video on toggle
+  // Robust HTML5 Video Autoplay Handling (Chrome / Edge / Firefox)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    video.muted = true;
+    video.defaultMuted = true;
+
     if (isPaused) {
       video.pause();
     } else {
-      video.play().catch(() => {});
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // If autoplay was blocked by browser before user interaction,
+          // listen for first interaction on window to play cleanly
+          const handleFirstClick = () => {
+            video.play().catch(() => {});
+            window.removeEventListener('click', handleFirstClick);
+            window.removeEventListener('keydown', handleFirstClick);
+          };
+          window.addEventListener('click', handleFirstClick, { once: true });
+          window.addEventListener('keydown', handleFirstClick, { once: true });
+        });
+      }
     }
   }, [isPaused, activeSceneId]);
 
-  // Procedural Canvas ambient particles (for 'fireflies' or subtle particle dust layer)
+  // Procedural Canvas ambient particles (for 'fireflies' or subtle atmospheric dust)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -50,15 +66,14 @@ export default function AmbientBackground({
     };
     window.addEventListener('resize', handleResize);
 
-    // Generate floating bokeh particles
-    const particleCount = activeScene.type === 'canvas' ? 55 : 20;
+    const particleCount = activeScene.type === 'canvas' ? 55 : 18;
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       radius: Math.random() * 3.5 + 1,
-      speedX: (Math.random() - 0.5) * 0.4,
-      speedY: -Math.random() * 0.5 - 0.1,
-      opacity: Math.random() * 0.6 + 0.2,
+      speedX: (Math.random() - 0.5) * 0.35,
+      speedY: -Math.random() * 0.45 - 0.1,
+      opacity: Math.random() * 0.5 + 0.2,
       pulseSpeed: Math.random() * 0.02 + 0.01,
       pulseAngle: Math.random() * Math.PI * 2,
     }));
@@ -72,7 +87,6 @@ export default function AmbientBackground({
           p.y += p.speedY;
           p.pulseAngle += p.pulseSpeed;
 
-          // Wrap around edges
           if (p.x < 0) p.x = width;
           if (p.x > width) p.x = 0;
           if (p.y < 0) p.y = height;
@@ -81,7 +95,6 @@ export default function AmbientBackground({
           const currentOpacity =
             p.opacity * (0.65 + 0.35 * Math.sin(p.pulseAngle));
 
-          // Draw soft glowing orb
           const grad = ctx.createRadialGradient(
             p.x,
             p.y,
@@ -119,13 +132,15 @@ export default function AmbientBackground({
         <video
           ref={videoRef}
           key={activeScene.id}
-          src={activeScene.videoUrl}
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover transform-gpu scale-105 transition-opacity duration-1000 filter brightness-90 contrast-105"
-        />
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover transform-gpu scale-105 transition-opacity duration-1000 filter brightness-95 contrast-105"
+        >
+          <source src={activeScene.videoUrl} type="video/webm" />
+        </video>
       )}
 
       {/* 2. Procedural Glowing Particle Canvas */}
@@ -144,7 +159,7 @@ export default function AmbientBackground({
         style={{ backgroundColor: activeScene.accentColor }}
       />
 
-      {/* 4. Adjustable Dark Scrim & Radial Vignette (for high text contrast) */}
+      {/* 4. Adjustable Dark Scrim & Radial Vignette */}
       <div
         className="absolute inset-0 transition-opacity duration-500 bg-gradient-to-b from-black/60 via-black/40 to-black/80"
         style={{ opacity: dimmerOpacity }}
