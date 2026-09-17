@@ -30,9 +30,9 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-xs font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                <span>Stage 4: YouTube IFrame Live</span>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Stage 5: Spotify Dual-Mode Live</span>
               </div>
             </div>
           </header>
@@ -49,8 +49,8 @@ export default function Home() {
 
           {/* Footer / Architecture Roadmap */}
           <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 px-4 py-2 border-t border-white/[0.04] gap-2">
-            <span>ChillCast • Stage 4 (Zero-Quota YouTube IFrame Player API)</span>
-            <span>Next: Stage 5 (Dual-Mode SpotifyAdapter)</span>
+            <span>ChillCast • Stage 5 (Dual-Mode SpotifyAdapter & Server Cache)</span>
+            <span>Next: Stage 6 (Live Synced Lyrics via LRCLIB)</span>
           </footer>
         </div>
       </main>
