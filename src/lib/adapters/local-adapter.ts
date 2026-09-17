@@ -1,0 +1,167 @@
+import { BasePlaybackAdapter } from './base-adapter';
+import { AdapterType, TrackInfo } from '@/types/playback';
+
+export const DEFAULT_LOCAL_TRACK: TrackInfo = {
+  id: 'local-chill-1',
+  title: 'Midnight Rain Chords',
+  artist: 'ChillCast Lo-Fi Sessions',
+  album: 'Ambient Studies Vol. 1',
+  duration: 24,
+  source: 'local',
+  sourceUrl: '/audio/sample-chill.wav',
+  artworkUrl: '',
+};
+
+export class LocalAudioAdapter extends BasePlaybackAdapter {
+  readonly name: AdapterType = 'local';
+  readonly displayName = 'Local Audio';
+
+  private audio: HTMLAudioElement | null = null;
+  private isLooping = true;
+  private playlist: TrackInfo[] = [DEFAULT_LOCAL_TRACK];
+
+  public async initialize(): Promise<void> {
+    if (typeof window === 'undefined') return;
+
+    if (!this.audio) {
+      this.audio = new Audio();
+      this.audio.preload = 'metadata';
+      this.audio.volume = this.volume;
+      this.audio.loop = this.isLooping;
+
+      this.audio.addEventListener('timeupdate', () => {
+        if (this.audio) {
+          this.emitPosition(this.audio.currentTime);
+        }
+      });
+
+      this.audio.addEventListener('loadedmetadata', () => {
+        if (this.audio && !isNaN(this.audio.duration)) {
+          this.duration = this.audio.duration;
+          if (this.currentTrack) {
+            this.emitTrack({
+              ...this.currentTrack,
+              duration: this.audio.duration,
+            });
+          }
+        }
+      });
+
+      this.audio.addEventListener('play', () => {
+        this.emitState('playing');
+      });
+
+      this.audio.addEventListener('pause', () => {
+        if (this.state !== 'ended') {
+          this.emitState('paused');
+        }
+      });
+
+      this.audio.addEventListener('ended', () => {
+        if (!this.isLooping) {
+          this.emitState('ended');
+        }
+      });
+
+      this.audio.addEventListener('error', (e) => {
+        const err = e.currentTarget as HTMLAudioElement;
+        this.emitError(err.error?.message || 'Local audio playback error');
+      });
+    }
+
+    // Load default initial track
+    await this.loadTrack(this.playlist[0]);
+  }
+
+  public async loadPlaylist(idOrUrl?: string): Promise<TrackInfo[]> {
+    void idOrUrl;
+    return this.playlist;
+  }
+
+  public async loadTrack(track: TrackInfo): Promise<void> {
+    if (!this.audio) {
+      await this.initialize();
+    }
+    if (!this.audio) return;
+
+    this.emitState('loading');
+    this.currentTrack = track;
+    this.emitTrack(track);
+
+    if (track.sourceUrl) {
+      this.audio.src = track.sourceUrl;
+      this.audio.load();
+    }
+    this.emitState('paused');
+  }
+
+  public async loadCustomFile(file: File): Promise<TrackInfo> {
+    const objectUrl = URL.createObjectURL(file);
+    const newTrack: TrackInfo = {
+      id: `custom-${Date.now()}`,
+      title: file.name.replace(/\.[^/.]+$/, ''),
+      artist: 'Local File',
+      album: 'Custom Upload',
+      duration: 0,
+      source: 'local',
+      sourceUrl: objectUrl,
+      artworkUrl: '',
+    };
+
+    this.playlist = [newTrack, ...this.playlist];
+    await this.loadTrack(newTrack);
+    await this.play();
+    return newTrack;
+  }
+
+  public async play(): Promise<void> {
+    if (!this.audio) return;
+    try {
+      await this.audio.play();
+      this.emitState('playing');
+    } catch (err) {
+      this.emitError((err as Error).message);
+    }
+  }
+
+  public pause(): void {
+    if (this.audio) {
+      this.audio.pause();
+      this.emitState('paused');
+    }
+  }
+
+  public seek(seconds: number): void {
+    if (this.audio) {
+      this.audio.currentTime = seconds;
+      this.emitPosition(seconds);
+    }
+  }
+
+  public setVolume(volume: number): void {
+    this.volume = Math.max(0, Math.min(1, volume));
+    if (this.audio) {
+      this.audio.volume = this.volume;
+    }
+  }
+
+  public setLooping(loop: boolean): void {
+    this.isLooping = loop;
+    if (this.audio) {
+      this.audio.loop = loop;
+    }
+  }
+
+  public getLooping(): boolean {
+    return this.isLooping;
+  }
+
+  public override cleanup(): void {
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.src = '';
+      this.audio = null;
+    }
+    super.cleanup();
+  }
+}

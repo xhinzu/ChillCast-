@@ -1,0 +1,222 @@
+'use client';
+
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  AdapterType,
+  PlaybackAdapter,
+  PlaybackState,
+  TrackInfo,
+} from '@/types/playback';
+import { createAdapter, LocalAudioAdapter } from '@/lib/adapters';
+
+interface PlaybackContextValue {
+  activeAdapterType: AdapterType;
+  activeAdapter: PlaybackAdapter | null;
+  currentTrack: TrackInfo | null;
+  playbackState: PlaybackState;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  isMuted: boolean;
+  errorMessage: string | null;
+
+  switchAdapter: (type: AdapterType) => Promise<void>;
+  play: () => Promise<void>;
+  pause: () => void;
+  togglePlay: () => Promise<void>;
+  seek: (seconds: number) => void;
+  setVolume: (volume: number) => void;
+  toggleMute: () => void;
+  loadPlaylist: (urlOrId: string) => Promise<void>;
+  loadCustomLocalFile: (file: File) => Promise<void>;
+}
+
+const PlaybackContext = createContext<PlaybackContextValue | null>(null);
+
+export function PlaybackProvider({ children }: { children: React.ReactNode }) {
+  const [activeAdapterType, setActiveAdapterType] = useState<AdapterType>('local');
+  const [activeAdapter, setActiveAdapter] = useState<PlaybackAdapter | null>(null);
+  const adapterRef = useRef<PlaybackAdapter | null>(null);
+
+  const [currentTrack, setCurrentTrack] = useState<TrackInfo | null>(null);
+  const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+  const [volume, setVolumeState] = useState<number>(0.8);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Bind subscriptions from an adapter
+  const attachAdapterListeners = useCallback((adapter: PlaybackAdapter) => {
+    const unsubPos = adapter.onPositionChange((pos) => setCurrentTime(pos));
+    const unsubTrack = adapter.onTrackChange((track) => {
+      setCurrentTrack(track);
+      if (track && track.duration > 0) {
+        setDuration(track.duration);
+      }
+    });
+    const unsubState = adapter.onStateChange((state) => setPlaybackState(state));
+    const unsubErr = adapter.onError((err) => setErrorMessage(err));
+
+    return () => {
+      unsubPos();
+      unsubTrack();
+      unsubState();
+      unsubErr();
+    };
+  }, []);
+
+  // Initialize active adapter on mount or type change
+  useEffect(() => {
+    let cleanSubs: (() => void) | null = null;
+    let isCancelled = false;
+
+    const init = async () => {
+      // Clean up previous adapter if any
+      if (adapterRef.current) {
+        adapterRef.current.cleanup();
+      }
+
+      const newAdapter = createAdapter(activeAdapterType);
+      adapterRef.current = newAdapter;
+      setActiveAdapter(newAdapter);
+
+      cleanSubs = attachAdapterListeners(newAdapter);
+      await newAdapter.initialize();
+
+      if (!isCancelled) {
+        newAdapter.setVolume(isMuted ? 0 : volume);
+      }
+    };
+
+    init().catch((err) => {
+      console.error('Failed to initialize playback adapter:', err);
+    });
+
+    return () => {
+      isCancelled = true;
+      if (cleanSubs) cleanSubs();
+      if (adapterRef.current) {
+        adapterRef.current.cleanup();
+        adapterRef.current = null;
+        setActiveAdapter(null);
+      }
+    };
+  }, [activeAdapterType, attachAdapterListeners, isMuted, volume]);
+
+  const switchAdapter = useCallback(async (type: AdapterType) => {
+    if (type === activeAdapterType) return;
+    setErrorMessage(null);
+    setCurrentTime(0);
+    setActiveAdapterType(type);
+  }, [activeAdapterType]);
+
+  const play = useCallback(async () => {
+    if (adapterRef.current) {
+      setErrorMessage(null);
+      await adapterRef.current.play();
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    if (adapterRef.current) {
+      adapterRef.current.pause();
+    }
+  }, []);
+
+  const togglePlay = useCallback(async () => {
+    if (!adapterRef.current) return;
+    if (playbackState === 'playing') {
+      adapterRef.current.pause();
+    } else {
+      await adapterRef.current.play();
+    }
+  }, [playbackState]);
+
+  const seek = useCallback((seconds: number) => {
+    if (adapterRef.current) {
+      adapterRef.current.seek(seconds);
+    }
+  }, []);
+
+  const setVolume = useCallback((newVol: number) => {
+    const clamped = Math.max(0, Math.min(1, newVol));
+    setVolumeState(clamped);
+    if (adapterRef.current) {
+      adapterRef.current.setVolume(isMuted ? 0 : clamped);
+    }
+  }, [isMuted]);
+
+  const toggleMute = useCallback(() => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (adapterRef.current) {
+      adapterRef.current.setVolume(nextMuted ? 0 : volume);
+    }
+  }, [isMuted, volume]);
+
+  const loadPlaylist = useCallback(async (urlOrId: string) => {
+    if (adapterRef.current) {
+      setErrorMessage(null);
+      await adapterRef.current.loadPlaylist(urlOrId);
+    }
+  }, []);
+
+  const loadCustomLocalFile = useCallback(async (file: File) => {
+    if (adapterRef.current instanceof LocalAudioAdapter) {
+      setErrorMessage(null);
+      await adapterRef.current.loadCustomFile(file);
+    } else {
+      await switchAdapter('local');
+      if (adapterRef.current instanceof LocalAudioAdapter) {
+        await adapterRef.current.loadCustomFile(file);
+      }
+    }
+  }, [switchAdapter]);
+
+  const isPlaying = playbackState === 'playing';
+
+  return (
+    <PlaybackContext.Provider
+      value={{
+        activeAdapterType,
+        activeAdapter,
+        currentTrack,
+        playbackState,
+        isPlaying,
+        currentTime,
+        duration,
+        volume,
+        isMuted,
+        errorMessage,
+        switchAdapter,
+        play,
+        pause,
+        togglePlay,
+        seek,
+        setVolume,
+        toggleMute,
+        loadPlaylist,
+        loadCustomLocalFile,
+      }}
+    >
+      {children}
+    </PlaybackContext.Provider>
+  );
+}
+
+export function usePlayback() {
+  const context = useContext(PlaybackContext);
+  if (!context) {
+    throw new Error('usePlayback must be used within a PlaybackProvider');
+  }
+  return context;
+}
