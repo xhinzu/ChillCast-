@@ -58,7 +58,7 @@ export default function ChillCastApp() {
 
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold">
                 <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                <span>Stage 7 Live</span>
+                <span>Stage 8 Ready</span>
               </div>
             </div>
           </header>
@@ -80,8 +80,8 @@ export default function ChillCastApp() {
 
           {/* Footer */}
           <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 px-4 py-3 border border-white/[0.06] backdrop-blur-md rounded-2xl bg-[#0c101b]/60 shadow-lg gap-2 transform-gpu">
-            <span>ChillCast • Stage 7 (Glassmorphism Pass & Ambient Video Loops)</span>
-            <span className="text-indigo-300 font-medium">Next: Stage 8 (GitHub & Vercel Auto-Deploy)</span>
+            <span>ChillCast • Ambient Lo-Fi Soundscapes & Music Player</span>
+            <span className="text-indigo-300 font-medium">Stage 8 • GitHub & Vercel Deployment</span>
           </footer>
         </div>
       </main>
