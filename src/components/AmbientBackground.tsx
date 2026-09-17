@@ -5,7 +5,7 @@ import { AMBIENT_SCENES, AmbientScene, SceneId } from '@/types/scenes';
 
 interface AmbientBackgroundProps {
   activeSceneId: SceneId;
-  dimmerOpacity: number; // 0.2 to 0.85
+  dimmerOpacity: number; // 0.05 to 0.75
   isPaused: boolean;
 }
 
@@ -19,10 +19,10 @@ export default function AmbientBackground({
   const activeScene: AmbientScene =
     AMBIENT_SCENES.find((s) => s.id === activeSceneId) || AMBIENT_SCENES[0];
 
-  // Robust HTML5 Video Autoplay Handling (Chrome / Edge / Firefox)
+  // Robust HTML5 Video Playback
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || activeScene.type !== 'video') return;
 
     video.muted = true;
     video.defaultMuted = true;
@@ -30,22 +30,18 @@ export default function AmbientBackground({
     if (isPaused) {
       video.pause();
     } else {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // If autoplay was blocked by browser before user interaction,
-          // listen for first interaction on window to play cleanly
-          const handleFirstClick = () => {
-            video.play().catch(() => {});
-            window.removeEventListener('click', handleFirstClick);
-            window.removeEventListener('keydown', handleFirstClick);
-          };
-          window.addEventListener('click', handleFirstClick, { once: true });
-          window.addEventListener('keydown', handleFirstClick, { once: true });
-        });
-      }
+      video.play().catch(() => {
+        // Retry on first user gesture if blocked by autoplay policy
+        const startVideo = () => {
+          video.play().catch(() => {});
+          window.removeEventListener('click', startVideo);
+          window.removeEventListener('keydown', startVideo);
+        };
+        window.addEventListener('click', startVideo, { once: true });
+        window.addEventListener('keydown', startVideo, { once: true });
+      });
     }
-  }, [isPaused, activeSceneId]);
+  }, [isPaused, activeScene.id, activeScene.type]);
 
   // Procedural Canvas ambient particles (for 'fireflies' or subtle atmospheric dust)
   useEffect(() => {
@@ -66,13 +62,13 @@ export default function AmbientBackground({
     };
     window.addEventListener('resize', handleResize);
 
-    const particleCount = activeScene.type === 'canvas' ? 55 : 18;
+    const particleCount = activeScene.type === 'canvas' ? 60 : 15;
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       radius: Math.random() * 3.5 + 1,
       speedX: (Math.random() - 0.5) * 0.35,
-      speedY: -Math.random() * 0.45 - 0.1,
+      speedY: -Math.random() * 0.4 - 0.08,
       opacity: Math.random() * 0.5 + 0.2,
       pulseSpeed: Math.random() * 0.02 + 0.01,
       pulseAngle: Math.random() * Math.PI * 2,
@@ -126,21 +122,20 @@ export default function AmbientBackground({
   }, [activeScene, isPaused]);
 
   return (
-    <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden -z-10 bg-[#07090e]">
+    <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden -z-10 bg-[#05070c]">
       {/* 1. Looping Muted Background Video */}
       {activeScene.type === 'video' && activeScene.videoUrl && (
         <video
           ref={videoRef}
-          key={activeScene.id}
+          key={activeScene.videoUrl}
+          src={activeScene.videoUrl}
           autoPlay
           loop
           muted
           playsInline
           preload="auto"
-          className="absolute inset-0 w-full h-full object-cover transform-gpu scale-105 transition-opacity duration-1000 filter brightness-95 contrast-105"
-        >
-          <source src={activeScene.videoUrl} type="video/webm" />
-        </video>
+          className="absolute inset-0 w-full h-full object-cover transform-gpu scale-105 transition-opacity duration-700 filter brightness-105 contrast-100"
+        />
       )}
 
       {/* 2. Procedural Glowing Particle Canvas */}
@@ -149,22 +144,22 @@ export default function AmbientBackground({
         className="absolute inset-0 w-full h-full pointer-events-none transform-gpu"
       />
 
-      {/* 3. Deep Color Atmospheric Gradients */}
+      {/* 3. Subtle Atmospheric Accent Glows */}
       <div
-        className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full blur-[160px] opacity-25 transition-all duration-1000"
+        className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-[140px] opacity-20 pointer-events-none transition-all duration-700"
         style={{ backgroundColor: activeScene.accentColor }}
       />
       <div
-        className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full blur-[180px] opacity-20 transition-all duration-1000"
+        className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full blur-[150px] opacity-15 pointer-events-none transition-all duration-700"
         style={{ backgroundColor: activeScene.accentColor }}
       />
 
-      {/* 4. Adjustable Dark Scrim & Radial Vignette */}
+      {/* 4. Adjustable Dark Scrim (Kept gentle so the video is clearly visible) */}
       <div
-        className="absolute inset-0 transition-opacity duration-500 bg-gradient-to-b from-black/60 via-black/40 to-black/80"
+        className="absolute inset-0 transition-opacity duration-300 bg-black/50"
         style={{ opacity: dimmerOpacity }}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.65)_100%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.55)_100%)] pointer-events-none" />
     </div>
   );
 }

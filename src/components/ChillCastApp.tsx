@@ -10,8 +10,8 @@ import { PlaybackProvider } from '@/context/PlaybackContext';
 import { SceneId } from '@/types/scenes';
 
 export default function ChillCastApp() {
-  const [activeSceneId, setActiveSceneId] = useState<SceneId>('rainy-city');
-  const [dimmerOpacity, setDimmerOpacity] = useState<number>(0.55);
+  const [activeSceneId, setActiveSceneId] = useState<SceneId>('rain');
+  const [dimmerOpacity, setDimmerOpacity] = useState<number>(0.25);
   const [isMotionPaused, setIsMotionPaused] = useState<boolean>(false);
 
   return (
@@ -24,8 +24,8 @@ export default function ChillCastApp() {
       />
 
       <main className="min-h-screen text-slate-100 flex flex-col items-center justify-start p-4 sm:p-8 relative font-sans selection:bg-indigo-500/30">
-        {/* Main Application Column */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col gap-6 sm:gap-8 my-auto">
+        {/* Main Application Column (Centered horizontally, anchored at top) */}
+        <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col gap-6 sm:gap-8 py-4 sm:py-8">
           {/* Brand Header & Scene Selector Toolbar */}
           <header className="flex items-center justify-between backdrop-blur-2xl bg-white/[0.04] border border-white/[0.08] border-t-white/[0.14] px-6 py-4 rounded-3xl shadow-2xl shadow-black/40">
             <div className="flex items-center gap-3.5">
