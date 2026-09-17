@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import UniversalMusicPlayer from '@/components/UniversalMusicPlayer';
 import AmbientSoundMixer from '@/components/AmbientSoundMixer';
-import LiveLyrics from '@/components/LiveLyrics';
 import AmbientBackground from '@/components/AmbientBackground';
 import SceneSelector from '@/components/SceneSelector';
 import { PlaybackProvider } from '@/context/PlaybackContext';
@@ -68,12 +67,7 @@ export default function ChillCastApp() {
             <UniversalMusicPlayer />
           </section>
 
-          {/* 3. Live Synced Lyrics via LRCLIB */}
-          <section aria-label="Live Synced Lyrics">
-            <LiveLyrics />
-          </section>
-
-          {/* 4. Web Audio API Ambient Soundscape Mixer */}
+          {/* 3. Web Audio API Ambient Soundscape Mixer */}
           <section aria-label="Ambient Soundscape Mixer">
             <AmbientSoundMixer />
           </section>
