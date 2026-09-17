@@ -192,8 +192,68 @@ export class AmbientSoundEngine {
     });
   }
 
-  /* --- 3. Forest Birds (random procedural chirps) --- */
-  private startBirds(ctx: AudioContext, dest: GainNode) {
+  private birdsBuffer: AudioBuffer | null = null;
+  private isLoadingBirds = false;
+
+  private async loadBirdsBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.birdsBuffer) return this.birdsBuffer;
+    if (this.isLoadingBirds) return null;
+
+    this.isLoadingBirds = true;
+    try {
+      const res = await fetch('/audio/birds.mp3');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+      this.birdsBuffer = decoded;
+      return decoded;
+    } catch (e) {
+      console.warn('Could not load recorded birds audio, using procedural fallback:', e);
+      return null;
+    } finally {
+      this.isLoadingBirds = false;
+    }
+  }
+
+  /* --- 3. Forest Birds (Real Woodland Field Recording + Procedural Fallback) --- */
+  private async startBirds(ctx: AudioContext, dest: GainNode) {
+    let isCancelled = false;
+
+    // Try loading and playing the high-fidelity woodland bird recording
+    const buffer = await this.loadBirdsBuffer(ctx);
+
+    if (isCancelled) return;
+
+    if (buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      // Soft highpass filter to remove any low-end rumble and keep birds crisp
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(800, ctx.currentTime);
+
+      source.connect(filter);
+      filter.connect(dest);
+      source.start();
+
+      this.activeSources.set('birds', {
+        stop: () => {
+          isCancelled = true;
+          try {
+            source.stop();
+            source.disconnect();
+            filter.disconnect();
+          } catch {
+            // ignore
+          }
+        },
+      });
+      return;
+    }
+
+    // Procedural Fallback if fetch fails
     let isRunning = true;
     let timeoutId: number | null = null;
 
@@ -209,7 +269,10 @@ export class AmbientSoundEngine {
 
       osc.type = 'sine';
       osc.frequency.setValueAtTime(baseFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * (1.3 + Math.random() * 0.4), now + chirpDuration * 0.4);
+      osc.frequency.exponentialRampToValueAtTime(
+        baseFreq * (1.3 + Math.random() * 0.4),
+        now + chirpDuration * 0.4
+      );
       osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + chirpDuration);
 
       chirpGain.gain.setValueAtTime(0.001, now);
@@ -222,7 +285,6 @@ export class AmbientSoundEngine {
       osc.start(now);
       osc.stop(now + chirpDuration);
 
-      // Repeat with random rhythm (2 to 5 seconds)
       const nextDelay = 1500 + Math.random() * 3500;
       timeoutId = window.setTimeout(playChirp, nextDelay);
     };
@@ -231,6 +293,7 @@ export class AmbientSoundEngine {
 
     this.activeSources.set('birds', {
       stop: () => {
+        isCancelled = true;
         isRunning = false;
         if (timeoutId) clearTimeout(timeoutId);
       },
