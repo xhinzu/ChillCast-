@@ -1,5 +1,6 @@
 import UniversalMusicPlayer from '@/components/UniversalMusicPlayer';
 import AmbientSoundMixer from '@/components/AmbientSoundMixer';
+import LiveLyrics from '@/components/LiveLyrics';
 import { PlaybackProvider } from '@/context/PlaybackContext';
 
 export default function Home() {
@@ -30,9 +31,9 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Stage 5: Spotify Dual-Mode Live</span>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                <span>Stage 6: LRCLIB Synced Lyrics Live</span>
               </div>
             </div>
           </header>
@@ -42,15 +43,20 @@ export default function Home() {
             <UniversalMusicPlayer />
           </section>
 
-          {/* 2. Web Audio API Ambient Sound Mixer */}
+          {/* 2. Live Synced Lyrics via LRCLIB */}
+          <section aria-label="Live Lyrics">
+            <LiveLyrics />
+          </section>
+
+          {/* 3. Web Audio API Ambient Sound Mixer */}
           <section aria-label="Ambient Mixer">
             <AmbientSoundMixer />
           </section>
 
           {/* Footer / Architecture Roadmap */}
           <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 px-4 py-2 border-t border-white/[0.04] gap-2">
-            <span>ChillCast • Stage 5 (Dual-Mode SpotifyAdapter & Server Cache)</span>
-            <span>Next: Stage 6 (Live Synced Lyrics via LRCLIB)</span>
+            <span>ChillCast • Stage 6 (Live Synced Lyrics via LRCLIB API)</span>
+            <span>Next: Stage 7 (Glassmorphism Pass & Ambient Looping Video)</span>
           </footer>
         </div>
       </main>
