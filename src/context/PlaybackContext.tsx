@@ -35,6 +35,8 @@ interface PlaybackContextValue {
   seek: (seconds: number) => void;
   setVolume: (volume: number) => void;
   toggleMute: () => void;
+  nextTrack: () => void;
+  previousTrack: () => void;
   loadPlaylist: (urlOrId: string) => Promise<void>;
   loadCustomLocalFile: (file: File) => Promise<void>;
 }
@@ -163,6 +165,20 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isMuted, volume]);
 
+  const nextTrack = useCallback(() => {
+    const adapter = adapterRef.current;
+    if (adapter && 'nextTrack' in adapter && typeof (adapter as { nextTrack?: () => void }).nextTrack === 'function') {
+      (adapter as { nextTrack: () => void }).nextTrack();
+    }
+  }, []);
+
+  const previousTrack = useCallback(() => {
+    const adapter = adapterRef.current;
+    if (adapter && 'previousTrack' in adapter && typeof (adapter as { previousTrack?: () => void }).previousTrack === 'function') {
+      (adapter as { previousTrack: () => void }).previousTrack();
+    }
+  }, []);
+
   const loadPlaylist = useCallback(async (urlOrId: string) => {
     if (adapterRef.current) {
       setErrorMessage(null);
@@ -204,6 +220,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         seek,
         setVolume,
         toggleMute,
+        nextTrack,
+        previousTrack,
         loadPlaylist,
         loadCustomLocalFile,
       }}
