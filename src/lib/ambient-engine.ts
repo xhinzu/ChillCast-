@@ -300,41 +300,109 @@ export class AmbientSoundEngine {
     });
   }
 
-  /* --- 4. Crickets / Evening Cicadas --- */
-  private startCrickets(ctx: AudioContext, dest: GainNode) {
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(4600, ctx.currentTime);
+  private cricketsBuffer: AudioBuffer | null = null;
+  private isLoadingCrickets = false;
 
-    // Tremolo pulse generator
+  private async loadCricketsBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.cricketsBuffer) return this.cricketsBuffer;
+    if (this.isLoadingCrickets) return null;
+
+    this.isLoadingCrickets = true;
+    try {
+      const res = await fetch('/audio/crickets.ogg');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+      this.cricketsBuffer = decoded;
+      return decoded;
+    } catch (e) {
+      console.warn('Could not load recorded crickets audio, using procedural fallback:', e);
+      return null;
+    } finally {
+      this.isLoadingCrickets = false;
+    }
+  }
+
+  /* --- 4. Crickets / Evening Cicadas (Real Summer Night Field Recording) --- */
+  private async startCrickets(ctx: AudioContext, dest: GainNode) {
+    let isCancelled = false;
+
+    // Load and play the real field recording of summer crickets
+    const buffer = await this.loadCricketsBuffer(ctx);
+
+    if (isCancelled) return;
+
+    if (buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      // Bandpass filter to isolate sweet night chirps and soften any harsh highs
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(4800, ctx.currentTime);
+      filter.Q.setValueAtTime(0.8, ctx.currentTime);
+
+      source.connect(filter);
+      filter.connect(dest);
+      source.start();
+
+      this.activeSources.set('crickets', {
+        stop: () => {
+          isCancelled = true;
+          try {
+            source.stop();
+            source.disconnect();
+            filter.disconnect();
+          } catch {
+            // ignore
+          }
+        },
+      });
+      return;
+    }
+
+    // Gentle organic procedural fallback (pulsed pink noise chirps instead of raw sine buzzer)
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getNoiseBuffer(ctx);
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(4500, ctx.currentTime);
+    filter.Q.setValueAtTime(4.0, ctx.currentTime);
+
     const tremolo = ctx.createOscillator();
-    tremolo.type = 'triangle';
-    tremolo.frequency.setValueAtTime(18, ctx.currentTime);
+    tremolo.type = 'sine';
+    tremolo.frequency.setValueAtTime(6, ctx.currentTime);
 
     const tremoloGain = ctx.createGain();
-    tremoloGain.gain.setValueAtTime(0.5, ctx.currentTime);
+    tremoloGain.gain.setValueAtTime(0.4, ctx.currentTime);
 
     const pulseGain = ctx.createGain();
-    pulseGain.gain.setValueAtTime(0.18, ctx.currentTime);
+    pulseGain.gain.setValueAtTime(0.2, ctx.currentTime);
 
     tremolo.connect(tremoloGain);
     tremoloGain.connect(pulseGain.gain);
 
-    osc.connect(pulseGain);
+    noise.connect(filter);
+    filter.connect(pulseGain);
     pulseGain.connect(dest);
 
-    osc.start();
+    noise.start();
     tremolo.start();
 
     this.activeSources.set('crickets', {
       stop: () => {
+        isCancelled = true;
         try {
-          osc.stop();
+          noise.stop();
           tremolo.stop();
-          osc.disconnect();
+          noise.disconnect();
           tremolo.disconnect();
           tremoloGain.disconnect();
           pulseGain.disconnect();
+          filter.disconnect();
         } catch {
           // ignore
         }
