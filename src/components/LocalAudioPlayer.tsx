@@ -141,7 +141,7 @@ export default function LocalAudioPlayer() {
   };
 
   return (
-    <div className="w-full backdrop-blur-2xl bg-white/[0.04] border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/40 flex flex-col md:flex-row items-center gap-6">
+    <div className="w-full backdrop-blur-md bg-[#0c101b]/80 border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/50 flex flex-col md:flex-row items-center gap-6 transform-gpu contain-paint">
       {/* Hidden native audio element */}
       <audio ref={audioRef} src={currentTrack.src} preload="metadata" />
 

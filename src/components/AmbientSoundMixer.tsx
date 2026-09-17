@@ -190,7 +190,7 @@ export default function AmbientSoundMixer() {
   const activeCount = AMBIENT_SOUNDS.filter((s) => soundStates[s.id]?.isPlaying).length;
 
   return (
-    <div className="w-full backdrop-blur-2xl bg-white/[0.04] border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/40 flex flex-col gap-6">
+    <div className="w-full backdrop-blur-md bg-[#0c101b]/80 border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/50 flex flex-col gap-6 transform-gpu contain-paint">
       {/* Header & Master Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.07] pb-5">
         <div className="flex items-center gap-3">
@@ -276,7 +276,7 @@ export default function AmbientSoundMixer() {
             <div
               key={sound.id}
               onClick={() => toggleSound(sound.id)}
-              className={`group relative rounded-2xl p-4 transition-all duration-300 border cursor-pointer select-none flex flex-col justify-between min-h-[170px] ${
+              className={`group relative rounded-2xl p-4 transition-colors duration-150 border cursor-pointer select-none flex flex-col justify-between min-h-[170px] ${
                 isPlaying
                   ? 'bg-indigo-500/10 border-indigo-500/40 shadow-lg shadow-indigo-500/10'
                   : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]'

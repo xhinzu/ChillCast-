@@ -87,14 +87,19 @@ export default function LiveLyrics() {
     };
   }, [currentTrack]);
 
-  // Smoothly scroll active line to center
+  // Smoothly scroll active line to center within the lyrics container only
   useEffect(() => {
     if (!autoScroll || activeLineIndex < 0 || !isExpanded) return;
     const activeEl = lineRefs.current.get(activeLineIndex);
-    if (activeEl && containerRef.current) {
-      activeEl.scrollIntoView({
+    const container = containerRef.current;
+    if (activeEl && container) {
+      const containerRect = container.getBoundingClientRect();
+      const elRect = activeEl.getBoundingClientRect();
+      const relativeTop = elRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = relativeTop - container.clientHeight / 2 + activeEl.clientHeight / 2;
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
         behavior: 'smooth',
-        block: 'center',
       });
     }
   }, [activeLineIndex, autoScroll, isExpanded]);
@@ -107,7 +112,7 @@ export default function LiveLyrics() {
   const displayedLyricsData = currentTrack?.title ? lyricsData : null;
 
   return (
-    <div className="w-full backdrop-blur-2xl bg-white/[0.04] border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/40 flex flex-col gap-4 transition-all duration-300">
+    <div className="w-full backdrop-blur-md bg-[#0c101b]/80 border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/50 flex flex-col gap-4 transform-gpu contain-paint">
       {/* Header Bar */}
       <div className="flex items-center justify-between border-b border-white/[0.07] pb-3.5">
         <div className="flex items-center gap-3">
@@ -161,7 +166,7 @@ export default function LiveLyrics() {
       {isExpanded && (
         <div
           ref={containerRef}
-          className="relative max-h-72 sm:max-h-80 overflow-y-auto pr-2 scroll-smooth flex flex-col gap-3.5 select-none"
+          className="relative max-h-72 sm:max-h-80 overflow-y-auto pr-2 scroll-smooth overscroll-contain flex flex-col gap-3.5 select-none"
         >
           {/* Loading State */}
           {isLoading && (
@@ -199,9 +204,9 @@ export default function LiveLyrics() {
                       else lineRefs.current.delete(idx);
                     }}
                     onClick={() => handleLineClick(line.time)}
-                    className={`py-1.5 px-3 rounded-xl transition-all duration-300 cursor-pointer text-sm sm:text-base font-medium ${
+                    className={`py-1.5 px-3 rounded-xl transition-colors duration-150 cursor-pointer text-sm sm:text-base font-medium ${
                       isActive
-                        ? 'text-purple-200 font-bold bg-purple-500/15 shadow-sm shadow-purple-500/20 scale-[1.02] pl-4 border-l-2 border-purple-400'
+                        ? 'text-purple-200 font-bold bg-purple-500/20 shadow-sm shadow-purple-500/20 pl-4 border-l-2 border-purple-400'
                         : isPast
                         ? 'text-slate-400 hover:text-slate-200 opacity-70'
                         : 'text-slate-500 hover:text-slate-300 opacity-50'

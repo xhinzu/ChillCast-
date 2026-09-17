@@ -27,7 +27,7 @@ export default function ChillCastApp() {
         {/* Main Application Column (Centered horizontally, anchored at top) */}
         <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col gap-6 sm:gap-8 py-4 sm:py-8">
           {/* Brand Header & Scene Selector Toolbar */}
-          <header className="relative z-50 flex items-center justify-between backdrop-blur-2xl bg-white/[0.04] border border-white/[0.08] border-t-white/[0.14] px-6 py-4 rounded-3xl shadow-2xl shadow-black/40">
+          <header className="relative z-50 flex items-center justify-between backdrop-blur-md bg-[#0c101b]/80 border border-white/[0.08] border-t-white/[0.14] px-6 py-4 rounded-3xl shadow-2xl shadow-black/50 transform-gpu contain-paint">
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-teal-300 p-[1.5px] flex items-center justify-center shadow-lg shadow-indigo-500/25">
                 <div className="w-full h-full bg-[#07090e] rounded-2xl flex items-center justify-center text-lg">
@@ -79,7 +79,7 @@ export default function ChillCastApp() {
           </section>
 
           {/* Footer */}
-          <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 px-4 py-3 border-t border-white/[0.06] backdrop-blur-md rounded-2xl bg-black/15 gap-2">
+          <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 px-4 py-3 border border-white/[0.06] backdrop-blur-md rounded-2xl bg-[#0c101b]/60 shadow-lg gap-2 transform-gpu">
             <span>ChillCast • Stage 7 (Glassmorphism Pass & Ambient Video Loops)</span>
             <span className="text-indigo-300 font-medium">Next: Stage 8 (GitHub & Vercel Auto-Deploy)</span>
           </footer>

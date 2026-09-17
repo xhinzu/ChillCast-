@@ -47,7 +47,7 @@ export default function SceneSelector({
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="absolute right-0 top-11 z-50 w-72 backdrop-blur-2xl bg-[#0e121e]/90 border border-white/[0.12] rounded-3xl p-4 shadow-2xl shadow-black/70 flex flex-col gap-3.5 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute right-0 top-11 z-50 w-72 backdrop-blur-md bg-[#0e121e]/95 border border-white/[0.12] rounded-3xl p-4 shadow-2xl shadow-black/70 flex flex-col gap-3.5 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-150 transform-gpu contain-paint">
             <div className="flex items-center justify-between border-b border-white/[0.07] pb-2 font-semibold">
               <span className="flex items-center gap-1.5">
                 <span>🎨</span> Atmospheric Scenes

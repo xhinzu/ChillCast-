@@ -183,7 +183,7 @@ export default function UniversalMusicPlayer() {
   };
 
   return (
-    <div className="w-full backdrop-blur-2xl bg-white/[0.04] border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/40 flex flex-col gap-6">
+    <div className="w-full backdrop-blur-md bg-[#0c101b]/80 border border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/50 flex flex-col gap-6 transform-gpu contain-paint">
       {/* Top Bar: Adapter Selector Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.07] pb-4">
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-black/30 border border-white/[0.06] self-start flex-wrap">

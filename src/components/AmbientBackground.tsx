@@ -19,7 +19,7 @@ export default function AmbientBackground({
   const activeScene: AmbientScene =
     AMBIENT_SCENES.find((s) => s.id === activeSceneId) || AMBIENT_SCENES[0];
 
-  // Robust HTML5 Video Playback
+  // Hardware-accelerated video playback
   useEffect(() => {
     const video = videoRef.current;
     if (!video || activeScene.type !== 'video') return;
@@ -31,7 +31,6 @@ export default function AmbientBackground({
       video.pause();
     } else {
       video.play().catch(() => {
-        // Retry on first user gesture if blocked by autoplay policy
         const startVideo = () => {
           video.play().catch(() => {});
           window.removeEventListener('click', startVideo);
@@ -43,8 +42,10 @@ export default function AmbientBackground({
     }
   }, [isPaused, activeScene.id, activeScene.type]);
 
-  // Procedural Canvas ambient particles (for 'fireflies' or subtle atmospheric dust)
+  // Procedural Canvas ambient particles ONLY when canvas scene is active
   useEffect(() => {
+    if (activeScene.type !== 'canvas') return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -62,13 +63,13 @@ export default function AmbientBackground({
     };
     window.addEventListener('resize', handleResize);
 
-    const particleCount = activeScene.type === 'canvas' ? 60 : 15;
+    const particleCount = 45;
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      radius: Math.random() * 3.5 + 1,
-      speedX: (Math.random() - 0.5) * 0.35,
-      speedY: -Math.random() * 0.4 - 0.08,
+      radius: Math.random() * 3 + 1,
+      speedX: (Math.random() - 0.5) * 0.3,
+      speedY: -Math.random() * 0.35 - 0.08,
       opacity: Math.random() * 0.5 + 0.2,
       pulseSpeed: Math.random() * 0.02 + 0.01,
       pulseAngle: Math.random() * Math.PI * 2,
@@ -91,21 +92,9 @@ export default function AmbientBackground({
           const currentOpacity =
             p.opacity * (0.65 + 0.35 * Math.sin(p.pulseAngle));
 
-          const grad = ctx.createRadialGradient(
-            p.x,
-            p.y,
-            0,
-            p.x,
-            p.y,
-            p.radius * 2.5
-          );
-          grad.addColorStop(0, `rgba(255, 255, 255, ${currentOpacity})`);
-          grad.addColorStop(0.5, `${activeScene.accentColor}33`);
-          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-          ctx.fillStyle = grad;
+          ctx.fillStyle = `rgba(16, 185, 129, ${currentOpacity * 0.8})`;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius * 2.5, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.radius * 2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -119,10 +108,10 @@ export default function AmbientBackground({
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [activeScene, isPaused]);
+  }, [activeScene.type, isPaused]);
 
   return (
-    <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden -z-10 bg-[#05070c]">
+    <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden -z-10 bg-[#05070c] transform-gpu will-change-transform">
       {/* 1. Looping Muted Background Video */}
       {activeScene.type === 'video' && activeScene.videoUrl && (
         <video
@@ -134,32 +123,38 @@ export default function AmbientBackground({
           muted
           playsInline
           preload="auto"
-          className="absolute inset-0 w-full h-full object-cover transform-gpu scale-105 transition-opacity duration-700 filter brightness-105 contrast-100"
+          className="absolute inset-0 w-full h-full object-cover transform-gpu scale-[1.02] filter brightness-105 contrast-100 will-change-transform"
         />
       )}
 
-      {/* 2. Procedural Glowing Particle Canvas */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none transform-gpu"
+      {/* 2. Procedural Glowing Particle Canvas (rendered only on canvas scene) */}
+      {activeScene.type === 'canvas' && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none transform-gpu"
+        />
+      )}
+
+      {/* 3. Pure CSS Radial Gradients (Zero runtime GPU blur cost) */}
+      <div
+        className="absolute -top-32 -left-32 w-[550px] h-[550px] pointer-events-none opacity-25 transition-colors duration-700"
+        style={{
+          background: `radial-gradient(circle, ${activeScene.accentColor} 0%, transparent 70%)`,
+        }}
+      />
+      <div
+        className="absolute -bottom-32 -right-32 w-[550px] h-[550px] pointer-events-none opacity-20 transition-colors duration-700"
+        style={{
+          background: `radial-gradient(circle, ${activeScene.accentColor} 0%, transparent 70%)`,
+        }}
       />
 
-      {/* 3. Subtle Atmospheric Accent Glows */}
+      {/* 4. Adjustable Dark Scrim */}
       <div
-        className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-[140px] opacity-20 pointer-events-none transition-all duration-700"
-        style={{ backgroundColor: activeScene.accentColor }}
-      />
-      <div
-        className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full blur-[150px] opacity-15 pointer-events-none transition-all duration-700"
-        style={{ backgroundColor: activeScene.accentColor }}
-      />
-
-      {/* 4. Adjustable Dark Scrim (Kept gentle so the video is clearly visible) */}
-      <div
-        className="absolute inset-0 transition-opacity duration-300 bg-black/50"
+        className="absolute inset-0 transition-opacity duration-300 bg-black/45 will-change-opacity"
         style={{ opacity: dimmerOpacity }}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.55)_100%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,rgba(0,0,0,0.5)_100%)] pointer-events-none" />
     </div>
   );
 }
