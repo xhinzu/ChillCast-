@@ -101,7 +101,7 @@ export default function SpotifySidebar({
 
   return (
     <>
-      <aside className="w-64 sm:w-72 md:w-80 h-full flex flex-col gap-2 shrink-0 select-none pb-2">
+      <aside className="hidden md:flex w-64 lg:w-72 xl:w-80 h-full flex-col gap-2 shrink-0 select-none pb-2">
         {/* Top Navigation Block */}
         <nav className="bg-[#121212] rounded-lg p-3 sm:p-4 flex flex-col gap-1 shrink-0">
           <button
