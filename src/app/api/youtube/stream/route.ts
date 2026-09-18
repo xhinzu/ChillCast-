@@ -4,6 +4,7 @@ import path from 'path';
 
 // Cache direct audio URLs for 2 hours (they expire in ~6 hours)
 const urlCache = new Map<string, { url: string; expiresAt: number }>();
+const inFlightRequests = new Map<string, Promise<string>>();
 
 function getDirectStreamUrl(videoId: string): Promise<string> {
   const cached = urlCache.get(videoId);
@@ -11,7 +12,11 @@ function getDirectStreamUrl(videoId: string): Promise<string> {
     return Promise.resolve(cached.url);
   }
 
-  return new Promise((resolve, reject) => {
+  if (inFlightRequests.has(videoId)) {
+    return inFlightRequests.get(videoId)!;
+  }
+
+  const promise = new Promise<string>((resolve, reject) => {
     const ytdlPath = path.join(process.cwd(), 'yt-dlp.exe');
     execFile(
       ytdlPath,
@@ -34,7 +39,12 @@ function getDirectStreamUrl(videoId: string): Promise<string> {
         }
       }
     );
+  }).finally(() => {
+    inFlightRequests.delete(videoId);
   });
+
+  inFlightRequests.set(videoId, promise);
+  return promise;
 }
 
 export async function GET(req: NextRequest) {
@@ -95,6 +105,10 @@ export async function GET(req: NextRequest) {
     console.error('YouTube stream route error:', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+export async function HEAD(req: NextRequest) {
+  return GET(req);
 }
 
 export async function OPTIONS() {

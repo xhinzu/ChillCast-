@@ -178,6 +178,10 @@ export default function SpotifyMainContent({
   }, [inlineSearchQuery]);
 
   const handlePlaySearchResult = async (video: YouTubeSearchResult) => {
+    if (typeof window !== 'undefined') {
+      const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
+      yt?.primeAudioStream?.(video.id);
+    }
     await loadPlaylist(video.id, 'youtube');
   };
 
@@ -276,6 +280,11 @@ export default function SpotifyMainContent({
   // Play custom playlist starting from a specific index
   const handlePlayCustomPlaylist = (playlist: SavedPlaylistItem, startIndex = 0) => {
     if (!playlist.tracks || playlist.tracks.length === 0) return;
+    const targetTrack = playlist.tracks[startIndex];
+    if (targetTrack && typeof window !== 'undefined') {
+      const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
+      yt?.primeAudioStream?.(targetTrack.id);
+    }
     const trackInfos: TrackInfo[] = playlist.tracks.map((t) => ({
       id: t.id,
       title: t.title,
