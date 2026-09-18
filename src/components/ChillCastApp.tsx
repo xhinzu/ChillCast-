@@ -72,6 +72,17 @@ function ChillifyShell() {
         activeView={activeView}
         setActiveView={setActiveView}
       />
+
+      {/* 4. Permanent YouTube Player Container (Never destroyed by React) */}
+      <div
+        className={`fixed z-40 transition-all duration-300 rounded-xl overflow-hidden shadow-2xl border border-[#282828] bg-black ${
+          showVideo
+            ? 'bottom-24 right-6 w-80 h-48 sm:w-96 sm:h-56 opacity-100 pointer-events-auto'
+            : 'w-1 h-1 -left-[9999px] -top-[9999px] opacity-0 pointer-events-none'
+        }`}
+      >
+        <div id="chillcast-yt-player" className="w-full h-full" />
+      </div>
     </div>
   );
 }

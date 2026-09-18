@@ -54,8 +54,7 @@ export default function SpotifySidebar({
     });
 
     // Automatically switch and play the newly added playlist
-    switchAdapter(item.type);
-    loadPlaylist(item.targetUrl);
+    loadPlaylist(item.targetUrl, item.type);
   };
 
   const handleRemovePlaylist = (id: string, e: React.MouseEvent) => {
@@ -72,8 +71,7 @@ export default function SpotifySidebar({
   };
 
   const handleSelectPlaylist = (item: SavedPlaylistItem) => {
-    switchAdapter(item.type);
-    loadPlaylist(item.targetUrl);
+    loadPlaylist(item.targetUrl, item.type);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -217,6 +217,14 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       });
     }
 
+    try {
+      this.player.unMute();
+      this.player.setVolume(Math.round(this.volume * 100));
+      this.player.playVideo();
+    } catch {
+      // ignore
+    }
+
     return Promise.resolve();
   }
 

@@ -95,8 +95,7 @@ export default function SpotifyMainContent({
   }, [searchQuery]);
 
   const handlePlaySearchResult = async (video: YouTubeSearchResult) => {
-    await switchAdapter('youtube');
-    await loadPlaylist(video.id);
+    await loadPlaylist(video.id, 'youtube');
   };
 
   const handleAddToLibrary = (video: YouTubeSearchResult, e: React.MouseEvent) => {
@@ -155,32 +154,6 @@ export default function SpotifyMainContent({
           <div className="fixed top-16 right-8 z-50 px-4 py-2.5 rounded-lg bg-[#1d90f5] text-white font-semibold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
             <span>✓</span>
             <span className="truncate max-w-sm">{addedToast}</span>
-          </div>
-        )}
-
-        {/* Video Preview Drawer (If User toggled Show Video for YouTube) */}
-        {showVideo && activeAdapterType === 'youtube' && (
-          <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden border border-[#282828] bg-black shadow-2xl p-2">
-            <div className="flex items-center justify-between pb-2 px-1 text-xs text-[#b3b3b3]">
-              <span className="font-semibold text-white">📺 YouTube Video Preview</span>
-              <button
-                type="button"
-                onClick={() => setShowVideo(false)}
-                className="hover:text-white cursor-pointer"
-              >
-                ✕ Close Preview
-              </button>
-            </div>
-            <div className="w-full h-64 sm:h-80 rounded-lg overflow-hidden bg-black">
-              <div id="chillcast-yt-player" className="w-full h-full" />
-            </div>
-          </div>
-        )}
-
-        {/* Offscreen YouTube Player Container when video preview is hidden */}
-        {(!showVideo || activeAdapterType !== 'youtube') && (
-          <div className="fixed -left-[9999px] -top-[9999px] w-1 h-1 pointer-events-none opacity-0">
-            <div id="chillcast-yt-player" />
           </div>
         )}
 

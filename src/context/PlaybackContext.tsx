@@ -28,7 +28,7 @@ interface PlaybackContextValue {
   isMuted: boolean;
   errorMessage: string | null;
 
-  switchAdapter: (type: AdapterType) => Promise<void>;
+  switchAdapter: (type: AdapterType) => Promise<PlaybackAdapter>;
   play: () => Promise<void>;
   pause: () => void;
   togglePlay: () => Promise<void>;
@@ -37,7 +37,7 @@ interface PlaybackContextValue {
   toggleMute: () => void;
   nextTrack: () => void;
   previousTrack: () => void;
-  loadPlaylist: (urlOrId: string) => Promise<void>;
+  loadPlaylist: (urlOrId: string, preferredType?: AdapterType) => Promise<void>;
   loadCustomLocalFile: (file: File) => Promise<void>;
 }
 
@@ -82,7 +82,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     let isCancelled = false;
 
     const init = async () => {
-      // Clean up previous adapter if any
+      if (adapterRef.current && adapterRef.current.name === activeAdapterType) {
+        return;
+      }
+
       if (adapterRef.current) {
         adapterRef.current.cleanup();
       }
@@ -106,20 +109,43 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isCancelled = true;
       if (cleanSubs) cleanSubs();
+    };
+  }, [activeAdapterType, attachAdapterListeners]);
+
+  // Sync volume & mute to the active adapter without rebuilding it
+  useEffect(() => {
+    if (adapterRef.current) {
+      adapterRef.current.setVolume(isMuted ? 0 : volume);
+    }
+  }, [isMuted, volume]);
+
+  const switchAdapter = useCallback(
+    async (type: AdapterType): Promise<PlaybackAdapter> => {
+      if (adapterRef.current && adapterRef.current.name === type) {
+        return adapterRef.current;
+      }
+
+      setErrorMessage(null);
+      setCurrentTime(0);
+
       if (adapterRef.current) {
         adapterRef.current.cleanup();
         adapterRef.current = null;
-        setActiveAdapter(null);
       }
-    };
-  }, [activeAdapterType, attachAdapterListeners, isMuted, volume]);
 
-  const switchAdapter = useCallback(async (type: AdapterType) => {
-    if (type === activeAdapterType) return;
-    setErrorMessage(null);
-    setCurrentTime(0);
-    setActiveAdapterType(type);
-  }, [activeAdapterType]);
+      const newAdapter = createAdapter(type);
+      adapterRef.current = newAdapter;
+      setActiveAdapter(newAdapter);
+      setActiveAdapterType(type);
+
+      attachAdapterListeners(newAdapter);
+      await newAdapter.initialize();
+      newAdapter.setVolume(isMuted ? 0 : volume);
+
+      return newAdapter;
+    },
+    [attachAdapterListeners, isMuted, volume]
+  );
 
   const play = useCallback(async () => {
     if (adapterRef.current) {
@@ -179,24 +205,54 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loadPlaylist = useCallback(async (urlOrId: string) => {
-    if (adapterRef.current) {
+  const loadPlaylist = useCallback(
+    async (urlOrId: string, preferredType?: AdapterType) => {
       setErrorMessage(null);
-      await adapterRef.current.loadPlaylist(urlOrId);
-    }
-  }, []);
 
-  const loadCustomLocalFile = useCallback(async (file: File) => {
-    if (adapterRef.current instanceof LocalAudioAdapter) {
-      setErrorMessage(null);
-      await adapterRef.current.loadCustomFile(file);
-    } else {
-      await switchAdapter('local');
-      if (adapterRef.current instanceof LocalAudioAdapter) {
-        await adapterRef.current.loadCustomFile(file);
+      // Auto-detect or select adapter type
+      let targetType = preferredType;
+      if (!targetType) {
+        if (urlOrId.includes('spotify.com')) {
+          targetType = 'spotify';
+        } else if (
+          urlOrId.includes('youtube.com') ||
+          urlOrId.includes('youtu.be') ||
+          /^[a-zA-Z0-9_-]{11}$/.test(urlOrId.trim()) ||
+          /^(PL|RD|OLAK5uy)[a-zA-Z0-9_-]{10,}$/.test(urlOrId.trim())
+        ) {
+          targetType = 'youtube';
+        } else {
+          targetType = activeAdapterType;
+        }
       }
-    }
-  }, [switchAdapter]);
+
+      let adapter = adapterRef.current;
+      if (!adapter || adapter.name !== targetType) {
+        adapter = await switchAdapter(targetType);
+      }
+
+      if (adapter) {
+        await adapter.loadPlaylist(urlOrId);
+        await adapter.play();
+      }
+    },
+    [activeAdapterType, switchAdapter]
+  );
+
+  const loadCustomLocalFile = useCallback(
+    async (file: File) => {
+      let adapter = adapterRef.current;
+      if (!(adapter instanceof LocalAudioAdapter)) {
+        adapter = await switchAdapter('local');
+      }
+      if (adapter instanceof LocalAudioAdapter) {
+        setErrorMessage(null);
+        await adapter.loadCustomFile(file);
+        await adapter.play();
+      }
+    },
+    [switchAdapter]
+  );
 
   const isPlaying = playbackState === 'playing';
 
