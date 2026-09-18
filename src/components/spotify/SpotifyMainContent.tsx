@@ -180,12 +180,14 @@ export default function SpotifyMainContent({
     return () => clearTimeout(timeout);
   }, [inlineSearchQuery]);
 
-  const handlePlaySearchResult = async (video: YouTubeSearchResult) => {
+  // NOTE: intentionally NOT async — mobile browsers require audio start
+  // to happen within the synchronous user-gesture handler.
+  const handlePlaySearchResult = (video: YouTubeSearchResult) => {
     if (typeof window !== 'undefined') {
       const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
       yt?.primeAudioStream?.(video.id);
     }
-    await loadPlaylist(video.id, 'youtube');
+    loadPlaylist(video.id, 'youtube');
   };
 
   // Add video to an existing or new Custom Playlist
@@ -309,6 +311,7 @@ export default function SpotifyMainContent({
     : null;
 
   const isSearchActive = searchQuery.trim().length > 0 || activeView === 'search';
+  const isPlaylistsView = activeView === 'playlists';
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
 
   return (
@@ -698,9 +701,64 @@ export default function SpotifyMainContent({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* VIEW 3: HOME VIEW (Greeting & Ambient Soundscape Mixer)       */}
+        {/* VIEW: PLAYLISTS (mobile tab — all saved playlists)             */}
         {/* ------------------------------------------------------------- */}
-        {!isSearchActive && !isPlaylistView && (
+        {isPlaylistsView && (
+          <section aria-label="Your Playlists" className="space-y-4">
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Your Playlists</h1>
+
+            {savedPlaylists.length === 0 ? (
+              <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-2">
+                <span className="text-4xl">🎵</span>
+                <p className="text-sm font-semibold text-white">No playlists yet</p>
+                <p className="text-xs">Search for songs and add them to a playlist.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {savedPlaylists.map((pl) => {
+                  const isActive = activeView === `playlist:${pl.id}`;
+                  return (
+                    <button
+                      key={pl.id}
+                      type="button"
+                      onClick={() => setActiveView(`playlist:${pl.id}`)}
+                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-[#1d90f5]/15 border border-[#1d90f5]/40'
+                          : 'bg-[#181818] border border-[#242424] hover:bg-[#222222]'
+                      }`}
+                    >
+                      {/* Icon */}
+                      <div
+                        className={`w-14 h-14 shrink-0 rounded-lg flex items-center justify-center text-2xl shadow-md ${
+                          pl.id === 'liked-songs'
+                            ? 'bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca]'
+                            : 'bg-gradient-to-br from-[#1d90f5] to-[#09488a]'
+                        }`}
+                      >
+                        {pl.icon || '🎵'}
+                      </div>
+                      {/* Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white truncate">{pl.title}</p>
+                        <p className="text-xs text-[#b3b3b3] truncate">{pl.subtitle}</p>
+                      </div>
+                      {/* Arrow */}
+                      <svg className="w-5 h-5 fill-current text-[#666666] shrink-0" viewBox="0 0 24 24">
+                        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6-6-6z" />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 3: HOME VIEW (Greeting &amp; Ambient Soundscape Mixer)       */}
+        {/* ------------------------------------------------------------- */}
+        {!isSearchActive && !isPlaylistView && !isPlaylistsView && (
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               {greeting}
@@ -712,7 +770,7 @@ export default function SpotifyMainContent({
         )}
 
         {/* AMBIENT SOUNDSCAPE MIXER SHELF (All 13 procedural sounds) */}
-        {!isPlaylistView && (
+        {!isPlaylistView && !isPlaylistsView && (
           <section
             aria-label="Ambient Soundscape Mixer"
             className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4"
