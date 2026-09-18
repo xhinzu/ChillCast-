@@ -106,6 +106,77 @@ export default function SpotifyBottomPlayer({
     } catch {}
   };
 
+  // Sync isLiked whenever currentTrack or savedPlaylists changes
+  useEffect(() => {
+    if (!currentTrack) {
+      setIsLiked(false);
+      return;
+    }
+    const likedPlaylist = savedPlaylists.find((p) => p.id === 'liked-songs');
+    const isPresent = likedPlaylist?.tracks?.some((t) => t.id === currentTrack.id) || false;
+    setIsLiked(isPresent);
+  }, [currentTrack, savedPlaylists]);
+
+  const handleToggleLike = () => {
+    if (!currentTrack) return;
+    try {
+      const stored = localStorage.getItem('chillify_saved_playlists');
+      let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
+
+      let likedPlaylist = prev.find((p) => p.id === 'liked-songs');
+      if (!likedPlaylist) {
+        likedPlaylist = {
+          id: 'liked-songs',
+          title: 'Liked Songs',
+          subtitle: '0 songs • Liked Songs',
+          type: 'custom',
+          targetUrl: '',
+          icon: '💙',
+          tracks: [],
+          description: 'Your favorite liked tracks on Chillify',
+          createdAt: Date.now(),
+        };
+        prev = [likedPlaylist, ...prev];
+      }
+
+      const prevTracks = likedPlaylist.tracks || [];
+      const alreadyLiked = prevTracks.some((t) => t.id === currentTrack.id);
+
+      let newTracks: CustomPlaylistTrack[];
+      if (alreadyLiked) {
+        newTracks = prevTracks.filter((t) => t.id !== currentTrack.id);
+        setIsLiked(false);
+      } else {
+        const newTrack: CustomPlaylistTrack = {
+          id: currentTrack.id,
+          title: currentTrack.title,
+          artist: currentTrack.artist,
+          duration: formatTime(duration),
+          thumbnail: currentTrack.artworkUrl || `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`,
+          addedAt: Date.now(),
+        };
+        newTracks = [newTrack, ...prevTracks];
+        setIsLiked(true);
+      }
+
+      const updated = prev.map((p) => {
+        if (p.id === 'liked-songs') {
+          return {
+            ...p,
+            tracks: newTracks,
+            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
+          };
+        }
+        return p;
+      });
+
+      localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
+      setSavedPlaylists(updated);
+      window.dispatchEvent(new Event('chillify_playlists_updated'));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
+  };
+
   const customPlaylists = savedPlaylists.filter((p) => p.type === 'custom');
 
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
@@ -152,11 +223,11 @@ export default function SpotifyBottomPlayer({
         {/* Heart / Like Button */}
         <button
           type="button"
-          onClick={() => setIsLiked(!isLiked)}
+          onClick={handleToggleLike}
           className={`p-1 transition-colors cursor-pointer ${
             isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
           }`}
-          title={isLiked ? 'Remove from Your Library' : 'Save to Your Library'}
+          title={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
         >
           <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             {isLiked ? (

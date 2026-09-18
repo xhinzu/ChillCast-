@@ -168,7 +168,7 @@ export default function SpotifySidebar({
               <div className="p-4 rounded-lg bg-[#181818] border border-dashed border-[#2e2e2e] text-center my-4 space-y-2">
                 <p className="text-xs font-semibold text-white">Your library is empty</p>
                 <p className="text-[11px] text-[#b3b3b3]">
-                  Click the <strong className="text-white">+</strong> button above to save YouTube or Spotify playlists.
+                  Like any song or click the <strong className="text-white">+</strong> button above to create playlists.
                 </p>
                 <button
                   type="button"
@@ -179,48 +179,71 @@ export default function SpotifySidebar({
                 </button>
               </div>
             ) : (
-              savedPlaylists.map((item) => {
-                const isActive = activeView === `playlist:${item.id}`;
-                const trackCount = item.tracks ? item.tracks.length : null;
-                const displaySubtitle = trackCount !== null ? `${trackCount} ${trackCount === 1 ? 'song' : 'songs'} • Custom Playlist` : item.subtitle;
+              [...savedPlaylists]
+                .sort((a, b) => {
+                  if (a.id === 'liked-songs') return -1;
+                  if (b.id === 'liked-songs') return 1;
+                  return 0;
+                })
+                .map((item) => {
+                  const isActive = activeView === `playlist:${item.id}`;
+                  const isLikedPlaylist = item.id === 'liked-songs';
+                  const trackCount = item.tracks ? item.tracks.length : null;
+                  const displaySubtitle = trackCount !== null
+                    ? `${trackCount} ${trackCount === 1 ? 'song' : 'songs'}`
+                    : item.subtitle;
 
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => handleSelectPlaylist(item)}
-                    className={`flex items-center justify-between p-2 rounded-md cursor-pointer group transition-colors ${
-                      isActive
-                        ? 'bg-[#1f2d3d] border border-[#1d90f5]/40 text-white'
-                        : 'hover:bg-[#1f1f1f]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`w-10 h-10 rounded flex items-center justify-center text-lg shrink-0 shadow ${
-                        isActive ? 'bg-[#1d90f5]/20 text-[#1d90f5]' : 'bg-[#242424]'
-                      }`}>
-                        {item.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-semibold truncate transition-colors ${
-                          isActive ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
-                        }`}>
-                          {item.title}
-                        </p>
-                        <p className="text-[10px] text-[#b3b3b3] truncate">{displaySubtitle}</p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => handleRemovePlaylist(item.id, e)}
-                      className="opacity-0 group-hover:opacity-100 text-[#777] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
-                      title="Remove playlist"
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleSelectPlaylist(item)}
+                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer group transition-colors ${
+                        isActive
+                          ? 'bg-[#1f2d3d] border border-[#1d90f5]/40 text-white'
+                          : 'hover:bg-[#1f1f1f]'
+                      }`}
                     >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {isLikedPlaylist ? (
+                          <div className="w-10 h-10 rounded bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca] flex items-center justify-center text-white text-sm shrink-0 shadow-md">
+                            💙
+                          </div>
+                        ) : (
+                          <div
+                            className={`w-10 h-10 rounded flex items-center justify-center text-lg shrink-0 shadow ${
+                              isActive ? 'bg-[#1d90f5]/20 text-[#1d90f5]' : 'bg-[#242424]'
+                            }`}
+                          >
+                            {item.icon}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-xs font-semibold truncate transition-colors ${
+                              isActive ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                            }`}
+                          >
+                            {item.title}
+                          </p>
+                          <p className="text-[10px] text-[#b3b3b3] truncate">
+                            {isLikedPlaylist ? `📌 ${displaySubtitle}` : displaySubtitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!isLikedPlaylist && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemovePlaylist(item.id, e)}
+                          className="opacity-0 group-hover:opacity-100 text-[#777] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
+                          title="Remove playlist"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
             )}
           </div>
 

@@ -336,27 +336,57 @@ export default function SpotifyMainContent({
                 <span>←</span> Back to Home
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleDeletePlaylist(currentPlaylist.id)}
-                className="text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-800/40 transition-colors cursor-pointer"
-                title="Delete Playlist"
-              >
-                🗑️ Delete Playlist
-              </button>
+              {currentPlaylist.id !== 'liked-songs' ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeletePlaylist(currentPlaylist.id)}
+                  className="text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-800/40 transition-colors cursor-pointer"
+                  title="Delete Playlist"
+                >
+                  🗑️ Delete Playlist
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = savedPlaylists.map((p) =>
+                      p.id === 'liked-songs'
+                        ? { ...p, tracks: [], subtitle: '0 songs • Liked Songs' }
+                        : p
+                    );
+                    savePlaylists(updated);
+                  }}
+                  className="text-xs font-semibold text-[#888888] hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-[#333333] transition-colors cursor-pointer"
+                  title="Clear all liked songs"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
 
             {/* Playlist Header Banner */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 bg-gradient-to-b from-[#183457] to-[#121c2b] p-6 sm:p-8 rounded-2xl border border-[#233d5e] shadow-2xl">
+            <div
+              className={`flex flex-col sm:flex-row items-center sm:items-end gap-6 p-6 sm:p-8 rounded-2xl border shadow-2xl ${
+                currentPlaylist.id === 'liked-songs'
+                  ? 'bg-gradient-to-b from-[#19325c] to-[#121c2b] border-[#2f5ba0]'
+                  : 'bg-gradient-to-b from-[#183457] to-[#121c2b] border-[#233d5e]'
+              }`}
+            >
               {/* Artwork Tile */}
-              <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-xl bg-gradient-to-br from-[#1d90f5] to-[#09488a] flex items-center justify-center text-5xl sm:text-6xl shadow-2xl shrink-0">
+              <div
+                className={`w-36 h-36 sm:w-44 sm:h-44 rounded-xl flex items-center justify-center text-5xl sm:text-6xl shadow-2xl shrink-0 ${
+                  currentPlaylist.id === 'liked-songs'
+                    ? 'bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca]'
+                    : 'bg-gradient-to-br from-[#1d90f5] to-[#09488a]'
+                }`}
+              >
                 {currentPlaylist.icon || '🎵'}
               </div>
 
               {/* Header Info */}
               <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-2 min-w-0">
                 <span className="text-[11px] font-extrabold tracking-widest text-[#1d90f5] uppercase">
-                  CUSTOM PLAYLIST
+                  {currentPlaylist.id === 'liked-songs' ? 'FAVORITES' : 'CUSTOM PLAYLIST'}
                 </span>
                 <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight break-words">
                   {currentPlaylist.title}
