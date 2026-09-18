@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChillCast — Ambient Soundscapes & Music Player",
-  description: "Web-based music player blending ambient lo-fi soundscapes, live lyrics, YouTube, and Spotify.",
+  title: "Chillify 🥰 — Ambient Lo-Fi & Music Player",
+  description: "Spotify-inspired music player blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Spotify.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -26,9 +29,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-black`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="h-screen w-screen overflow-hidden bg-black text-white flex flex-col antialiased">
+        {children}
+      </body>
     </html>
   );
 }

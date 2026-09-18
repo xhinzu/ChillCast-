@@ -1,84 +1,87 @@
 'use client';
 
-import React, { useState } from 'react';
-import UniversalMusicPlayer from '@/components/UniversalMusicPlayer';
-import AmbientSoundMixer from '@/components/AmbientSoundMixer';
-import AmbientBackground from '@/components/AmbientBackground';
-import SceneSelector from '@/components/SceneSelector';
-import { PlaybackProvider } from '@/context/PlaybackContext';
-import { SceneId } from '@/types/scenes';
+import React, { useEffect, useState } from 'react';
+import { PlaybackProvider, usePlayback } from '@/context/PlaybackContext';
+import { AmbientProvider } from '@/context/AmbientContext';
+import SpotifyTopNav from '@/components/spotify/SpotifyTopNav';
+import SpotifySidebar from '@/components/spotify/SpotifySidebar';
+import SpotifyMainContent from '@/components/spotify/SpotifyMainContent';
+import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
 
-export default function ChillCastApp() {
-  const [activeSceneId, setActiveSceneId] = useState<SceneId>('rain');
-  const [dimmerOpacity, setDimmerOpacity] = useState<number>(0.25);
-  const [isMotionPaused, setIsMotionPaused] = useState<boolean>(false);
+function ChillifyShell() {
+  const { togglePlay } = usePlayback();
+  const [activeView, setActiveView] = useState<string>('home');
+  const [showLyrics, setShowLyrics] = useState<boolean>(false);
+  const [showVideo, setShowVideo] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Global spacebar hotkey for Spotify play/pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay]);
 
   return (
-    <PlaybackProvider>
-      {/* 1. Looping Muted Background Video + Canvas Engine */}
-      <AmbientBackground
-        activeSceneId={activeSceneId}
-        dimmerOpacity={dimmerOpacity}
-        isPaused={isMotionPaused}
+    <div className="h-screen w-screen bg-black text-white flex flex-col overflow-hidden select-none font-sans">
+      {/* 1. Spotify Top Navigation Bar */}
+      <SpotifyTopNav
+        activeView={activeView}
+        setActiveView={setActiveView}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
 
-      <main className="min-h-screen text-slate-100 flex flex-col items-center justify-start p-4 sm:p-8 relative font-sans selection:bg-indigo-500/30">
-        {/* Main Application Column (Centered horizontally, anchored at top) */}
-        <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col gap-6 sm:gap-8 py-4 sm:py-8">
-          {/* Brand Header & Scene Selector Toolbar */}
-          <header className="relative z-50 flex items-center justify-between backdrop-blur-md bg-[#0c101b]/80 border border-white/[0.08] border-t-white/[0.14] px-6 py-4 rounded-3xl shadow-2xl shadow-black/50 transform-gpu contain-paint">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-teal-300 p-[1.5px] flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                <div className="w-full h-full bg-[#07090e] rounded-2xl flex items-center justify-center text-lg">
-                  ✨
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-100 via-sky-100 to-teal-100 bg-clip-text text-transparent">
-                  ChillCast
-                </h1>
-                <p className="text-[11px] text-slate-400 font-medium">
-                  Ambient Lo-Fi Soundscapes & Music Player
-                </p>
-              </div>
-            </div>
+      {/* 2. Main Middle Split Layout: Left Sidebar + Main Scrollable Area */}
+      <div className="flex-1 flex px-2 gap-2 overflow-hidden min-h-0">
+        <SpotifySidebar
+          activeView={activeView}
+          setActiveView={setActiveView}
+          showLyrics={showLyrics}
+          setShowLyrics={setShowLyrics}
+        />
 
-            {/* Header Right Actions */}
-            <div className="flex items-center gap-3">
-              {/* Scene Picker & Dimmer */}
-              <SceneSelector
-                activeSceneId={activeSceneId}
-                onSelectScene={setActiveSceneId}
-                dimmerOpacity={dimmerOpacity}
-                onDimmerChange={setDimmerOpacity}
-                isPaused={isMotionPaused}
-                onTogglePause={() => setIsMotionPaused(!isMotionPaused)}
-              />
+        <SpotifyMainContent
+          activeView={activeView}
+          setActiveView={setActiveView}
+          showLyrics={showLyrics}
+          setShowLyrics={setShowLyrics}
+          showVideo={showVideo}
+          setShowVideo={setShowVideo}
+          searchQuery={searchQuery}
+        />
+      </div>
 
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                <span>Stage 8 Ready</span>
-              </div>
-            </div>
-          </header>
+      {/* 3. Bottom Persistent Spotify Playback Bar */}
+      <SpotifyBottomPlayer
+        showLyrics={showLyrics}
+        setShowLyrics={setShowLyrics}
+        showVideo={showVideo}
+        setShowVideo={setShowVideo}
+        activeView={activeView}
+        setActiveView={setActiveView}
+      />
+    </div>
+  );
+}
 
-          {/* 2. Universal Swappable Music Player */}
-          <section aria-label="Universal Music Player">
-            <UniversalMusicPlayer />
-          </section>
-
-          {/* 3. Web Audio API Ambient Soundscape Mixer */}
-          <section aria-label="Ambient Soundscape Mixer">
-            <AmbientSoundMixer />
-          </section>
-
-          {/* Footer */}
-          <footer className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 px-4 py-3 border border-white/[0.06] backdrop-blur-md rounded-2xl bg-[#0c101b]/60 shadow-lg gap-2 transform-gpu">
-            <span>ChillCast • Ambient Lo-Fi Soundscapes & Music Player</span>
-            <span className="text-indigo-300 font-medium">Stage 8 • GitHub & Vercel Deployment</span>
-          </footer>
-        </div>
-      </main>
+export default function ChillCastApp() {
+  return (
+    <PlaybackProvider>
+      <AmbientProvider>
+        <ChillifyShell />
+      </AmbientProvider>
     </PlaybackProvider>
   );
 }

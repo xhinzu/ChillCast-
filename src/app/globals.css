@@ -1,42 +1,93 @@
 @import "tailwindcss";
 
 :root {
-  --background: #07090e;
-  --foreground: #f8fafc;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #000000;
+  --foreground: #ffffff;
+  --spotify-green: #1db954;
+  --spotify-green-hover: #1ed760;
+  --spotify-black: #000000;
+  --spotify-dark: #121212;
+  --spotify-card: #181818;
+  --spotify-card-hover: #282828;
+  --spotify-subtext: #b3b3b3;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  overflow-x: hidden;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  user-select: none;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Hardware accelerated smooth scrolling & glassmorphism performance */
-.glass-panel {
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  background: rgba(12, 16, 27, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transform: translateZ(0);
-  contain: paint;
+/* Authentic Spotify Card */
+.spotify-card {
+  background-color: #181818;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
+.spotify-card:hover {
+  background-color: #282828;
+}
 
-/* Custom Sleek Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
+/* Spotify Range Slider */
+.spotify-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #4d4d4d;
+  height: 4px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+
+.spotify-slider:hover {
   height: 6px;
+}
+
+/* WebKit (Chrome, Safari, Edge) */
+.spotify-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.spotify-slider:hover::-webkit-slider-thumb,
+.spotify-slider:active::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* Firefox */
+.spotify-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.spotify-slider:hover::-moz-range-thumb,
+.spotify-slider:active::-moz-range-thumb {
+  opacity: 1;
+}
+
+/* Custom Spotify Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -44,10 +95,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.4);
 }

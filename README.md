@@ -1,14 +1,14 @@
-# ☕ ChillCast — Ambient Lo-Fi Soundscapes & Music Player
+# ☕ Chillify 🥰 — Spotify-Inspired Ambient Soundscapes & Music Player
 
-A modern, high-performance ambient sound and music web application built with **Next.js 16 (App Router)**, **TypeScript (Strict Mode)**, **Tailwind CSS**, and the **Web Audio API**. ChillCast blends live ambient audio layers, synced karaoke lyrics, dynamic HD video scenes, and a universal music player with swappable audio adapters (Local, YouTube, and Spotify).
+A modern, high-performance web application designed as an **exact replica of the Spotify desktop/web app**, built with **Next.js 16 (App Router)**, **TypeScript (Strict Mode)**, **Tailwind CSS**, and the **Web Audio API**. Chillify blends procedural ambient audio layers, synced karaoke lyrics, and a universal music player with swappable audio adapters (Local, YouTube, and Spotify).
 
 ---
 
 ## ✨ Features
 
-- **🎨 Dynamic Atmospheric Scenes**: 
-  - 6 immersive scenes with smooth crossfading: *Rain Downpour*, *Rolling Thunderstorm*, *Quiet Snowfall*, *Cozy Fireplace*, *Night Sky*, and *Fireflies in the Mist*.
-  - Hardware-composited glassmorphism UI with layer isolation (`transform-gpu`, `contain: paint`) for 60fps scrolling and responsive interactions.
+- **🎧 Exact Spotify Web/Desktop App Replica**:
+  - Authentic Spotify dark theme (`#000000`, `#121212`, `#181818`), Spotify green accents (`#1DB954`), and custom Spotify range sliders.
+  - Left navigation sidebar (*Home*, *Ambient Mixer*, *Live Lyrics*, *Your Library*), central search pill, and persistent 3-column bottom playback bar.
 
 - **🎛️ Web Audio API Ambient Soundscape Mixer**:
   - Independent channel mixer with real-time master & individual volume sliders and mute toggles.
