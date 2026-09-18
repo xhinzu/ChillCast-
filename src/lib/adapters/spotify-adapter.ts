@@ -307,6 +307,18 @@ export class SpotifyAdapter extends BasePlaybackAdapter {
     }
   }
 
+  public setSpatial8D(enabled: boolean): void {
+    if (this.youtubeResolver && typeof this.youtubeResolver.setSpatial8D === 'function') {
+      this.youtubeResolver.setSpatial8D(enabled);
+    }
+  }
+
+  public setMuffled(enabled: boolean): void {
+    if (this.youtubeResolver && typeof this.youtubeResolver.setMuffled === 'function') {
+      this.youtubeResolver.setMuffled(enabled);
+    }
+  }
+
   public override cleanup(): void {
     if (this.positionInterval !== null) {
       clearInterval(this.positionInterval);

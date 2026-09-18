@@ -62,5 +62,11 @@ export interface PlaybackAdapter {
   onStateChange(callback: StateCallback): () => void;
   onError(callback: ErrorCallback): () => void;
 
+  /**
+   * Optional spatial and filter DSP effects
+   */
+  setSpatial8D?(enabled: boolean): void;
+  setMuffled?(enabled: boolean): void;
+
   cleanup(): void;
 }

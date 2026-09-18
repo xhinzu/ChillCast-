@@ -651,8 +651,67 @@ export class AmbientSoundEngine {
     });
   }
 
-  /* --- 8. Cafe Chatter (Realistic Multi-Voice Human Speech Babble & Ambience) --- */
-  private startChatter(ctx: AudioContext, dest: GainNode) {
+  private chatterBuffer: AudioBuffer | null = null;
+  private isLoadingChatter = false;
+
+  private async loadChatterBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.chatterBuffer) return this.chatterBuffer;
+    if (this.isLoadingChatter) return null;
+
+    this.isLoadingChatter = true;
+    try {
+      const res = await fetch('/audio/chatter.webm');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+      this.chatterBuffer = decoded;
+      return decoded;
+    } catch (e) {
+      console.warn('Could not load recorded cafe chatter audio, using fallback:', e);
+      return null;
+    } finally {
+      this.isLoadingChatter = false;
+    }
+  }
+
+  /* --- 8. Cafe Chatter (Real People Talking & Coffee Shop Ambience) --- */
+  private async startChatter(ctx: AudioContext, dest: GainNode) {
+    let isCancelled = false;
+
+    // 1. First try playing the actual real people talking recording from YouTube
+    const buffer = await this.loadChatterBuffer(ctx);
+    if (isCancelled) return;
+
+    if (buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      // Gentle warm room filter to sit sweetly in ambient background
+      const warmFilter = ctx.createBiquadFilter();
+      warmFilter.type = 'lowpass';
+      warmFilter.frequency.setValueAtTime(4500, ctx.currentTime);
+
+      source.connect(warmFilter);
+      warmFilter.connect(dest);
+      source.start();
+
+      this.activeSources.set('chatter', {
+        stop: () => {
+          isCancelled = true;
+          try {
+            source.stop();
+            source.disconnect();
+            warmFilter.disconnect();
+          } catch {
+            // ignore
+          }
+        },
+      });
+      return;
+    }
+
+    // 2. Procedural Fallback if audio buffer fetch fails
     const noise = ctx.createBufferSource();
     noise.buffer = this.getNoiseBuffer(ctx);
     noise.loop = true;
@@ -733,6 +792,7 @@ export class AmbientSoundEngine {
 
     this.activeSources.set('chatter', {
       stop: () => {
+        isCancelled = true;
         isRunning = false;
         if (timeoutId) clearTimeout(timeoutId);
         try {
@@ -819,8 +879,59 @@ export class AmbientSoundEngine {
     });
   }
 
-  /* --- 10. Kerala Chenda Melam (Authentic Temple Percussion) --- */
-  private startChenda(ctx: AudioContext, dest: GainNode) {
+  private chendaBuffer: AudioBuffer | null = null;
+  private isLoadingChenda = false;
+
+  private async loadChendaBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.chendaBuffer) return this.chendaBuffer;
+    if (this.isLoadingChenda) return null;
+
+    this.isLoadingChenda = true;
+    try {
+      const res = await fetch('/audio/chenda.webm');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+      this.chendaBuffer = decoded;
+      return decoded;
+    } catch (e) {
+      console.warn('Could not load recorded chenda audio, using fallback:', e);
+      return null;
+    } finally {
+      this.isLoadingChenda = false;
+    }
+  }
+
+  /* --- 10. Kerala Chenda Melam (Real Festival Recording + Procedural Fallback) --- */
+  private async startChenda(ctx: AudioContext, dest: GainNode) {
+    let isCancelled = false;
+
+    // 1. Try playing the authentic temple Chenda Melam recording from YouTube
+    const buffer = await this.loadChendaBuffer(ctx);
+    if (isCancelled) return;
+
+    if (buffer) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.connect(dest);
+      source.start();
+
+      this.activeSources.set('chenda', {
+        stop: () => {
+          isCancelled = true;
+          try {
+            source.stop();
+            source.disconnect();
+          } catch {
+            // ignore
+          }
+        },
+      });
+      return;
+    }
+
+    // 2. Procedural fallback
     let isRunning = true;
     let step = 0;
     let intervalId: number | null = null;

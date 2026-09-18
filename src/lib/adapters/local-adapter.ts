@@ -72,6 +72,12 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
   public setMuffled(enabled: boolean): void {
     this.isMuffledActive = enabled;
+    if (!this.audioCtx) {
+      this.initDsp();
+    }
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
+    }
     if (this.muffledFilter && this.audioCtx) {
       const targetFreq = enabled ? 450 : 22000;
       const targetQ = enabled ? 1.8 : 0.7;
@@ -86,6 +92,13 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
     if (this.spatialIntervalId !== null) {
       clearInterval(this.spatialIntervalId);
       this.spatialIntervalId = null;
+    }
+
+    if (!this.audioCtx) {
+      this.initDsp();
+    }
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
     }
 
     if (!enabled) {
@@ -109,6 +122,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
     if (!this.audio) {
       this.audio = new Audio();
+      this.audio.crossOrigin = 'anonymous';
       this.audio.preload = 'metadata';
       this.audio.volume = this.volume;
       this.audio.loop = this.isLooping;

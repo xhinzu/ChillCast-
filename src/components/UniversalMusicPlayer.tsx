@@ -48,6 +48,10 @@ export default function UniversalMusicPlayer() {
     previousTrack,
     loadPlaylist,
     loadCustomLocalFile,
+    isSpatial8D,
+    isMuffled,
+    toggleSpatial8D,
+    toggleMuffled,
   } = usePlayback();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -588,12 +592,44 @@ export default function UniversalMusicPlayer() {
               )}
             </div>
 
-            {/* Volume Control */}
-            <div className="flex items-center gap-2">
+            {/* 8D Spatial, Muffled, & Volume Controls */}
+            <div className="flex items-center gap-2.5">
+              {/* 🎧 8D Spatial Audio Toggle */}
+              <button
+                type="button"
+                onClick={toggleSpatial8D}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
+                  isSpatial8D
+                    ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/60 shadow-sm shadow-[#1d90f5]/30 ring-1 ring-[#1d90f5]/40'
+                    : 'text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+                title="8D Spatial Audio (Song orbits in 360° around headset)"
+              >
+                <span>🎧</span>
+                <span>8D</span>
+                {isSpatial8D && <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-pulse" />}
+              </button>
+
+              {/* 🚪 Muffled Effect Toggle */}
+              <button
+                type="button"
+                onClick={toggleMuffled}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
+                  isMuffled
+                    ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/60 shadow-sm shadow-[#1d90f5]/30 ring-1 ring-[#1d90f5]/40'
+                    : 'text-slate-400 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+                title="Muffled Effect (Lo-fi sound from another room)"
+              >
+                <span>🚪</span>
+                <span>Muffled</span>
+                {isMuffled && <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-pulse" />}
+              </button>
+
               <button
                 type="button"
                 onClick={toggleMute}
-                className="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer ml-1"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted || volume === 0 ? '🔇' : volume < 0.5 ? '🔉' : '🔊'}
