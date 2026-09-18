@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
+import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 
 interface SpotifyBottomPlayerProps {
   showVideo: boolean;
@@ -44,12 +45,68 @@ export default function SpotifyBottomPlayer({
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [isRepeat, setIsRepeat] = useState<boolean>(false);
 
+  // Playlists state for adding current track
+  const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
+  const [showPlaylistMenu, setShowPlaylistMenu] = useState<boolean>(false);
+
+  useEffect(() => {
+    const loadPlaylists = () => {
+      try {
+        const stored = localStorage.getItem('chillify_saved_playlists');
+        if (stored) setSavedPlaylists(JSON.parse(stored));
+      } catch {}
+    };
+    loadPlaylists();
+    window.addEventListener('storage', loadPlaylists);
+    window.addEventListener('chillify_playlists_updated', loadPlaylists);
+    return () => {
+      window.removeEventListener('storage', loadPlaylists);
+      window.removeEventListener('chillify_playlists_updated', loadPlaylists);
+    };
+  }, []);
+
   const formatTime = (secs: number) => {
     if (isNaN(secs) || secs < 0) return '0:00';
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
+
+  const handleAddCurrentTrackToPlaylist = (playlistId: string) => {
+    if (!currentTrack) return;
+    try {
+      const stored = localStorage.getItem('chillify_saved_playlists');
+      const prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
+      const updated = prev.map((p) => {
+        if (p.id === playlistId) {
+          const prevTracks = p.tracks || [];
+          if (prevTracks.some((t) => t.id === currentTrack.id)) return p;
+          const newTrack: CustomPlaylistTrack = {
+            id: currentTrack.id,
+            title: currentTrack.title,
+            artist: currentTrack.artist,
+            duration: formatTime(duration),
+            thumbnail: currentTrack.artworkUrl || `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`,
+            addedAt: Date.now(),
+          };
+          const newTracks = [...prevTracks, newTrack];
+          return {
+            ...p,
+            tracks: newTracks,
+            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Custom Playlist`,
+          };
+        }
+        return p;
+      });
+      localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
+      setSavedPlaylists(updated);
+      window.dispatchEvent(new Event('chillify_playlists_updated'));
+      window.dispatchEvent(new Event('storage'));
+      setShowPlaylistMenu(false);
+    } catch {}
+  };
+
+  const customPlaylists = savedPlaylists.filter((p) => p.type === 'custom');
 
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const volumePercent = isMuted ? 0 : volume * 100;
@@ -109,6 +166,56 @@ export default function SpotifyBottomPlayer({
             )}
           </svg>
         </button>
+
+        {/* ＋ Add currently playing track to a Custom Playlist */}
+        {currentTrack && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
+              className="p-1 text-[#b3b3b3] hover:text-[#1d90f5] transition-colors cursor-pointer text-sm font-bold"
+              title="Add current track to Custom Playlist"
+            >
+              ＋
+            </button>
+            {showPlaylistMenu && (
+              <div
+                className="absolute bottom-10 left-0 w-52 bg-[#181818] border border-[#282828] rounded-xl shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-2 py-1 border-b border-[#242424]">
+                  <p className="text-[10px] font-bold text-[#b3b3b3] uppercase tracking-wider">
+                    Add to Playlist
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowPlaylistMenu(false)}
+                    className="text-[10px] text-[#888888] hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {customPlaylists.length === 0 ? (
+                  <p className="text-[11px] text-[#888888] px-2 py-2 text-center">
+                    No custom playlists created yet
+                  </p>
+                ) : (
+                  customPlaylists.map((pl) => (
+                    <button
+                      key={pl.id}
+                      type="button"
+                      onClick={() => handleAddCurrentTrackToPlaylist(pl.id)}
+                      className="w-full text-left text-xs text-white hover:bg-[#282828] px-2.5 py-1.5 rounded-lg truncate cursor-pointer flex items-center gap-2"
+                    >
+                      <span>🎵</span>
+                      <span className="truncate flex-1">{pl.title}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Video Popover Button for YouTube */}
         {activeAdapterType === 'youtube' && (

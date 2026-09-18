@@ -72,6 +72,9 @@ export async function GET(req: NextRequest) {
     responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'audio/webm');
     responseHeaders.set('Accept-Ranges', 'bytes');
     responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
+    responseHeaders.set('Access-Control-Allow-Headers', 'Range, Content-Type, Accept, Authorization');
+    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
 
     const contentRange = upstreamRes.headers.get('content-range');
     if (contentRange) {
@@ -92,4 +95,16 @@ export async function GET(req: NextRequest) {
     console.error('YouTube stream route error:', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS, HEAD',
+      'Access-Control-Allow-Headers': 'Range, Content-Type, Accept, Authorization',
+      'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
+    },
+  });
 }

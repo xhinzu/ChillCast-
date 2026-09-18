@@ -16,9 +16,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
+  const rawQuery = query.trim();
+
+  // Music-targeted query refinement: if user didn't specify music terms, append "song"
+  const musicKeywords = /(song|audio|music|track|album|remix|lofi|instrumental|soundtrack|ost|melam|beats|cover|acoustic|chenda)/i;
+  const searchQueryText = musicKeywords.test(rawQuery)
+    ? rawQuery
+    : `${rawQuery} song official audio`;
+
+  // Negative patterns for random non-music videos
+  const nonMusicPattern = /\b(reaction|reacting|review|interview|podcast|unboxing|gameplay|walkthrough|tutorial|news|vlog|vlogs|vlogging|breakdown|tier list|behind the scenes|trailer|teaser|episode|ep\s*\d+|season|scene|highlights|commentary|livestream|shorts|tiktok|meme|prank|comedy|challenge|movie|full movie|standup|parody|troll|press meet|speech)\b/i;
+
+  // Allow longer tracks only if user specifically searches for mixes or albums
+  const allowLongTracks = /(mix|album|hours|hour|set|compilation|live|playlist|jukebox)/i.test(rawQuery);
+
+  function parseDurationSeconds(durStr: string): number {
+    const parts = durStr.split(':').map(Number);
+    if (parts.some(isNaN)) return 0;
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return 0;
+  }
+
   try {
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-      query.trim()
+      searchQueryText
     )}&sp=EgIQAQ%253D%253D`;
 
     const res = await fetch(searchUrl, {
@@ -70,6 +92,17 @@ export async function GET(req: NextRequest) {
           const title = v.title?.runs?.[0]?.text || 'YouTube Track';
           const channel = v.ownerText?.runs?.[0]?.text || 'YouTube Artist';
           const duration = v.lengthText?.simpleText || '0:00';
+          const durSec = parseDurationSeconds(duration);
+
+          // 1. Filter out shorts and micro-clips (< 55s)
+          if (durSec > 0 && durSec < 55) continue;
+
+          // 2. Filter out non-song videos (vlogs, podcasts, reactions, interviews, memes)
+          if (nonMusicPattern.test(title) || nonMusicPattern.test(channel)) continue;
+
+          // 3. Filter out videos longer than 11 minutes unless searching for full mixes/albums
+          if (!allowLongTracks && durSec > 660) continue;
+
           const thumbnail =
             v.thumbnail?.thumbnails?.[0]?.url ||
             `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`;
@@ -82,10 +115,10 @@ export async function GET(req: NextRequest) {
             thumbnail,
           });
 
-          if (results.length >= 15) break;
+          if (results.length >= 18) break;
         }
       }
-      if (results.length >= 15) break;
+      if (results.length >= 18) break;
     }
 
     return NextResponse.json({ results });

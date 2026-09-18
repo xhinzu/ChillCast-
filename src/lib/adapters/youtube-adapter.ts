@@ -27,6 +27,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private sourceNode: MediaElementAudioSourceNode | null = null;
   private muffledFilter: BiquadFilterNode | null = null;
   private pannerNode: StereoPannerNode | null = null;
+  private gainNode: GainNode | null = null;
   private spatialIntervalId: number | null = null;
   private spatialAngle = 0;
   private isSpatial8DActive = false;
@@ -43,14 +44,18 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
       this.sourceNode = this.audioCtx.createMediaElementSource(this.streamAudio);
 
-      // Muffled filter: Lowpass filter (420Hz when muffled, 22000Hz when normal)
+      // Muffled filter: Lowpass filter (350Hz when muffled, 22000Hz when normal)
       this.muffledFilter = this.audioCtx.createBiquadFilter();
       this.muffledFilter.type = 'lowpass';
       this.muffledFilter.frequency.setValueAtTime(
-        this.isMuffledActive ? 420 : 22000,
+        this.isMuffledActive ? 350 : 22000,
         this.audioCtx.currentTime
       );
-      this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 2.0 : 0.7, this.audioCtx.currentTime);
+      this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 2.5 : 0.7, this.audioCtx.currentTime);
+
+      // Volume gain node for Web Audio element source
+      this.gainNode = this.audioCtx.createGain();
+      this.gainNode.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
 
       // 8D Spatial: Stereo panner oscillating left to right
       if (this.audioCtx.createStereoPanner) {
@@ -58,10 +63,12 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         this.pannerNode.pan.setValueAtTime(0, this.audioCtx.currentTime);
         this.sourceNode.connect(this.muffledFilter);
         this.muffledFilter.connect(this.pannerNode);
-        this.pannerNode.connect(this.audioCtx.destination);
+        this.pannerNode.connect(this.gainNode);
+        this.gainNode.connect(this.audioCtx.destination);
       } else {
         this.sourceNode.connect(this.muffledFilter);
-        this.muffledFilter.connect(this.audioCtx.destination);
+        this.muffledFilter.connect(this.gainNode);
+        this.gainNode.connect(this.audioCtx.destination);
       }
     } catch (err) {
       console.warn('Web Audio DSP initialization error on YouTube stream:', err);
@@ -76,11 +83,19 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume().catch(() => {});
     }
+    if (this.player) {
+      try {
+        this.player.mute();
+      } catch {}
+    }
+    if (this.streamAudio && this.streamAudio.paused && this.state === 'playing') {
+      this.streamAudio.play().catch(() => {});
+    }
     if (this.muffledFilter && this.audioCtx) {
-      const targetFreq = enabled ? 420 : 22000;
-      const targetQ = enabled ? 2.0 : 0.7;
-      this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.audioCtx.currentTime, 0.08);
-      this.muffledFilter.Q.setTargetAtTime(targetQ, this.audioCtx.currentTime, 0.08);
+      const targetFreq = enabled ? 350 : 22000;
+      const targetQ = enabled ? 2.5 : 0.7;
+      this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.audioCtx.currentTime, 0.05);
+      this.muffledFilter.Q.setTargetAtTime(targetQ, this.audioCtx.currentTime, 0.05);
     }
   }
 
@@ -98,21 +113,29 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume().catch(() => {});
     }
+    if (this.player) {
+      try {
+        this.player.mute();
+      } catch {}
+    }
+    if (this.streamAudio && this.streamAudio.paused && this.state === 'playing') {
+      this.streamAudio.play().catch(() => {});
+    }
 
     if (!enabled) {
       if (this.pannerNode && this.audioCtx) {
-        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.04);
       }
       return;
     }
 
-    // Smooth circular 8D headphone orbit (~8.5 seconds full cycle)
+    // Dynamic 8D headphone orbit across left and right ears (~4.5s cycle)
     this.spatialIntervalId = window.setInterval(() => {
-      if (!this.pannerNode || !this.audioCtx || this.state !== 'playing') return;
-      this.spatialAngle += 0.045;
-      const pan = Math.sin(this.spatialAngle) * 0.95;
-      this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.04);
-    }, 40);
+      if (!this.pannerNode || !this.audioCtx) return;
+      this.spatialAngle += 0.065;
+      const pan = Math.sin(this.spatialAngle) * 0.98;
+      this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.035);
+    }, 35);
   }
 
   private ensureStreamAudioInitialized(): void {
@@ -124,6 +147,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.streamAudio.volume = this.volume;
 
     this.streamAudio.addEventListener('playing', () => {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
       this.isStreamingActive = true;
       if (this.player) {
         try {
@@ -134,8 +160,17 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
     });
 
-    this.streamAudio.addEventListener('error', () => {
-      // If streaming proxy fails for any reason, fallback immediately to YouTube iframe sound
+    this.streamAudio.addEventListener('canplay', () => {
+      if (this.state === 'playing' && this.streamAudio && this.streamAudio.paused) {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume().catch(() => {});
+        }
+        this.streamAudio.play().catch(() => {});
+      }
+    });
+
+    this.streamAudio.addEventListener('error', (e) => {
+      console.warn('[YouTubeAdapter] streamAudio error fired:', this.streamAudio?.error, e);
       this.isStreamingActive = false;
       if (this.player) {
         try {
@@ -151,7 +186,10 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   private loadStreamForVideo(videoId: string) {
-    if (!videoId || this.streamAudioVideoId === videoId || typeof window === 'undefined') return;
+    if (!videoId || typeof window === 'undefined') return;
+    if (this.streamAudioVideoId === videoId && this.streamAudio && this.streamAudio.src) return;
+
+    console.log('[YouTubeAdapter] loadStreamForVideo starting for videoId:', videoId);
     this.streamAudioVideoId = videoId;
     this.ensureStreamAudioInitialized();
 
@@ -159,24 +197,28 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
     this.streamAudio.src = `/api/youtube/stream?v=${videoId}`;
     this.streamAudio.currentTime = this.player?.getCurrentTime() || 0;
+    this.streamAudio.load();
+
+    // Mute YouTube iframe so audio is routed via Web Audio DSP
+    if (this.player) {
+      try {
+        this.player.mute();
+      } catch {}
+    }
 
     if (this.state === 'playing') {
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
         this.audioCtx.resume().catch(() => {});
       }
-      this.streamAudio.play().catch(() => {
-        // Autoplay may be restricted; fallback to iframe until user interaction
-        if (this.player) {
-          try {
-            this.player.unMute();
-          } catch {}
-        }
+      this.streamAudio.play().catch((err) => {
+        console.warn('[YouTubeAdapter] streamAudio.play() deferred:', err);
       });
     }
   }
 
   public async initialize(containerElement?: HTMLElement | null): Promise<void> {
     if (typeof window === 'undefined') return;
+    (window as unknown as { __ytAdapter?: YouTubeAdapter }).__ytAdapter = this;
 
     if (containerElement && containerElement.id) {
       this.containerId = containerElement.id;
@@ -476,19 +518,23 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public async play(): Promise<void> {
+    this.ensureStreamAudioInitialized();
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
+    }
+
     if (this.player) {
       try {
+        this.player.mute();
         this.player.playVideo();
       } catch (err) {
         this.emitError((err as Error).message);
       }
     }
     if (this.streamAudio) {
-      this.initDsp();
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch(() => {});
-      }
-      this.streamAudio.play().catch(() => {});
+      this.streamAudio.play().catch((err) => {
+        console.warn('[YouTubeAdapter] streamAudio.play() deferred:', err);
+      });
     }
   }
 
@@ -541,6 +587,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   public setVolume(volume: number): void {
     this.volume = Math.max(0, Math.min(1, volume));
+    if (this.gainNode && this.audioCtx) {
+      this.gainNode.gain.setTargetAtTime(this.volume, this.audioCtx.currentTime, 0.02);
+    }
     if (this.streamAudio) {
       this.streamAudio.volume = this.volume;
     }
@@ -569,6 +618,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       this.sourceNode = null;
       this.muffledFilter = null;
       this.pannerNode = null;
+      this.gainNode = null;
     }
     if (this.streamAudio) {
       this.streamAudio.pause();

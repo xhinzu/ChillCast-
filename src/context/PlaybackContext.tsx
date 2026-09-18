@@ -43,6 +43,7 @@ interface PlaybackContextValue {
   loadCustomLocalFile: (file: File) => Promise<void>;
   toggleSpatial8D: () => void;
   toggleMuffled: () => void;
+  playCustomTrackList: (tracks: TrackInfo[], startIndex?: number) => Promise<void>;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -62,6 +63,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const [isSpatial8D, setIsSpatial8D] = useState<boolean>(false);
   const [isMuffled, setIsMuffled] = useState<boolean>(false);
+
+  const playCustomTrackListRef = useRef<((tracks: TrackInfo[], startIndex?: number) => Promise<void>) | null>(null);
 
   // Bind subscriptions from an adapter
   const attachAdapterListeners = useCallback((adapter: PlaybackAdapter) => {
@@ -83,7 +86,15 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         }
       }
     });
-    const unsubState = adapter.onStateChange((state) => setPlaybackState(state));
+    const unsubState = adapter.onStateChange((state) => {
+      setPlaybackState(state);
+      if (state === 'ended') {
+        const { tracks, currentIndex } = playlistQueueRef.current;
+        if (tracks.length > 0 && currentIndex + 1 < tracks.length && playCustomTrackListRef.current) {
+          playCustomTrackListRef.current(tracks, currentIndex + 1);
+        }
+      }
+    });
     const unsubErr = adapter.onError((err) => setErrorMessage(err));
 
     return () => {
@@ -209,25 +220,70 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isMuted, volume]);
 
+  const playlistQueueRef = useRef<{ tracks: TrackInfo[]; currentIndex: number }>({
+    tracks: [],
+    currentIndex: 0,
+  });
+
+  const playCustomTrackList = useCallback(
+    async (tracks: TrackInfo[], startIndex = 0) => {
+      if (!tracks || tracks.length === 0) return;
+      const index = Math.max(0, Math.min(tracks.length - 1, startIndex));
+      playlistQueueRef.current = { tracks, currentIndex: index };
+
+      const track = tracks[index];
+      setErrorMessage(null);
+      setCurrentTime(0);
+      setDuration(track.duration || 0);
+
+      const targetType: AdapterType = track.source === 'local' ? 'local' : 'youtube';
+      let adapter = adapterRef.current;
+      if (!adapter || adapter.name !== targetType) {
+        adapter = await switchAdapter(targetType);
+      }
+
+      if (adapter) {
+        await adapter.loadPlaylist(track.sourceUrl || track.id);
+        await adapter.play();
+      }
+    },
+    [switchAdapter]
+  );
+
+  useEffect(() => {
+    playCustomTrackListRef.current = playCustomTrackList;
+  }, [playCustomTrackList]);
+
   const nextTrack = useCallback(() => {
+    const { tracks, currentIndex } = playlistQueueRef.current;
+    if (tracks.length > 0 && currentIndex + 1 < tracks.length) {
+      playCustomTrackList(tracks, currentIndex + 1);
+      return;
+    }
     const adapter = adapterRef.current;
     if (adapter && 'nextTrack' in adapter && typeof (adapter as { nextTrack?: () => void }).nextTrack === 'function') {
       (adapter as { nextTrack: () => void }).nextTrack();
     }
-  }, []);
+  }, [playCustomTrackList]);
 
   const previousTrack = useCallback(() => {
+    const { tracks, currentIndex } = playlistQueueRef.current;
+    if (tracks.length > 0 && currentIndex > 0) {
+      playCustomTrackList(tracks, currentIndex - 1);
+      return;
+    }
     const adapter = adapterRef.current;
     if (adapter && 'previousTrack' in adapter && typeof (adapter as { previousTrack?: () => void }).previousTrack === 'function') {
       (adapter as { previousTrack: () => void }).previousTrack();
     }
-  }, []);
+  }, [playCustomTrackList]);
 
   const loadPlaylist = useCallback(
     async (urlOrId: string, preferredType?: AdapterType) => {
       setErrorMessage(null);
       setCurrentTime(0);
       setDuration(0);
+      playlistQueueRef.current = { tracks: [], currentIndex: 0 };
 
       // Auto-detect or select adapter type
       let targetType = preferredType;
@@ -339,6 +395,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         loadCustomLocalFile,
         toggleSpatial8D,
         toggleMuffled,
+        playCustomTrackList,
       }}
     >
       {children}

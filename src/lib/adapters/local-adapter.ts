@@ -25,6 +25,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
   private sourceNode: MediaElementAudioSourceNode | null = null;
   private muffledFilter: BiquadFilterNode | null = null;
   private pannerNode: StereoPannerNode | null = null;
+  private gainNode: GainNode | null = null;
   private spatialIntervalId: number | null = null;
   private spatialAngle = 0;
   private isSpatial8DActive = false;
@@ -45,25 +46,27 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       this.muffledFilter = this.audioCtx.createBiquadFilter();
       this.muffledFilter.type = 'lowpass';
       this.muffledFilter.frequency.setValueAtTime(
-        this.isMuffledActive ? 450 : 22000,
+        this.isMuffledActive ? 350 : 22000,
         this.audioCtx.currentTime
       );
-      this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 1.8 : 0.7, this.audioCtx.currentTime);
+      this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 2.5 : 0.7, this.audioCtx.currentTime);
+
+      // Volume gain node
+      this.gainNode = this.audioCtx.createGain();
+      this.gainNode.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
 
       // Stereo panner for 8D Binaural rotation
       if (this.audioCtx.createStereoPanner) {
         this.pannerNode = this.audioCtx.createStereoPanner();
         this.pannerNode.pan.setValueAtTime(0, this.audioCtx.currentTime);
-      }
-
-      // Graph wiring: source -> muffledFilter -> pannerNode (if supported) -> destination
-      if (this.pannerNode) {
         this.sourceNode.connect(this.muffledFilter);
         this.muffledFilter.connect(this.pannerNode);
-        this.pannerNode.connect(this.audioCtx.destination);
+        this.pannerNode.connect(this.gainNode);
+        this.gainNode.connect(this.audioCtx.destination);
       } else {
         this.sourceNode.connect(this.muffledFilter);
-        this.muffledFilter.connect(this.audioCtx.destination);
+        this.muffledFilter.connect(this.gainNode);
+        this.gainNode.connect(this.audioCtx.destination);
       }
     } catch {
       // If already connected or browser policy prevents, fallback to direct audio
@@ -79,10 +82,10 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       this.audioCtx.resume().catch(() => {});
     }
     if (this.muffledFilter && this.audioCtx) {
-      const targetFreq = enabled ? 450 : 22000;
-      const targetQ = enabled ? 1.8 : 0.7;
-      this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.audioCtx.currentTime, 0.08);
-      this.muffledFilter.Q.setTargetAtTime(targetQ, this.audioCtx.currentTime, 0.08);
+      const targetFreq = enabled ? 350 : 22000;
+      const targetQ = enabled ? 2.5 : 0.7;
+      this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.audioCtx.currentTime, 0.05);
+      this.muffledFilter.Q.setTargetAtTime(targetQ, this.audioCtx.currentTime, 0.05);
     }
   }
 
@@ -103,18 +106,18 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
     if (!enabled) {
       if (this.pannerNode && this.audioCtx) {
-        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.04);
       }
       return;
     }
 
-    // Orbit smoothly between left and right channels (~9 seconds full circle)
+    // Dynamic 8D headphone orbit across left and right ears (~4.5s cycle)
     this.spatialIntervalId = window.setInterval(() => {
-      if (!this.pannerNode || !this.audioCtx || this.state !== 'playing') return;
-      this.spatialAngle += 0.04;
-      const pan = Math.sin(this.spatialAngle) * 0.95;
-      this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.04);
-    }, 50);
+      if (!this.pannerNode || !this.audioCtx) return;
+      this.spatialAngle += 0.065;
+      const pan = Math.sin(this.spatialAngle) * 0.98;
+      this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.035);
+    }, 35);
   }
 
   public async initialize(): Promise<void> {
@@ -171,6 +174,9 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       });
     }
 
+    // Initialize Web Audio DSP chain
+    this.initDsp();
+
     // Load default initial track
     await this.loadTrack(this.playlist[0]);
   }
@@ -218,6 +224,12 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
   public async play(): Promise<void> {
     if (!this.audio) return;
+    this.initDsp();
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      try {
+        await this.audioCtx.resume();
+      } catch {}
+    }
     try {
       await this.audio.play();
       this.emitState('playing');
@@ -242,6 +254,9 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
   public setVolume(volume: number): void {
     this.volume = Math.max(0, Math.min(1, volume));
+    if (this.gainNode && this.audioCtx) {
+      this.gainNode.gain.setTargetAtTime(this.volume, this.audioCtx.currentTime, 0.02);
+    }
     if (this.audio) {
       this.audio.volume = this.volume;
     }
@@ -273,6 +288,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       this.sourceNode = null;
       this.muffledFilter = null;
       this.pannerNode = null;
+      this.gainNode = null;
     }
     if (this.audio) {
       this.audio.pause();

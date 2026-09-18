@@ -23,19 +23,29 @@ export default function SpotifySidebar({
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
 
-  // Load saved playlists from localStorage
+  // Load saved playlists from localStorage and sync across events
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setSavedPlaylists(parsed);
+    const syncPlaylists = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setSavedPlaylists(parsed);
+          }
         }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
+    };
+
+    syncPlaylists();
+    window.addEventListener('storage', syncPlaylists);
+    window.addEventListener('chillify_playlists_updated', syncPlaylists);
+    return () => {
+      window.removeEventListener('storage', syncPlaylists);
+      window.removeEventListener('chillify_playlists_updated', syncPlaylists);
+    };
   }, []);
 
   const handleSavePlaylist = (item: SavedPlaylistItem) => {
@@ -49,8 +59,11 @@ export default function SpotifySidebar({
       return updated;
     });
 
-    // Automatically switch and play the newly added playlist
-    loadPlaylist(item.targetUrl, item.type);
+    if (item.type === 'custom') {
+      setActiveView(`playlist:${item.id}`);
+    } else {
+      loadPlaylist(item.targetUrl, item.type);
+    }
   };
 
   const handleRemovePlaylist = (id: string, e: React.MouseEvent) => {
@@ -64,10 +77,18 @@ export default function SpotifySidebar({
       }
       return updated;
     });
+
+    if (activeView === `playlist:${id}`) {
+      setActiveView('home');
+    }
   };
 
   const handleSelectPlaylist = (item: SavedPlaylistItem) => {
-    loadPlaylist(item.targetUrl, item.type);
+    if (item.type === 'custom') {
+      setActiveView(`playlist:${item.id}`);
+    } else {
+      loadPlaylist(item.targetUrl, item.type);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,34 +179,48 @@ export default function SpotifySidebar({
                 </button>
               </div>
             ) : (
-              savedPlaylists.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleSelectPlaylist(item)}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-[#1f1f1f] cursor-pointer group transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded bg-[#242424] flex items-center justify-center text-lg shrink-0 shadow">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white truncate group-hover:text-[#1d90f5] transition-colors">
-                        {item.title}
-                      </p>
-                      <p className="text-[10px] text-[#b3b3b3] truncate">{item.subtitle}</p>
-                    </div>
-                  </div>
+              savedPlaylists.map((item) => {
+                const isActive = activeView === `playlist:${item.id}`;
+                const trackCount = item.tracks ? item.tracks.length : null;
+                const displaySubtitle = trackCount !== null ? `${trackCount} ${trackCount === 1 ? 'song' : 'songs'} • Custom Playlist` : item.subtitle;
 
-                  <button
-                    type="button"
-                    onClick={(e) => handleRemovePlaylist(item.id, e)}
-                    className="opacity-0 group-hover:opacity-100 text-[#777] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
-                    title="Remove playlist"
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectPlaylist(item)}
+                    className={`flex items-center justify-between p-2 rounded-md cursor-pointer group transition-colors ${
+                      isActive
+                        ? 'bg-[#1f2d3d] border border-[#1d90f5]/40 text-white'
+                        : 'hover:bg-[#1f1f1f]'
+                    }`}
                   >
-                    ✕
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`w-10 h-10 rounded flex items-center justify-center text-lg shrink-0 shadow ${
+                        isActive ? 'bg-[#1d90f5]/20 text-[#1d90f5]' : 'bg-[#242424]'
+                      }`}>
+                        {item.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-semibold truncate transition-colors ${
+                          isActive ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                        }`}>
+                          {item.title}
+                        </p>
+                        <p className="text-[10px] text-[#b3b3b3] truncate">{displaySubtitle}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemovePlaylist(item.id, e)}
+                      className="opacity-0 group-hover:opacity-100 text-[#777] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
+                      title="Remove playlist"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
