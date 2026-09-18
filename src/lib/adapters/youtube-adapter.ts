@@ -158,20 +158,30 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     try {
       const data = this.player.getVideoData();
       const dur = this.player.getDuration() || 0;
-      this.duration = dur;
 
-      if (data && data.video_id && data.video_id !== this.currentVideoId) {
-        this.currentVideoId = data.video_id;
+      const videoId = data?.video_id || this.currentVideoId;
+      if (!videoId) return;
+
+      const trackChanged = videoId !== this.currentVideoId;
+      const durationChanged = dur > 0 && Math.abs(dur - this.duration) > 0.5;
+
+      if (trackChanged || durationChanged || !this.currentTrack) {
+        this.currentVideoId = videoId;
+        if (dur > 0) {
+          this.duration = dur;
+        }
+
         const track: TrackInfo = {
-          id: data.video_id,
-          title: data.title || 'YouTube Track',
-          artist: data.author || 'YouTube Artist',
-          album: 'YouTube Playlist',
-          duration: dur,
-          artworkUrl: `https://img.youtube.com/vi/${data.video_id}/hqdefault.jpg`,
+          id: videoId,
+          title: data?.title && data.title !== '' ? data.title : (this.currentTrack?.title || 'YouTube Track'),
+          artist: data?.author && data.author !== '' ? data.author : (this.currentTrack?.artist || 'YouTube Artist'),
+          album: 'YouTube',
+          duration: this.duration,
+          artworkUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           source: 'youtube',
-          sourceUrl: `https://www.youtube.com/watch?v=${data.video_id}`,
+          sourceUrl: `https://www.youtube.com/watch?v=${videoId}`,
         };
+        this.currentTrack = track;
         this.emitTrack(track);
       }
     } catch {
@@ -186,6 +196,12 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         try {
           const current = this.player.getCurrentTime();
           this.emitPosition(current);
+
+          const dur = this.player.getDuration();
+          if (dur > 0 && Math.abs(dur - this.duration) > 0.5) {
+            this.duration = dur;
+            this.updateCurrentTrackData();
+          }
         } catch {
           // ignore
         }
@@ -235,6 +251,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       return [];
     }
 
+    this.duration = 0;
+    this.currentVideoId = null;
+
     if (!this.player) {
       this.pendingTarget = parsed;
       await this.initialize();
@@ -253,6 +272,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       source: 'youtube',
       sourceUrl: idOrUrl,
     };
+    this.currentTrack = initialPlaceholder;
     this.emitTrack(initialPlaceholder);
     return [initialPlaceholder];
   }
@@ -337,6 +357,17 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
       this.player = null;
     }
+
+    if (typeof document !== 'undefined') {
+      const wrapper = document.getElementById('chillcast-yt-wrapper') || document.body;
+      if (!document.getElementById(this.containerId)) {
+        const placeholder = document.createElement('div');
+        placeholder.id = this.containerId;
+        placeholder.className = 'w-full h-full';
+        wrapper.appendChild(placeholder);
+      }
+    }
+
     super.cleanup();
   }
 }

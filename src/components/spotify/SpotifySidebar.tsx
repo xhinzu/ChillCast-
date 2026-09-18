@@ -8,8 +8,6 @@ import AddSourceModal, { SavedPlaylistItem } from './AddSourceModal';
 interface SpotifySidebarProps {
   activeView: string;
   setActiveView: (view: string) => void;
-  showLyrics: boolean;
-  setShowLyrics: (show: boolean) => void;
 }
 
 const STORAGE_KEY = 'chillify_saved_playlists';
@@ -17,8 +15,6 @@ const STORAGE_KEY = 'chillify_saved_playlists';
 export default function SpotifySidebar({
   activeView,
   setActiveView,
-  showLyrics,
-  setShowLyrics,
 }: SpotifySidebarProps) {
   const { loadPlaylist, switchAdapter, loadCustomLocalFile } = usePlayback();
   const { activeCount } = useAmbient();
@@ -89,12 +85,9 @@ export default function SpotifySidebar({
         <nav className="bg-[#121212] rounded-lg p-3 sm:p-4 flex flex-col gap-1 shrink-0">
           <button
             type="button"
-            onClick={() => {
-              setActiveView('home');
-              setShowLyrics(false);
-            }}
+            onClick={() => setActiveView('home')}
             className={`flex items-center gap-4 px-3 py-2.5 rounded-md font-bold text-sm transition-colors cursor-pointer ${
-              activeView === 'home' && !showLyrics
+              activeView === 'home'
                 ? 'text-white'
                 : 'text-[#b3b3b3] hover:text-white'
             }`}
@@ -107,12 +100,9 @@ export default function SpotifySidebar({
 
           <button
             type="button"
-            onClick={() => {
-              setActiveView('mixer');
-              setShowLyrics(false);
-            }}
+            onClick={() => setActiveView('mixer')}
             className={`flex items-center justify-between px-3 py-2.5 rounded-md font-bold text-sm transition-colors cursor-pointer ${
-              activeView === 'mixer' && !showLyrics
+              activeView === 'mixer'
                 ? 'text-white'
                 : 'text-[#b3b3b3] hover:text-white'
             }`}
@@ -125,26 +115,6 @@ export default function SpotifySidebar({
             </div>
             {activeCount > 0 && (
               <span className="w-2 h-2 rounded-full bg-[#1d90f5] shadow-sm shadow-[#1d90f5]" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowLyrics(!showLyrics)}
-            className={`flex items-center justify-between px-3 py-2.5 rounded-md font-bold text-sm transition-colors cursor-pointer ${
-              showLyrics ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm5 7a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.91V18H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-3v-3.09A6 6 0 0 0 17 9z" />
-              </svg>
-              <span>Live Lyrics</span>
-            </div>
-            {showLyrics && (
-              <span className="text-[10px] uppercase font-bold text-[#1d90f5] tracking-wider">
-                ON
-              </span>
             )}
           </button>
         </nav>

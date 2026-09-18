@@ -6,8 +6,6 @@ import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 
 interface SpotifyBottomPlayerProps {
-  showLyrics: boolean;
-  setShowLyrics: (show: boolean) => void;
   showVideo: boolean;
   setShowVideo: (show: boolean) => void;
   activeView: string;
@@ -15,8 +13,6 @@ interface SpotifyBottomPlayerProps {
 }
 
 export default function SpotifyBottomPlayer({
-  showLyrics,
-  setShowLyrics,
   showVideo,
   setShowVideo,
   activeView,
@@ -30,12 +26,16 @@ export default function SpotifyBottomPlayer({
     volume,
     isMuted,
     activeAdapterType,
+    isSpatial8D,
+    isMuffled,
     togglePlay,
     seek,
     setVolume,
     toggleMute,
     nextTrack,
     previousTrack,
+    toggleSpatial8D,
+    toggleMuffled,
   } = usePlayback();
 
   const { activeCount } = useAmbient();
@@ -247,22 +247,50 @@ export default function SpotifyBottomPlayer({
         </div>
       </div>
 
-      {/* 3. Right: Synced Lyrics, Mixer shortcut, Volume */}
-      <div className="flex items-center justify-end gap-3 w-1/4 min-w-[160px] sm:min-w-[200px]">
-        {/* Lyrics Button */}
+      {/* 3. Right: 8D Spatial & Muffled Effects, Mixer shortcut, Volume */}
+      <div className="flex items-center justify-end gap-2.5 w-1/3 min-w-[200px] sm:min-w-[260px]">
+        {/* 🎧 8D Spatial Audio Toggle */}
         <button
           type="button"
-          onClick={() => setShowLyrics(!showLyrics)}
-          className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-            showLyrics
-              ? 'text-[#1d90f5] bg-white/10'
-              : 'text-[#b3b3b3] hover:text-white'
+          onClick={toggleSpatial8D}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
+            isSpatial8D
+              ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/60 shadow-sm shadow-[#1d90f5]/30 ring-1 ring-[#1d90f5]/40'
+              : 'text-[#b3b3b3] hover:text-white hover:bg-white/10 border border-transparent'
           }`}
-          title="Lyrics"
+          title={
+            isSpatial8D
+              ? '8D Spatial Audio: ACTIVE (Song orbits left & right around your headset)'
+              : 'Turn ON 8D Spatial Audio (Song orbits in 360° around headset)'
+          }
         >
-          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm5 7a1 1 0 0 0-2 0 4 4 0 0 1-8 0 1 1 0 0 0-2 0 6 6 0 0 0 5 5.91V18H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-3v-3.09A6 6 0 0 0 17 9z" />
-          </svg>
+          <span className="text-xs">🎧</span>
+          <span className="hidden sm:inline text-[11px]">8D</span>
+          {isSpatial8D && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-pulse" />
+          )}
+        </button>
+
+        {/* 🚪 Muffled Effect Toggle */}
+        <button
+          type="button"
+          onClick={toggleMuffled}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
+            isMuffled
+              ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/60 shadow-sm shadow-[#1d90f5]/30 ring-1 ring-[#1d90f5]/40'
+              : 'text-[#b3b3b3] hover:text-white hover:bg-white/10 border border-transparent'
+          }`}
+          title={
+            isMuffled
+              ? 'Muffled Effect: ACTIVE (Song filtered like hearing from another room)'
+              : 'Turn ON Muffled Effect (Lo-fi filter from behind a closed door)'
+          }
+        >
+          <span className="text-xs">🚪</span>
+          <span className="hidden sm:inline text-[11px]">Muffled</span>
+          {isMuffled && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-pulse" />
+          )}
         </button>
 
         {/* Ambient Mixer Shortcut Button */}

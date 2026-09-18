@@ -11,7 +11,6 @@ import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
 function ChillifyShell() {
   const { togglePlay } = usePlayback();
   const [activeView, setActiveView] = useState<string>('home');
-  const [showLyrics, setShowLyrics] = useState<boolean>(false);
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -48,15 +47,11 @@ function ChillifyShell() {
         <SpotifySidebar
           activeView={activeView}
           setActiveView={setActiveView}
-          showLyrics={showLyrics}
-          setShowLyrics={setShowLyrics}
         />
 
         <SpotifyMainContent
           activeView={activeView}
           setActiveView={setActiveView}
-          showLyrics={showLyrics}
-          setShowLyrics={setShowLyrics}
           showVideo={showVideo}
           setShowVideo={setShowVideo}
           searchQuery={searchQuery}
@@ -65,8 +60,6 @@ function ChillifyShell() {
 
       {/* 3. Bottom Persistent Spotify Playback Bar */}
       <SpotifyBottomPlayer
-        showLyrics={showLyrics}
-        setShowLyrics={setShowLyrics}
         showVideo={showVideo}
         setShowVideo={setShowVideo}
         activeView={activeView}
@@ -75,6 +68,7 @@ function ChillifyShell() {
 
       {/* 4. Permanent YouTube Player Container (Never destroyed by React) */}
       <div
+        id="chillcast-yt-wrapper"
         className={`fixed z-40 transition-all duration-300 rounded-xl overflow-hidden shadow-2xl border border-[#282828] bg-black ${
           showVideo
             ? 'bottom-24 right-6 w-80 h-48 sm:w-96 sm:h-56 opacity-100 pointer-events-auto'

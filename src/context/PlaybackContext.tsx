@@ -27,6 +27,8 @@ interface PlaybackContextValue {
   volume: number;
   isMuted: boolean;
   errorMessage: string | null;
+  isSpatial8D: boolean;
+  isMuffled: boolean;
 
   switchAdapter: (type: AdapterType) => Promise<PlaybackAdapter>;
   play: () => Promise<void>;
@@ -39,6 +41,8 @@ interface PlaybackContextValue {
   previousTrack: () => void;
   loadPlaylist: (urlOrId: string, preferredType?: AdapterType) => Promise<void>;
   loadCustomLocalFile: (file: File) => Promise<void>;
+  toggleSpatial8D: () => void;
+  toggleMuffled: () => void;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -56,13 +60,27 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [isSpatial8D, setIsSpatial8D] = useState<boolean>(false);
+  const [isMuffled, setIsMuffled] = useState<boolean>(false);
+
   // Bind subscriptions from an adapter
   const attachAdapterListeners = useCallback((adapter: PlaybackAdapter) => {
-    const unsubPos = adapter.onPositionChange((pos) => setCurrentTime(pos));
+    const unsubPos = adapter.onPositionChange((pos) => {
+      setCurrentTime(pos);
+      const d = adapter.getDuration();
+      if (d > 0) {
+        setDuration(d);
+      }
+    });
     const unsubTrack = adapter.onTrackChange((track) => {
       setCurrentTrack(track);
       if (track && track.duration > 0) {
         setDuration(track.duration);
+      } else {
+        const d = adapter.getDuration();
+        if (d > 0) {
+          setDuration(d);
+        }
       }
     });
     const unsubState = adapter.onStateChange((state) => setPlaybackState(state));
@@ -208,6 +226,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const loadPlaylist = useCallback(
     async (urlOrId: string, preferredType?: AdapterType) => {
       setErrorMessage(null);
+      setCurrentTime(0);
+      setDuration(0);
 
       // Auto-detect or select adapter type
       let targetType = preferredType;
@@ -247,12 +267,47 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
       if (adapter instanceof LocalAudioAdapter) {
         setErrorMessage(null);
+        setCurrentTime(0);
+        setDuration(0);
         await adapter.loadCustomFile(file);
         await adapter.play();
       }
     },
     [switchAdapter]
   );
+
+  const toggleSpatial8D = useCallback(() => {
+    setIsSpatial8D((prev) => {
+      const next = !prev;
+      const adapter = adapterRef.current;
+      if (adapter && 'setSpatial8D' in adapter && typeof (adapter as unknown as { setSpatial8D: (b: boolean) => void }).setSpatial8D === 'function') {
+        (adapter as unknown as { setSpatial8D: (b: boolean) => void }).setSpatial8D(next);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleMuffled = useCallback(() => {
+    setIsMuffled((prev) => {
+      const next = !prev;
+      const adapter = adapterRef.current;
+      if (adapter && 'setMuffled' in adapter && typeof (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled === 'function') {
+        (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled(next);
+      }
+      return next;
+    });
+  }, []);
+
+  // Keep adapter effects in sync
+  useEffect(() => {
+    const adapter = adapterRef.current;
+    if (adapter && 'setSpatial8D' in adapter && typeof (adapter as unknown as { setSpatial8D: (b: boolean) => void }).setSpatial8D === 'function') {
+      (adapter as unknown as { setSpatial8D: (b: boolean) => void }).setSpatial8D(isSpatial8D);
+    }
+    if (adapter && 'setMuffled' in adapter && typeof (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled === 'function') {
+      (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled(isMuffled);
+    }
+  }, [activeAdapter, isSpatial8D, isMuffled]);
 
   const isPlaying = playbackState === 'playing';
 
@@ -269,6 +324,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         volume,
         isMuted,
         errorMessage,
+        isSpatial8D,
+        isMuffled,
         switchAdapter,
         play,
         pause,
@@ -280,6 +337,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         previousTrack,
         loadPlaylist,
         loadCustomLocalFile,
+        toggleSpatial8D,
+        toggleMuffled,
       }}
     >
       {children}

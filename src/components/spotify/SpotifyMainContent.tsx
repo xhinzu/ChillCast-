@@ -6,13 +6,10 @@ import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import { YouTubeSearchResult } from '@/app/api/youtube/search/route';
 import { SavedPlaylistItem } from './AddSourceModal';
-import SpotifyLyricsView from './SpotifyLyricsView';
 
 interface SpotifyMainContentProps {
   activeView: string;
   setActiveView: (view: string) => void;
-  showLyrics: boolean;
-  setShowLyrics: (show: boolean) => void;
   showVideo: boolean;
   setShowVideo: (show: boolean) => void;
   searchQuery: string;
@@ -23,8 +20,6 @@ const STORAGE_KEY = 'chillify_saved_playlists';
 export default function SpotifyMainContent({
   activeView,
   setActiveView,
-  showLyrics,
-  setShowLyrics,
   showVideo,
   setShowVideo,
   searchQuery,
@@ -89,7 +84,7 @@ export default function SpotifyMainContent({
         .finally(() => {
           setIsSearching(false);
         });
-    }, 350);
+    }, 150);
 
     return () => clearTimeout(timeout);
   }, [searchQuery]);
@@ -123,15 +118,6 @@ export default function SpotifyMainContent({
     setAddedToast(`Added "${video.title}" to Your Library!`);
     setTimeout(() => setAddedToast(null), 3000);
   };
-
-  // If Lyrics view is active, show the full lyrics screen
-  if (showLyrics) {
-    return (
-      <main className="flex-1 h-full overflow-hidden bg-[#121212] rounded-lg">
-        <SpotifyLyricsView onClose={() => setShowLyrics(false)} />
-      </main>
-    );
-  }
 
   const isSearchActive = searchQuery.trim().length > 0 || activeView === 'search';
 
@@ -330,25 +316,35 @@ export default function SpotifyMainContent({
               return (
                 <div
                   key={sound.id}
-                  className={`p-3.5 rounded-lg border transition-all flex flex-col justify-between gap-3 ${
+                  onClick={() => toggleSound(sound.id)}
+                  className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-3.5 cursor-pointer select-none group relative overflow-hidden ${
                     isPlayingChannel
-                      ? 'bg-[#222730] border-[#1d90f5]/60 shadow-md shadow-[#1d90f5]/10'
-                      : 'bg-[#1c1c1c] border-[#282828] hover:border-[#3a3a3a]'
+                      ? 'bg-gradient-to-b from-[#18283d] to-[#121924] border-[#1d90f5] shadow-lg shadow-[#1d90f5]/20 ring-1 ring-[#1d90f5]/40 scale-[1.01]'
+                      : 'bg-[#181818] hover:bg-[#222222] border-[#282828] hover:border-[#3a3a3a]'
                   }`}
+                  title={`Click to ${isPlayingChannel ? 'turn off' : 'turn on'} ${sound.name}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl">{sound.icon}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleSound(sound.id)}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
-                        isPlayingChannel
-                          ? 'bg-[#1d90f5] text-white'
-                          : 'bg-[#282828] text-[#b3b3b3] hover:text-white'
-                      }`}
-                    >
-                      {isPlayingChannel ? 'Active' : 'Off'}
-                    </button>
+                    <span className="text-2xl transition-transform group-hover:scale-110">
+                      {sound.icon}
+                    </span>
+
+                    {/* Active Glowing Status Indicator (No tiny button needed!) */}
+                    {isPlayingChannel ? (
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#1d90f5]/20 border border-[#1d90f5]/40">
+                        <span className="flex h-2 w-2 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1d90f5] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1d90f5]"></span>
+                        </span>
+                        <span className="text-[10px] font-extrabold text-[#1d90f5] tracking-wider">
+                          ACTIVE
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-[#666666] group-hover:text-[#b3b3b3] transition-colors">
+                        Click to play
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -356,12 +352,18 @@ export default function SpotifyMainContent({
                     <p className="text-[11px] text-[#b3b3b3] line-clamp-1">{sound.description}</p>
                   </div>
 
-                  {/* Volume Slider & Mute */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-[#282828]">
+                  {/* Volume Slider & Mute - Stops propagation so box doesn't toggle when dragging volume */}
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-2 pt-2 border-t border-[#282828]"
+                  >
                     <button
                       type="button"
-                      onClick={() => toggleSoundMute(sound.id)}
-                      className="text-xs text-[#b3b3b3] hover:text-white cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSoundMute(sound.id);
+                      }}
+                      className="text-xs text-[#b3b3b3] hover:text-white cursor-pointer transition-colors"
                       title={isMutedChannel ? 'Unmute' : 'Mute'}
                     >
                       {isMutedChannel ? '🔇' : '🔉'}
@@ -372,8 +374,11 @@ export default function SpotifyMainContent({
                       max="1"
                       step="0.01"
                       value={isMutedChannel ? 0 : vol}
-                      onChange={(e) => setSoundVolume(sound.id, parseFloat(e.target.value))}
-                      className="w-full spotify-slider"
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setSoundVolume(sound.id, parseFloat(e.target.value));
+                      }}
+                      className="w-full spotify-slider cursor-pointer"
                     />
                     <span className="text-[10px] font-mono text-[#b3b3b3] w-6 text-right">
                       {Math.round((isMutedChannel ? 0 : vol) * 100)}%

@@ -20,6 +20,90 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
   private isLooping = true;
   private playlist: TrackInfo[] = [DEFAULT_LOCAL_TRACK];
 
+  // Web Audio DSP Chain for 8D Spatial and Muffled
+  private audioCtx: AudioContext | null = null;
+  private sourceNode: MediaElementAudioSourceNode | null = null;
+  private muffledFilter: BiquadFilterNode | null = null;
+  private pannerNode: StereoPannerNode | null = null;
+  private spatialIntervalId: number | null = null;
+  private spatialAngle = 0;
+  private isSpatial8DActive = false;
+  private isMuffledActive = false;
+
+  private initDsp() {
+    if (this.audioCtx || !this.audio || typeof window === 'undefined') return;
+
+    try {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.audioCtx = new AudioContextClass();
+
+      this.sourceNode = this.audioCtx.createMediaElementSource(this.audio);
+
+      // Lowpass filter for Muffled effect (sound through wall/blanket)
+      this.muffledFilter = this.audioCtx.createBiquadFilter();
+      this.muffledFilter.type = 'lowpass';
+      this.muffledFilter.frequency.setValueAtTime(
+        this.isMuffledActive ? 450 : 22000,
+        this.audioCtx.currentTime
+      );
+      this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 1.8 : 0.7, this.audioCtx.currentTime);
+
+      // Stereo panner for 8D Binaural rotation
+      if (this.audioCtx.createStereoPanner) {
+        this.pannerNode = this.audioCtx.createStereoPanner();
+        this.pannerNode.pan.setValueAtTime(0, this.audioCtx.currentTime);
+      }
+
+      // Graph wiring: source -> muffledFilter -> pannerNode (if supported) -> destination
+      if (this.pannerNode) {
+        this.sourceNode.connect(this.muffledFilter);
+        this.muffledFilter.connect(this.pannerNode);
+        this.pannerNode.connect(this.audioCtx.destination);
+      } else {
+        this.sourceNode.connect(this.muffledFilter);
+        this.muffledFilter.connect(this.audioCtx.destination);
+      }
+    } catch {
+      // If already connected or browser policy prevents, fallback to direct audio
+    }
+  }
+
+  public setMuffled(enabled: boolean): void {
+    this.isMuffledActive = enabled;
+    if (this.muffledFilter && this.audioCtx) {
+      const targetFreq = enabled ? 450 : 22000;
+      const targetQ = enabled ? 1.8 : 0.7;
+      this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.audioCtx.currentTime, 0.08);
+      this.muffledFilter.Q.setTargetAtTime(targetQ, this.audioCtx.currentTime, 0.08);
+    }
+  }
+
+  public setSpatial8D(enabled: boolean): void {
+    this.isSpatial8DActive = enabled;
+
+    if (this.spatialIntervalId !== null) {
+      clearInterval(this.spatialIntervalId);
+      this.spatialIntervalId = null;
+    }
+
+    if (!enabled) {
+      if (this.pannerNode && this.audioCtx) {
+        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+      }
+      return;
+    }
+
+    // Orbit smoothly between left and right channels (~9 seconds full circle)
+    this.spatialIntervalId = window.setInterval(() => {
+      if (!this.pannerNode || !this.audioCtx || this.state !== 'playing') return;
+      this.spatialAngle += 0.04;
+      const pan = Math.sin(this.spatialAngle) * 0.95;
+      this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.04);
+    }, 50);
+  }
+
   public async initialize(): Promise<void> {
     if (typeof window === 'undefined') return;
 
@@ -48,6 +132,10 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       });
 
       this.audio.addEventListener('play', () => {
+        this.initDsp();
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume();
+        }
         this.emitState('playing');
       });
 
@@ -157,6 +245,21 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
   }
 
   public override cleanup(): void {
+    if (this.spatialIntervalId !== null) {
+      clearInterval(this.spatialIntervalId);
+      this.spatialIntervalId = null;
+    }
+    if (this.audioCtx) {
+      try {
+        this.audioCtx.close();
+      } catch {
+        // ignore
+      }
+      this.audioCtx = null;
+      this.sourceNode = null;
+      this.muffledFilter = null;
+      this.pannerNode = null;
+    }
     if (this.audio) {
       this.audio.pause();
       this.audio.src = '';

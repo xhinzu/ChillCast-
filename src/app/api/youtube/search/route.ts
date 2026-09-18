@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      next: { revalidate: 300 }, // Cache search for 5 minutes
+      cache: 'no-store',
     });
 
     if (!res.ok) {
@@ -38,13 +38,24 @@ export async function GET(req: NextRequest) {
     }
 
     const html = await res.text();
-    const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+    const marker = 'ytInitialData = ';
+    const startIdx = html.indexOf(marker);
 
-    if (!match) {
+    if (startIdx === -1) {
       return NextResponse.json({ results: [] });
     }
 
-    const data = JSON.parse(match[1]);
+    const jsonStart = startIdx + marker.length;
+    let endIdx = html.indexOf(';</script>', jsonStart);
+    if (endIdx === -1) {
+      endIdx = html.indexOf('</script>', jsonStart);
+    }
+    if (endIdx === -1) {
+      return NextResponse.json({ results: [] });
+    }
+
+    const jsonStr = html.substring(jsonStart, endIdx);
+    const data = JSON.parse(jsonStr);
     const sections =
       data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer
         ?.contents || [];
