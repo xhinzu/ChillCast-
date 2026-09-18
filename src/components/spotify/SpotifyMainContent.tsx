@@ -14,6 +14,8 @@ interface SpotifyMainContentProps {
   showVideo: boolean;
   setShowVideo: (show: boolean) => void;
   searchQuery: string;
+  /** Extra Tailwind classes injected by parent for mobile bottom-padding compensation */
+  extraBottomPadding?: string;
 }
 
 const STORAGE_KEY = 'chillify_saved_playlists';
@@ -32,6 +34,7 @@ export default function SpotifyMainContent({
   showVideo,
   setShowVideo,
   searchQuery,
+  extraBottomPadding = '',
 }: SpotifyMainContentProps) {
   const {
     activeAdapterType,
@@ -309,7 +312,7 @@ export default function SpotifyMainContent({
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
 
   return (
-    <main className="flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none">
+    <main className={`flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none ${extraBottomPadding}`}>
       {/* Top Ambient Deep Electric Blue Accent Banner */}
       <div className="absolute top-0 inset-x-0 h-80 bg-gradient-to-b from-[#0c2b4d] via-[#091728] to-transparent pointer-events-none opacity-90" />
 

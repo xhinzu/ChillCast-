@@ -7,6 +7,7 @@ import SpotifyTopNav from '@/components/spotify/SpotifyTopNav';
 import SpotifySidebar from '@/components/spotify/SpotifySidebar';
 import SpotifyMainContent from '@/components/spotify/SpotifyMainContent';
 import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
+import MobileTabBar from '@/components/spotify/MobileTabBar';
 
 function ChillifyShell() {
   const { togglePlay } = usePlayback();
@@ -14,7 +15,7 @@ function ChillifyShell() {
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Global spacebar hotkey for Spotify play/pause
+  // Global spacebar hotkey for play/pause
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -33,8 +34,10 @@ function ChillifyShell() {
   }, [togglePlay]);
 
   return (
-    <div className="h-screen w-screen bg-black text-white flex flex-col overflow-hidden select-none font-sans">
-      {/* 1. Spotify Top Navigation Bar */}
+    // Use h-dvh so mobile browser chrome (address bar) is accounted for
+    <div className="h-[100dvh] w-screen bg-black text-white flex flex-col overflow-hidden select-none font-sans">
+
+      {/* 1. Top Navigation Bar */}
       <SpotifyTopNav
         activeView={activeView}
         setActiveView={setActiveView}
@@ -42,36 +45,58 @@ function ChillifyShell() {
         setSearchQuery={setSearchQuery}
       />
 
-      {/* 2. Main Middle Split Layout: Left Sidebar + Main Scrollable Area */}
-      <div className="flex-1 flex px-2 gap-2 overflow-hidden min-h-0">
-        <SpotifySidebar
-          activeView={activeView}
-          setActiveView={setActiveView}
-        />
+      {/* 2. Main Middle: Sidebar (desktop only) + Scrollable Content */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Sidebar — hidden on mobile, visible on md+ */}
+        <div className="hidden md:flex px-2 py-2 h-full">
+          <SpotifySidebar
+            activeView={activeView}
+            setActiveView={setActiveView}
+          />
+        </div>
 
-        <SpotifyMainContent
-          activeView={activeView}
-          setActiveView={setActiveView}
+        {/* Main scrollable content area
+            On mobile: extra bottom padding so content isn't hidden under
+            the fixed mini-player (64px) + tab bar (54px) = 118px */}
+        <div className="flex-1 overflow-hidden min-h-0 md:px-2 md:py-2">
+          <SpotifyMainContent
+            activeView={activeView}
+            setActiveView={setActiveView}
+            showVideo={showVideo}
+            setShowVideo={setShowVideo}
+            searchQuery={searchQuery}
+            extraBottomPadding="pb-[120px] md:pb-0"
+          />
+        </div>
+      </div>
+
+      {/* 3. Bottom Player Bar
+          Desktop: stays in normal flex flow (h-20)
+          Mobile: compact mini-player (64px) in normal flex flow,
+                  sitting just above the fixed MobileTabBar */}
+      <div className="md:block shrink-0">
+        <SpotifyBottomPlayer
           showVideo={showVideo}
           setShowVideo={setShowVideo}
-          searchQuery={searchQuery}
+          activeView={activeView}
+          setActiveView={setActiveView}
         />
       </div>
 
-      {/* 3. Bottom Persistent Spotify Playback Bar */}
-      <SpotifyBottomPlayer
-        showVideo={showVideo}
-        setShowVideo={setShowVideo}
+      {/* 4. Mobile-only bottom tab bar — fixed at very bottom */}
+      <MobileTabBar
         activeView={activeView}
         setActiveView={setActiveView}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
 
-      {/* 4. Permanent YouTube Player Container (Never destroyed by React) */}
+      {/* 5. Permanent YouTube Player Container */}
       <div
         id="chillcast-yt-wrapper"
         className={`fixed z-40 transition-all duration-300 rounded-xl overflow-hidden shadow-2xl border border-[#282828] bg-black ${
           showVideo
-            ? 'bottom-[85px] md:bottom-24 right-4 md:right-6 w-72 h-40 md:w-80 md:h-48 lg:w-96 lg:h-56 opacity-100 pointer-events-auto'
+            ? 'bottom-[120px] md:bottom-24 right-4 md:right-6 w-72 h-40 md:w-80 md:h-48 lg:w-96 lg:h-56 opacity-100 pointer-events-auto'
             : 'w-1 h-1 -left-[9999px] -top-[9999px] opacity-0 pointer-events-none'
         }`}
       >

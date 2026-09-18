@@ -185,18 +185,26 @@ export default function SpotifyBottomPlayer({
   return (
     <footer className="w-full bg-black border-t border-[#242424] shrink-0 z-50 select-none">
 
-      {/* ─────────────────────────────── MOBILE PLAYER (hidden on md+) ─────────────────────────────── */}
-      <div className="md:hidden flex flex-col px-3 pt-2 pb-1 gap-1.5">
-        {/* Row 1: Artwork + Track Info + Controls */}
-        <div className="flex items-center gap-3">
-          {/* Artwork */}
-          <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-[#282828] shrink-0 shadow-md">
+      {/* ─────────────────────────────── MOBILE MINI-PLAYER (Spotify-style, hidden on md+) ─────────────────────────────── */}
+      <div className="md:hidden">
+        {/* Thin progress bar across the top — always visible */}
+        <div className="w-full h-[2px] bg-[#282828]">
+          <div
+            className="h-full bg-[#1d90f5] transition-none"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        {/* Single compact row — exactly like Spotify mini-player */}
+        <div className="flex items-center gap-3 px-3 h-[62px]">
+          {/* Album Art */}
+          <div className="relative w-[46px] h-[46px] rounded-md overflow-hidden bg-[#282828] shrink-0 shadow-lg">
             {currentTrack?.artworkUrl ? (
               <Image
                 src={currentTrack.artworkUrl}
                 alt={currentTrack.title}
                 fill
-                sizes="44px"
+                sizes="46px"
                 className="object-cover"
                 unoptimized
               />
@@ -207,13 +215,13 @@ export default function SpotifyBottomPlayer({
             )}
           </div>
 
-          {/* Title + Artist */}
+          {/* Title + Artist — flex-1 so it squishes if needed */}
           <div className="flex flex-col justify-center min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white truncate leading-tight">
+            <p className="text-[13px] font-semibold text-white truncate leading-snug">
               {currentTrack?.title || 'Chillify • Ready'}
             </p>
-            <p className="text-xs text-[#b3b3b3] truncate leading-tight">
-              {currentTrack?.artist || 'Select a track'}
+            <p className="text-[11px] text-[#b3b3b3] truncate leading-snug">
+              {currentTrack?.artist || 'Select a track to play'}
             </p>
           </div>
 
@@ -221,10 +229,10 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={handleToggleLike}
-            className={`p-2 transition-colors cursor-pointer ${isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3]'}`}
+            className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3]'}`}
             title={isLiked ? 'Unlike' : 'Like'}
           >
-            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+            <svg className="w-[22px] h-[22px] fill-current" viewBox="0 0 24 24">
               {isLiked ? (
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               ) : (
@@ -233,27 +241,17 @@ export default function SpotifyBottomPlayer({
             </svg>
           </button>
 
-          {/* Prev */}
-          <button
-            type="button"
-            onClick={previousTrack}
-            className="p-2 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
-            title="Previous"
-          >
-            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" /></svg>
-          </button>
-
-          {/* Play/Pause */}
+          {/* Play / Pause */}
           <button
             type="button"
             onClick={togglePlay}
-            className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
+            className="w-[38px] h-[38px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+              <svg className="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
             ) : (
-              <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+              <svg className="w-[18px] h-[18px] fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
             )}
           </button>
 
@@ -261,51 +259,11 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={nextTrack}
-            className="p-2 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
+            className="p-2 shrink-0 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
             title="Next"
           >
-            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+            <svg className="w-[22px] h-[22px] fill-current" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
           </button>
-
-          {/* Mixer shortcut */}
-          <button
-            type="button"
-            onClick={() => setActiveView(activeView === 'mixer' ? 'home' : 'mixer')}
-            className={`relative p-2 rounded-full transition-colors cursor-pointer ${
-              activeView === 'mixer' ? 'text-[#1d90f5]' : 'text-[#b3b3b3]'
-            }`}
-            title="Ambient Mixer"
-          >
-            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-              <path d="M3 5.75A.75.75 0 0 1 3.75 5h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75zm0 6.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12zm0 6.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75z" />
-            </svg>
-            {activeCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#1d90f5]" />
-            )}
-          </button>
-        </div>
-
-        {/* Row 2: Scrubber with timestamps */}
-        <div className="flex items-center gap-2 text-[10px] font-mono text-[#b3b3b3]">
-          <span className="w-7 text-right tabular-nums">{formatTime(currentTime)}</span>
-          <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
-            <div className="w-full h-1 bg-[#4d4d4d] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#1d90f5]"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <input
-              type="range"
-              min="0"
-              max={duration > 0 ? duration : 100}
-              step="0.1"
-              value={currentTime}
-              onChange={(e) => seek(parseFloat(e.target.value))}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-          </div>
-          <span className="w-7 tabular-nums">{formatTime(duration)}</span>
         </div>
       </div>
 
