@@ -97,6 +97,30 @@ export class AmbientSoundEngine {
       case 'thunder':
         this.startThunder(ctx, dest);
         break;
+      case 'drums':
+        this.startDrums(ctx, dest);
+        break;
+      case 'bass':
+        this.startBass(ctx, dest);
+        break;
+      case 'chatter':
+        this.startChatter(ctx, dest);
+        break;
+      case 'fireplace':
+        this.startFireplace(ctx, dest);
+        break;
+      case 'chenda':
+        this.startChenda(ctx, dest);
+        break;
+      case 'dj':
+        this.startDj(ctx, dest);
+        break;
+      case 'keyboard':
+        this.startKeyboard(ctx, dest);
+        break;
+      case 'waves':
+        this.startWaves(ctx, dest);
+        break;
     }
   }
 
@@ -455,6 +479,522 @@ export class AmbientSoundEngine {
       stop: () => {
         isRunning = false;
         if (timeoutId) clearTimeout(timeoutId);
+      },
+    });
+  }
+
+  /* --- 6. Lo-Fi Drums Synthesizer --- */
+  private startDrums(ctx: AudioContext, dest: GainNode) {
+    let isRunning = true;
+    let step = 0;
+    let intervalId: number | null = null;
+    const stepDuration = 0.22; // ~68 BPM lo-fi tempo
+
+    const triggerKick = (time: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.setValueAtTime(140, time);
+      osc.frequency.exponentialRampToValueAtTime(45, time + 0.12);
+      gain.gain.setValueAtTime(0.7, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(time);
+      osc.stop(time + 0.26);
+    };
+
+    const triggerSnare = (time: number) => {
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.getNoiseBuffer(ctx);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1800, time);
+      filter.Q.setValueAtTime(1.2, time);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.45, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+      noise.start(time);
+      noise.stop(time + 0.19);
+    };
+
+    const triggerHat = (time: number) => {
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.getNoiseBuffer(ctx);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(7000, time);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.18, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+      noise.start(time);
+      noise.stop(time + 0.06);
+    };
+
+    const tick = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const now = ctx.currentTime;
+
+      triggerHat(now);
+      if (step === 0 || step === 4) {
+        triggerKick(now);
+      } else if (step === 2 || step === 6) {
+        triggerSnare(now);
+      }
+
+      step = (step + 1) % 8;
+    };
+
+    tick();
+    intervalId = window.setInterval(tick, stepDuration * 1000);
+
+    this.activeSources.set('drums', {
+      stop: () => {
+        isRunning = false;
+        if (intervalId) clearInterval(intervalId);
+      },
+    });
+  }
+
+  /* --- 7. Lo-Fi Sub Bass Synthesizer --- */
+  private startBass(ctx: AudioContext, dest: GainNode) {
+    let isRunning = true;
+    let stepIndex = 0;
+    let intervalId: number | null = null;
+    const notes = [55, 55, 49, 43.65, 43.65, 49, 55, 65.4]; // A1, G1, F1, C2
+
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(notes[0], ctx.currentTime);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, ctx.currentTime);
+    filter.Q.setValueAtTime(1.5, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0.55, ctx.currentTime);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(dest);
+    osc.start();
+
+    const changeNote = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const now = ctx.currentTime;
+      stepIndex = (stepIndex + 1) % notes.length;
+      osc.frequency.setTargetAtTime(notes[stepIndex], now, 0.08);
+    };
+
+    intervalId = window.setInterval(changeNote, 1800);
+
+    this.activeSources.set('bass', {
+      stop: () => {
+        isRunning = false;
+        if (intervalId) clearInterval(intervalId);
+        try {
+          osc.stop();
+          osc.disconnect();
+          filter.disconnect();
+          gain.disconnect();
+        } catch {
+          // ignore
+        }
+      },
+    });
+  }
+
+  /* --- 8. People Chattering (Coffee Shop / Cafe Ambience) --- */
+  private startChatter(ctx: AudioContext, dest: GainNode) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getNoiseBuffer(ctx);
+    noise.loop = true;
+
+    // Multi-band speech formant filtering
+    const filter1 = ctx.createBiquadFilter();
+    filter1.type = 'bandpass';
+    filter1.frequency.setValueAtTime(550, ctx.currentTime);
+    filter1.Q.setValueAtTime(2.0, ctx.currentTime);
+
+    const filter2 = ctx.createBiquadFilter();
+    filter2.type = 'bandpass';
+    filter2.frequency.setValueAtTime(1300, ctx.currentTime);
+    filter2.Q.setValueAtTime(2.2, ctx.currentTime);
+
+    const chatterGain = ctx.createGain();
+    chatterGain.gain.setValueAtTime(0.6, ctx.currentTime);
+
+    noise.connect(filter1);
+    noise.connect(filter2);
+    filter1.connect(chatterGain);
+    filter2.connect(chatterGain);
+    chatterGain.connect(dest);
+
+    noise.start();
+
+    // Occasional gentle ceramic mug clatter
+    let isRunning = true;
+    let timeoutId: number | null = null;
+
+    const playClatter = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const osc = ctx.createOscillator();
+      const clinkGain = ctx.createGain();
+      const now = ctx.currentTime;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(2400 + Math.random() * 800, now);
+      clinkGain.gain.setValueAtTime(0.04, now);
+      clinkGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+      osc.connect(clinkGain);
+      clinkGain.connect(dest);
+      osc.start(now);
+      osc.stop(now + 0.09);
+
+      timeoutId = window.setTimeout(playClatter, 3000 + Math.random() * 5000);
+    };
+
+    timeoutId = window.setTimeout(playClatter, 2500);
+
+    this.activeSources.set('chatter', {
+      stop: () => {
+        isRunning = false;
+        if (timeoutId) clearTimeout(timeoutId);
+        try {
+          noise.stop();
+          noise.disconnect();
+          filter1.disconnect();
+          filter2.disconnect();
+          chatterGain.disconnect();
+        } catch {
+          // ignore
+        }
+      },
+    });
+  }
+
+  /* --- 9. Fireplace (Warm Hearth & Crackling Embers) --- */
+  private startFireplace(ctx: AudioContext, dest: GainNode) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getNoiseBuffer(ctx);
+    noise.loop = true;
+
+    // Warm deep hearth draft
+    const lowFilter = ctx.createBiquadFilter();
+    lowFilter.type = 'lowpass';
+    lowFilter.frequency.setValueAtTime(160, ctx.currentTime);
+
+    const draftGain = ctx.createGain();
+    draftGain.gain.setValueAtTime(0.35, ctx.currentTime);
+
+    noise.connect(lowFilter);
+    lowFilter.connect(draftGain);
+    draftGain.connect(dest);
+    noise.start();
+
+    // Random crackle and popping embers
+    let isRunning = true;
+    let timeoutId: number | null = null;
+
+    const playCrackle = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const clickSource = ctx.createBufferSource();
+      clickSource.buffer = this.getNoiseBuffer(ctx);
+
+      const highFilter = ctx.createBiquadFilter();
+      highFilter.type = 'highpass';
+      highFilter.frequency.setValueAtTime(2200 + Math.random() * 2000, ctx.currentTime);
+
+      const crackleGain = ctx.createGain();
+      const now = ctx.currentTime;
+      const duration = 0.008 + Math.random() * 0.02;
+
+      crackleGain.gain.setValueAtTime(0.3 + Math.random() * 0.4, now);
+      crackleGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      clickSource.connect(highFilter);
+      highFilter.connect(crackleGain);
+      crackleGain.connect(dest);
+
+      clickSource.start(now);
+      clickSource.stop(now + duration + 0.01);
+
+      timeoutId = window.setTimeout(playCrackle, 50 + Math.random() * 250);
+    };
+
+    playCrackle();
+
+    this.activeSources.set('fireplace', {
+      stop: () => {
+        isRunning = false;
+        if (timeoutId) clearTimeout(timeoutId);
+        try {
+          noise.stop();
+          noise.disconnect();
+          lowFilter.disconnect();
+          draftGain.disconnect();
+        } catch {
+          // ignore
+        }
+      },
+    });
+  }
+
+  /* --- 10. Kerala Chenda Melam (Authentic Temple Percussion) --- */
+  private startChenda(ctx: AudioContext, dest: GainNode) {
+    let isRunning = true;
+    let step = 0;
+    let intervalId: number | null = null;
+    const stepDuration = 0.14; // Vibrant Panchari Melam cadence
+
+    // Sharp wooden stick Urutti Chenda strike
+    const triggerUrutti = (time: number, accent = false) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const startFreq = accent ? 880 : 760;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(startFreq, time);
+      osc.frequency.exponentialRampToValueAtTime(420, time + 0.06);
+
+      gain.gain.setValueAtTime(accent ? 0.65 : 0.4, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.07);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(time);
+      osc.stop(time + 0.08);
+    };
+
+    // Deep resonant Veekku Chenda bass drum stroke (Dheem)
+    const triggerVeekku = (time: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(95, time);
+      osc.frequency.exponentialRampToValueAtTime(50, time + 0.2);
+
+      gain.gain.setValueAtTime(0.6, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
+
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(time);
+      osc.stop(time + 0.23);
+    };
+
+    // Ilathalam (brass clash cymbal) on accents
+    const triggerIlathalam = (time: number) => {
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.getNoiseBuffer(ctx);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(5200, time);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.2, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+      noise.start(time);
+      noise.stop(time + 0.09);
+    };
+
+    const tick = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const now = ctx.currentTime;
+
+      // Authentic 8-step Melam pattern: Thaka - Dheem - Kitta - Thakita
+      if (step === 0) {
+        triggerUrutti(now, true);
+        triggerVeekku(now);
+        triggerIlathalam(now);
+      } else if (step === 1 || step === 3 || step === 5 || step === 7) {
+        triggerUrutti(now, false);
+      } else if (step === 4) {
+        triggerVeekku(now);
+        triggerUrutti(now, true);
+        triggerIlathalam(now);
+      } else {
+        triggerUrutti(now, false);
+      }
+
+      step = (step + 1) % 8;
+    };
+
+    tick();
+    intervalId = window.setInterval(tick, stepDuration * 1000);
+
+    this.activeSources.set('chenda', {
+      stop: () => {
+        isRunning = false;
+        if (intervalId) clearInterval(intervalId);
+      },
+    });
+  }
+
+  /* --- 11. DJ (Vinyl Scratch & Turntable Tape Friction) --- */
+  private startDj(ctx: AudioContext, dest: GainNode) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getNoiseBuffer(ctx);
+    noise.loop = true;
+
+    // Continuous subtle vinyl surface hiss & dust
+    const vinylFilter = ctx.createBiquadFilter();
+    vinylFilter.type = 'bandpass';
+    vinylFilter.frequency.setValueAtTime(3200, ctx.currentTime);
+    vinylFilter.Q.setValueAtTime(1.0, ctx.currentTime);
+
+    const vinylGain = ctx.createGain();
+    vinylGain.gain.setValueAtTime(0.25, ctx.currentTime);
+
+    noise.connect(vinylFilter);
+    vinylFilter.connect(vinylGain);
+    vinylGain.connect(dest);
+    noise.start();
+
+    // Periodic turntable vinyl scratch rhythm ("wiki-wiki")
+    let isRunning = true;
+    let timeoutId: number | null = null;
+
+    const playScratch = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const osc = ctx.createOscillator();
+      const scratchGain = ctx.createGain();
+      const now = ctx.currentTime;
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.linearRampToValueAtTime(1200, now + 0.08);
+      osc.frequency.linearRampToValueAtTime(300, now + 0.16);
+
+      scratchGain.gain.setValueAtTime(0.2, now);
+      scratchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      osc.connect(scratchGain);
+      scratchGain.connect(dest);
+      osc.start(now);
+      osc.stop(now + 0.21);
+
+      timeoutId = window.setTimeout(playScratch, 4500 + Math.random() * 4000);
+    };
+
+    timeoutId = window.setTimeout(playScratch, 2000);
+
+    this.activeSources.set('dj', {
+      stop: () => {
+        isRunning = false;
+        if (timeoutId) clearTimeout(timeoutId);
+        try {
+          noise.stop();
+          noise.disconnect();
+          vinylFilter.disconnect();
+          vinylGain.disconnect();
+        } catch {
+          // ignore
+        }
+      },
+    });
+  }
+
+  /* --- 12. Mechanical Keyboard (Tactile Typing ASMR) --- */
+  private startKeyboard(ctx: AudioContext, dest: GainNode) {
+    let isRunning = true;
+    let timeoutId: number | null = null;
+
+    const playKeystroke = () => {
+      if (!isRunning || !ctx || ctx.state === 'closed') return;
+      const clickSource = ctx.createBufferSource();
+      clickSource.buffer = this.getNoiseBuffer(ctx);
+
+      const clickFilter = ctx.createBiquadFilter();
+      clickFilter.type = 'bandpass';
+      clickFilter.frequency.setValueAtTime(3200 + Math.random() * 800, ctx.currentTime);
+      clickFilter.Q.setValueAtTime(3.0, ctx.currentTime);
+
+      const clickGain = ctx.createGain();
+      const now = ctx.currentTime;
+
+      clickGain.gain.setValueAtTime(0.28, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+      clickSource.connect(clickFilter);
+      clickFilter.connect(clickGain);
+      clickGain.connect(dest);
+
+      clickSource.start(now);
+      clickSource.stop(now + 0.03);
+
+      // Bursts of typing rhythm with occasional pauses
+      const delay = Math.random() < 0.2 ? 350 + Math.random() * 500 : 90 + Math.random() * 120;
+      timeoutId = window.setTimeout(playKeystroke, delay);
+    };
+
+    playKeystroke();
+
+    this.activeSources.set('keyboard', {
+      stop: () => {
+        isRunning = false;
+        if (timeoutId) clearTimeout(timeoutId);
+      },
+    });
+  }
+
+  /* --- 13. Ocean Waves (Rolling Coastal Tidal Surf) --- */
+  private startWaves(ctx: AudioContext, dest: GainNode) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getNoiseBuffer(ctx);
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(350, ctx.currentTime);
+
+    // LFO for slow 8-second wave swells
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(0.12, ctx.currentTime); // ~8 sec per wave
+    lfoGain.gain.setValueAtTime(450, ctx.currentTime);
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+
+    const waveGain = ctx.createGain();
+    waveGain.gain.setValueAtTime(0.5, ctx.currentTime);
+
+    noise.connect(filter);
+    filter.connect(waveGain);
+    waveGain.connect(dest);
+
+    noise.start();
+    lfo.start();
+
+    this.activeSources.set('waves', {
+      stop: () => {
+        try {
+          noise.stop();
+          lfo.stop();
+          noise.disconnect();
+          lfo.disconnect();
+          lfoGain.disconnect();
+          filter.disconnect();
+          waveGain.disconnect();
+        } catch {
+          // ignore
+        }
       },
     });
   }

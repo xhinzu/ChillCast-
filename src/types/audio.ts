@@ -1,4 +1,17 @@
-export type AmbientSoundId = 'rain' | 'birds' | 'wind' | 'crickets' | 'thunder';
+export type AmbientSoundId =
+  | 'rain'
+  | 'wind'
+  | 'birds'
+  | 'crickets'
+  | 'thunder'
+  | 'drums'
+  | 'bass'
+  | 'chatter'
+  | 'fireplace'
+  | 'chenda'
+  | 'dj'
+  | 'keyboard'
+  | 'waves';
 
 export interface AmbientSoundConfig {
   id: AmbientSoundId;

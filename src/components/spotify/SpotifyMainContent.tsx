@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
-import { DEFAULT_CHILL_PLAYLIST_ID } from '@/lib/adapters/youtube-adapter';
-import { SpotifyAdapter, SpotifyMode } from '@/lib/adapters/spotify-adapter';
-import { exchangeCodeForToken, redirectToSpotifyAuthorize } from '@/lib/spotify-pkce';
+import { YouTubeSearchResult } from '@/app/api/youtube/search/route';
+import { SavedPlaylistItem } from './AddSourceModal';
 import SpotifyLyricsView from './SpotifyLyricsView';
 
 interface SpotifyMainContentProps {
@@ -19,110 +18,7 @@ interface SpotifyMainContentProps {
   searchQuery: string;
 }
 
-const QUICK_CARDS = [
-  {
-    id: 'lofi-girl',
-    title: 'Lofi Girl Chill Beats',
-    subtitle: 'YouTube • Chill Lo-Fi',
-    type: 'youtube',
-    playlistId: DEFAULT_CHILL_PLAYLIST_ID,
-    color: 'from-amber-700/80 to-amber-950',
-    icon: '☕',
-  },
-  {
-    id: 'rainy-night',
-    title: 'Rainy Night Ambience',
-    subtitle: 'Soundscape • Procedural',
-    type: 'ambient-preset',
-    preset: 'rainyNight' as const,
-    color: 'from-blue-700/80 to-blue-950',
-    icon: '🌧️',
-  },
-  {
-    id: 'peaceful-piano',
-    title: 'Peaceful Ambient Piano',
-    subtitle: 'YouTube • Ambient Beats',
-    type: 'youtube',
-    playlistId: 'PLrAlXlq_A37_e_G0e4M98QpL9lX_1N3QZ',
-    color: 'from-indigo-700/80 to-indigo-950',
-    icon: '🎹',
-  },
-  {
-    id: 'forest-canopy',
-    title: 'Forest Canopy Soundscape',
-    subtitle: 'Soundscape • Procedural',
-    type: 'ambient-preset',
-    preset: 'forestCanopy' as const,
-    color: 'from-emerald-700/80 to-emerald-950',
-    icon: '🌲',
-  },
-  {
-    id: 'chillwave',
-    title: 'Chillwave Night Drive',
-    subtitle: 'YouTube • Synthwave',
-    type: 'youtube',
-    playlistId: 'PLRBp0Fe2GpgnZOm5rOwEl373551tAmL91',
-    color: 'from-purple-700/80 to-purple-950',
-    icon: '🌌',
-  },
-  {
-    id: 'sp-lofi-beats',
-    title: 'Lo-Fi Beats (Spotify)',
-    subtitle: 'Spotify • Official Playlist',
-    type: 'spotify',
-    playlistId: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
-    color: 'from-teal-700/80 to-teal-950',
-    icon: '🎧',
-  },
-];
-
-const FEATURED_PLAYLISTS = [
-  {
-    id: 'lofi-beats',
-    title: 'Lofi Girl - Chill Beats',
-    description: 'The world famous relaxing lofi study and chill beat collection.',
-    type: 'youtube',
-    playlistId: DEFAULT_CHILL_PLAYLIST_ID,
-    color: 'from-orange-600 to-amber-900',
-    icon: '☕',
-  },
-  {
-    id: 'piano-ambient',
-    title: 'Peaceful Ambient Piano',
-    description: 'Soothing piano notes blended with subtle ambient textures.',
-    type: 'youtube',
-    playlistId: 'PLrAlXlq_A37_e_G0e4M98QpL9lX_1N3QZ',
-    color: 'from-sky-600 to-blue-900',
-    icon: '🎹',
-  },
-  {
-    id: 'chillwave-drive',
-    title: 'Chillwave Night Drive',
-    description: 'Synth-infused relaxing beats for nocturnal focus & relaxation.',
-    type: 'youtube',
-    playlistId: 'PLRBp0Fe2GpgnZOm5rOwEl373551tAmL91',
-    color: 'from-fuchsia-600 to-purple-950',
-    icon: '🌌',
-  },
-  {
-    id: 'rainy-afternoon-beats',
-    title: 'Rainy Afternoon Lofi',
-    description: 'Melancholic chill chords recorded for rainy study afternoons.',
-    type: 'youtube',
-    playlistId: 'PLOzDu-MXXLhiQZkyO3bF_9F_90Lg2aA9S',
-    color: 'from-blue-600 to-slate-900',
-    icon: '🌧️',
-  },
-  {
-    id: 'sp-peaceful-piano',
-    title: 'Peaceful Piano',
-    description: 'Peaceful piano music from Spotify for relaxation, reading & sleep.',
-    type: 'spotify',
-    playlistId: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO',
-    color: 'from-emerald-600 to-teal-950',
-    icon: '🌿',
-  },
-];
+const STORAGE_KEY = 'chillify_saved_playlists';
 
 export default function SpotifyMainContent({
   activeView,
@@ -135,14 +31,9 @@ export default function SpotifyMainContent({
 }: SpotifyMainContentProps) {
   const {
     activeAdapterType,
-    activeAdapter,
-    currentTrack,
-    isPlaying,
     errorMessage,
     switchAdapter,
-    togglePlay,
     loadPlaylist,
-    loadCustomLocalFile,
   } = usePlayback();
 
   const {
@@ -151,7 +42,6 @@ export default function SpotifyMainContent({
     masterVolume,
     isMasterMuted,
     activeCount,
-    activePreset,
     toggleSound,
     setSoundVolume,
     toggleSoundMute,
@@ -160,16 +50,10 @@ export default function SpotifyMainContent({
     applyPreset,
   } = useAmbient();
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [youtubeInput, setYoutubeInput] = useState<string>('');
-  const [spotifyInput, setSpotifyInput] = useState<string>('');
-  const [spotifyMode, setSpotifyMode] = useState<SpotifyMode>('metadata');
-  const [isSpotifyConnected, setIsSpotifyConnected] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return !!localStorage.getItem('spotify_access_token');
-    }
-    return false;
-  });
+  // YouTube Search States
+  const [searchResults, setSearchResults] = useState<YouTubeSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [addedToast, setAddedToast] = useState<string | null>(null);
 
   // Dynamic greeting based on time of day
   const greeting = (() => {
@@ -179,90 +63,66 @@ export default function SpotifyMainContent({
     return 'Good evening';
   })();
 
-  // Handle Spotify PKCE exchange
+  // Debounced search query
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const spotifyCode = params.get('spotify_code');
-      const spotifyError = params.get('spotify_error');
-
-      if (spotifyError) {
-        console.error('Spotify login failed:', spotifyError);
-      } else if (spotifyCode) {
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-
-        const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || '';
-        const redirectUri = `${window.location.origin}/api/auth/callback/spotify`;
-
-        if (clientId) {
-          exchangeCodeForToken(clientId, spotifyCode, redirectUri)
-            .then((res) => {
-              if (res && res.accessToken) {
-                if (activeAdapter instanceof SpotifyAdapter) {
-                  activeAdapter.setAccessToken(res.accessToken);
-                  activeAdapter.setMode('pkce');
-                }
-                setIsSpotifyConnected(true);
-                setSpotifyMode('pkce');
-              }
-            })
-            .catch((err) => console.error('PKCE exchange error:', err));
-        }
-      }
-    }
-  }, [activeAdapter]);
-
-  const handleQuickCardClick = (card: (typeof QUICK_CARDS)[number]) => {
-    if (card.type === 'youtube' && card.playlistId) {
-      switchAdapter('youtube');
-      loadPlaylist(card.playlistId);
-    } else if (card.type === 'spotify' && card.playlistId) {
-      switchAdapter('spotify');
-      loadPlaylist(card.playlistId);
-    } else if (card.type === 'ambient-preset' && card.preset) {
-      applyPreset(card.preset);
-    }
-  };
-
-  const handleLoadYouTube = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (youtubeInput.trim()) {
-      switchAdapter('youtube');
-      loadPlaylist(youtubeInput.trim());
-      setYoutubeInput('');
-    }
-  };
-
-  const handleLoadSpotify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (spotifyInput.trim()) {
-      switchAdapter('spotify');
-      loadPlaylist(spotifyInput.trim());
-      setSpotifyInput('');
-    }
-  };
-
-  const handleSpotifyLogin = async () => {
-    const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID;
-    if (!clientId) {
-      alert(
-        'Please configure NEXT_PUBLIC_SPOTIFY_CLIENT_ID in your .env.local file to connect your Spotify account.'
-      );
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
-    const redirectUri = `${window.location.origin}/api/auth/callback/spotify`;
-    await redirectToSpotifyAuthorize(clientId, redirectUri);
+
+    setIsSearching(true);
+    const timeout = setTimeout(() => {
+      fetch(`/api/youtube/search?q=${encodeURIComponent(searchQuery.trim())}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.results)) {
+            setSearchResults(data.results);
+          } else {
+            setSearchResults([]);
+          }
+        })
+        .catch((err) => {
+          console.error('Search fetch error:', err);
+          setSearchResults([]);
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const handlePlaySearchResult = async (video: YouTubeSearchResult) => {
+    await switchAdapter('youtube');
+    await loadPlaylist(video.id);
   };
 
-  const handleDisconnectSpotify = () => {
-    if (activeAdapter instanceof SpotifyAdapter) {
-      activeAdapter.clearAccessToken();
-    } else {
-      localStorage.removeItem('spotify_access_token');
+  const handleAddToLibrary = (video: YouTubeSearchResult, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const newItem: SavedPlaylistItem = {
+      id: `saved-${video.id}-${Date.now()}`,
+      title: video.title,
+      subtitle: `${video.channel} • YouTube`,
+      type: 'youtube',
+      targetUrl: video.id,
+      icon: '▶️',
+    };
+
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
+      const updated = [newItem, ...prev.filter((p) => p.targetUrl !== video.id)];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage')); // trigger sync across components
+    } catch {
+      // ignore
     }
-    setIsSpotifyConnected(false);
-    setSpotifyMode('metadata');
+
+    setAddedToast(`Added "${video.title}" to Your Library!`);
+    setTimeout(() => setAddedToast(null), 3000);
   };
 
   // If Lyrics view is active, show the full lyrics screen
@@ -274,19 +134,12 @@ export default function SpotifyMainContent({
     );
   }
 
-  // Filter cards by search query if user types in search bar
-  const query = searchQuery.toLowerCase().trim();
-  const filteredQuickCards = QUICK_CARDS.filter(
-    (c) => !query || c.title.toLowerCase().includes(query) || c.subtitle.toLowerCase().includes(query)
-  );
-  const filteredFeatured = FEATURED_PLAYLISTS.filter(
-    (f) => !query || f.title.toLowerCase().includes(query) || f.description.toLowerCase().includes(query)
-  );
+  const isSearchActive = searchQuery.trim().length > 0 || activeView === 'search';
 
   return (
     <main className="flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none">
-      {/* Top Ambient Gradient Accent Banner */}
-      <div className="absolute top-0 inset-x-0 h-72 bg-gradient-to-b from-[#193a26] via-[#112418] to-transparent pointer-events-none opacity-80" />
+      {/* Top Ambient Deep Electric Blue Accent Banner */}
+      <div className="absolute top-0 inset-x-0 h-72 bg-gradient-to-b from-[#0c2642] via-[#091728] to-transparent pointer-events-none opacity-80" />
 
       {/* Main Content Container */}
       <div className="relative z-10 px-4 sm:px-8 py-6 space-y-8">
@@ -294,6 +147,14 @@ export default function SpotifyMainContent({
         {errorMessage && (
           <div className="px-4 py-2.5 rounded-lg bg-rose-900/40 border border-rose-600/40 text-rose-200 text-xs flex items-center justify-between shadow-lg">
             <span>⚠️ {errorMessage}</span>
+          </div>
+        )}
+
+        {/* Added to Library Notification Toast */}
+        {addedToast && (
+          <div className="fixed top-16 right-8 z-50 px-4 py-2.5 rounded-lg bg-[#1d90f5] text-white font-semibold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <span>✓</span>
+            <span className="truncate max-w-sm">{addedToast}</span>
           </div>
         )}
 
@@ -323,80 +184,136 @@ export default function SpotifyMainContent({
           </div>
         )}
 
-        {/* Greeting Header */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {greeting}
-          </h1>
-          <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
-            Welcome to <strong className="text-white">Chillify 🥰</strong> — your ambient lo-fi soundscape sanctuary.
-          </p>
-        </div>
-
-        {/* 1. Quick 6-Grid (Spotify Home Style) */}
-        <section aria-label="Quick Access">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredQuickCards.map((card) => (
-              <div
-                key={card.id}
-                onClick={() => handleQuickCardClick(card)}
-                className="flex items-center bg-[#282828]/60 hover:bg-[#282828] rounded-md overflow-hidden cursor-pointer group transition-colors shadow-md relative"
-              >
-                {/* Thumbnail Icon */}
-                <div
-                  className={`w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br ${card.color} flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-inner`}
-                >
-                  {card.icon}
-                </div>
-
-                {/* Title */}
-                <div className="flex-1 px-4 py-2 min-w-0">
-                  <p className="font-bold text-sm text-white truncate">{card.title}</p>
-                  <p className="text-xs text-[#b3b3b3] truncate mt-0.5">{card.subtitle}</p>
-                </div>
-
-                {/* Floating Spotify Green Play Button on Hover */}
-                <button
-                  type="button"
-                  className="w-10 h-10 rounded-full bg-[#1db954] text-black shadow-lg shadow-black/40 flex items-center justify-center mr-4 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 shrink-0 cursor-pointer"
-                  title="Play"
-                >
-                  <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
+        {/* Top Header & Greeting */}
+        {!isSearchActive && (
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {greeting}
+            </h1>
+            <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
+              Welcome to <strong className="text-white">Chillify 🥰</strong> — your ambient lo-fi soundscape sanctuary.
+            </p>
           </div>
-        </section>
+        )}
 
-        {/* 2. Ambient Soundscape Mixer Shelf */}
+        {/* SEARCH RESULTS VIEW (When searching YouTube) */}
+        {isSearchActive && (
+          <section aria-label="Search Results" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-white tracking-tight">
+                  YouTube Results for &ldquo;{searchQuery}&rdquo;
+                </h2>
+                <p className="text-xs text-[#b3b3b3]">
+                  Play videos directly in Chillify or save them to your library
+                </p>
+              </div>
+
+              {isSearching && (
+                <div className="flex items-center gap-2 text-xs text-[#1d90f5] font-medium">
+                  <div className="w-4 h-4 border-2 border-[#1d90f5] border-t-transparent rounded-full animate-spin" />
+                  <span>Searching YouTube...</span>
+                </div>
+              )}
+            </div>
+
+            {searchResults.length === 0 && !isSearching ? (
+              <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-2">
+                <span className="text-3xl">🔍</span>
+                <p className="text-sm font-semibold text-white">No YouTube videos found</p>
+                <p className="text-xs">Try searching for song titles, artists, or &ldquo;lofi beats&rdquo;.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {searchResults.map((video) => (
+                  <div
+                    key={video.id}
+                    onClick={() => handlePlaySearchResult(video)}
+                    className="spotify-card p-3.5 rounded-xl cursor-pointer group flex flex-col justify-between relative shadow-lg border border-transparent hover:border-[#2a2a2a]"
+                  >
+                    {/* Video Thumbnail Tile */}
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-zinc-900 shadow-md">
+                      <Image
+                        src={video.thumbnail}
+                        alt={video.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 280px"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        unoptimized
+                      />
+
+                      {/* Video Duration Badge */}
+                      <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-medium text-white shadow">
+                        {video.duration}
+                      </span>
+
+                      {/* Hover Play Button */}
+                      <button
+                        type="button"
+                        className="absolute bottom-2 left-2 w-10 h-10 rounded-full bg-[#1d90f5] text-black shadow-xl flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 cursor-pointer"
+                        title="Play Track"
+                      >
+                        <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Metadata & Actions */}
+                    <div className="flex flex-col justify-between flex-1 gap-2">
+                      <div>
+                        <h3 className="font-bold text-xs sm:text-sm text-white line-clamp-2 group-hover:text-[#1d90f5] transition-colors">
+                          {video.title}
+                        </h3>
+                        <p className="text-[11px] text-[#b3b3b3] truncate mt-1">
+                          {video.channel}
+                        </p>
+                      </div>
+
+                      {/* Add to Playlist button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleAddToLibrary(video, e)}
+                        className="mt-1 w-full py-1.5 px-3 rounded-full bg-[#242424] hover:bg-[#1d90f5] hover:text-white text-[#b3b3b3] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        title="Save to Your Library"
+                      >
+                        <span>+</span> Add to Library
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* AMBIENT SOUNDSCAPE MIXER SHELF (All 13 procedural sounds) */}
         <section
           aria-label="Ambient Soundscape Mixer"
-          className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg"
+          className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4"
         >
-          {/* Section Header */}
+          {/* Section Header & Master Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#282828]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1db954]/15 text-[#1db954] flex items-center justify-center text-xl font-bold">
+              <div className="w-10 h-10 rounded-full bg-[#1d90f5]/15 text-[#1d90f5] flex items-center justify-center text-xl font-bold">
                 🎛️
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   Ambient Soundscape Mixer
                   {activeCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1db954] text-black">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1d90f5] text-white">
                       {activeCount} ACTIVE
                     </span>
                   )}
                 </h2>
                 <p className="text-xs text-[#b3b3b3]">
-                  Synthesize real-time background rain, wind, forest birds, crickets, & thunder
+                  13 real-time procedural soundscapes: rain, wind, birds, drums, bass, cafe chatter, fireplace, chenda melam & more
                 </p>
               </div>
             </div>
 
-            {/* Master Ambient Volume & Presets */}
+            {/* Master Volume & Stop All */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2 bg-[#121212] px-3 py-1.5 rounded-full border border-[#282828]">
                 <button
@@ -419,42 +336,18 @@ export default function SpotifyMainContent({
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => applyPreset('rainyNight')}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                    activePreset === 'rainyNight'
-                      ? 'bg-[#1db954] text-black'
-                      : 'bg-[#282828] text-white hover:bg-[#333]'
-                  }`}
-                >
-                  🌧️ Rainy Night
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('forestCanopy')}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                    activePreset === 'forestCanopy'
-                      ? 'bg-[#1db954] text-black'
-                      : 'bg-[#282828] text-white hover:bg-[#333]'
-                  }`}
-                >
-                  🌲 Forest Canopy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('muteAll')}
-                  className="px-3 py-1 rounded-full text-xs font-semibold bg-[#282828] hover:bg-rose-900/40 text-[#b3b3b3] hover:text-rose-200 transition-colors cursor-pointer"
-                >
-                  ⏹️ Stop All
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => applyPreset('muteAll')}
+                className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#242424] hover:bg-rose-900/40 text-[#b3b3b3] hover:text-rose-200 transition-colors cursor-pointer"
+              >
+                ⏹️ Stop All
+              </button>
             </div>
           </div>
 
-          {/* 5 Ambient Channels Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-4">
+          {/* 13 Ambient Soundscape Channels Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pt-2">
             {ambientSounds.map((sound) => {
               const state = soundStates[sound.id];
               const isPlayingChannel = state?.isPlaying;
@@ -466,7 +359,7 @@ export default function SpotifyMainContent({
                   key={sound.id}
                   className={`p-3.5 rounded-lg border transition-all flex flex-col justify-between gap-3 ${
                     isPlayingChannel
-                      ? 'bg-[#242424] border-[#1db954]/50 shadow-md shadow-[#1db954]/5'
+                      ? 'bg-[#222730] border-[#1d90f5]/60 shadow-md shadow-[#1d90f5]/10'
                       : 'bg-[#1c1c1c] border-[#282828] hover:border-[#3a3a3a]'
                   }`}
                 >
@@ -475,9 +368,9 @@ export default function SpotifyMainContent({
                     <button
                       type="button"
                       onClick={() => toggleSound(sound.id)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
                         isPlayingChannel
-                          ? 'bg-[#1db954] text-black'
+                          ? 'bg-[#1d90f5] text-white'
                           : 'bg-[#282828] text-[#b3b3b3] hover:text-white'
                       }`}
                     >
@@ -486,12 +379,12 @@ export default function SpotifyMainContent({
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-bold text-white">{sound.name}</h3>
+                    <h3 className="text-sm font-bold text-white line-clamp-1">{sound.name}</h3>
                     <p className="text-[11px] text-[#b3b3b3] line-clamp-1">{sound.description}</p>
                   </div>
 
                   {/* Volume Slider & Mute */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-[#2a2a2a]">
+                  <div className="flex items-center gap-2 pt-1 border-t border-[#282828]">
                     <button
                       type="button"
                       onClick={() => toggleSoundMute(sound.id)}
@@ -519,149 +412,10 @@ export default function SpotifyMainContent({
           </div>
         </section>
 
-        {/* 3. Featured Playlists Shelf */}
-        <section aria-label="Featured Playlists">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-white">Made for Relaxing & Study</h2>
-              <p className="text-xs text-[#b3b3b3]">Curated chill vibes ready to stream instantly</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filteredFeatured.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => {
-                  if (item.type === 'youtube') {
-                    switchAdapter('youtube');
-                    loadPlaylist(item.playlistId);
-                  } else {
-                    switchAdapter('spotify');
-                    loadPlaylist(item.playlistId);
-                  }
-                }}
-                className="spotify-card p-4 rounded-lg cursor-pointer group flex flex-col justify-between relative shadow-lg"
-              >
-                {/* Artwork Tile */}
-                <div className="relative w-full aspect-square rounded-md overflow-hidden mb-3 bg-zinc-800 shadow-md">
-                  <div
-                    className={`w-full h-full bg-gradient-to-br ${item.color} flex items-center justify-center text-4xl`}
-                  >
-                    {item.icon}
-                  </div>
-
-                  {/* Floating Green Play Button */}
-                  <button
-                    type="button"
-                    className="absolute bottom-2 right-2 w-11 h-11 rounded-full bg-[#1db954] text-black shadow-xl flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 cursor-pointer"
-                    title="Play"
-                  >
-                    <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Meta */}
-                <div>
-                  <h3 className="font-bold text-sm text-white truncate group-hover:underline">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-[#b3b3b3] line-clamp-2 mt-1 leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 4. Stream Source Adapters & Custom Link Importers */}
-        <section aria-label="Stream Adapters" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* YouTube Importer Card */}
-          <div className="bg-[#181818] p-5 rounded-xl border border-[#242424] flex flex-col justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center text-base font-bold">
-                ▶️
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white">Import Any YouTube Playlist or Track</h3>
-                <p className="text-[11px] text-[#b3b3b3]">Zero API Quota • Stream high fidelity IFrame audio</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleLoadYouTube} className="flex items-center gap-2 mt-1">
-              <input
-                type="text"
-                value={youtubeInput}
-                onChange={(e) => setYoutubeInput(e.target.value)}
-                placeholder="Paste YouTube playlist or video URL..."
-                className="flex-1 bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-xs text-white placeholder-[#b3b3b3] px-3 py-2 rounded-md outline-none border border-transparent focus:border-white transition-colors"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-[#1db954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-full transition-all cursor-pointer shrink-0"
-              >
-                Load
-              </button>
-            </form>
-          </div>
-
-          {/* Spotify Importer & PKCE Card */}
-          <div className="bg-[#181818] p-5 rounded-xl border border-[#242424] flex flex-col justify-between gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1db954]/20 text-[#1db954] flex items-center justify-center text-base font-bold">
-                  🎧
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Spotify Dual-Mode</h3>
-                  <p className="text-[11px] text-[#b3b3b3]">Metadata resolver or PKCE direct streaming</p>
-                </div>
-              </div>
-
-              {isSpotifyConnected ? (
-                <button
-                  type="button"
-                  onClick={handleDisconnectSpotify}
-                  className="text-[11px] px-2.5 py-1 rounded-full bg-rose-900/30 text-rose-300 hover:bg-rose-900/50 cursor-pointer"
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSpotifyLogin}
-                  className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#1db954] text-black hover:scale-105 transition-transform cursor-pointer"
-                >
-                  Connect Account
-                </button>
-              )}
-            </div>
-
-            <form onSubmit={handleLoadSpotify} className="flex items-center gap-2 mt-1">
-              <input
-                type="text"
-                value={spotifyInput}
-                onChange={(e) => setSpotifyInput(e.target.value)}
-                placeholder="Paste Spotify playlist URL (open.spotify.com/playlist/...)"
-                className="flex-1 bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-xs text-white placeholder-[#b3b3b3] px-3 py-2 rounded-md outline-none border border-transparent focus:border-white transition-colors"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-[#1db954] hover:bg-[#1ed760] text-black font-bold text-xs rounded-full transition-all cursor-pointer shrink-0"
-              >
-                Import
-              </button>
-            </form>
-          </div>
-        </section>
-
-        {/* Footer info */}
+        {/* Footer Info */}
         <footer className="pt-8 border-t border-[#242424] flex flex-col sm:flex-row items-center justify-between text-xs text-[#b3b3b3] gap-2">
           <span>Chillify 🥰 • Exact Spotify Replica Ambient Music Player</span>
-          <span className="text-[#1db954]">Powered by Web Audio API & Next.js</span>
+          <span className="text-[#1d90f5]">Powered by Web Audio API & Next.js</span>
         </footer>
       </div>
     </main>

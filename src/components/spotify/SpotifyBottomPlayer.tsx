@@ -97,7 +97,7 @@ export default function SpotifyBottomPlayer({
           type="button"
           onClick={() => setIsLiked(!isLiked)}
           className={`p-1 transition-colors cursor-pointer ${
-            isLiked ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'
+            isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
           }`}
           title={isLiked ? 'Remove from Your Library' : 'Save to Your Library'}
         >
@@ -116,7 +116,7 @@ export default function SpotifyBottomPlayer({
             type="button"
             onClick={() => setShowVideo(!showVideo)}
             className={`p-1 text-xs transition-colors cursor-pointer ${
-              showVideo ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'
+              showVideo ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title={showVideo ? 'Hide Video Screen' : 'Show Video Screen'}
           >
@@ -134,7 +134,7 @@ export default function SpotifyBottomPlayer({
             type="button"
             onClick={() => setIsShuffle(!isShuffle)}
             className={`transition-colors cursor-pointer hidden sm:block ${
-              isShuffle ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title="Enable Shuffle"
           >
@@ -165,7 +165,7 @@ export default function SpotifyBottomPlayer({
             ⏪
           </button>
 
-          {/* Play / Pause - Authentic Spotify Circular Button */}
+          {/* Play / Pause - Authentic Circular Button */}
           <button
             type="button"
             onClick={togglePlay}
@@ -210,7 +210,7 @@ export default function SpotifyBottomPlayer({
             type="button"
             onClick={() => setIsRepeat(!isRepeat)}
             className={`transition-colors cursor-pointer hidden sm:block ${
-              isRepeat ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'
+              isRepeat ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title="Enable Repeat"
           >
@@ -224,11 +224,11 @@ export default function SpotifyBottomPlayer({
         <div className="w-full flex items-center gap-2 text-[11px] font-mono text-[#b3b3b3]">
           <span className="w-9 text-right">{formatTime(currentTime)}</span>
 
-          {/* Custom Spotify Range Scrubber */}
+          {/* Spotify Blue Range Scrubber */}
           <div className="relative flex-1 flex items-center group h-3 cursor-pointer">
             <div className="w-full h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full overflow-hidden transition-all">
               <div
-                className="h-full bg-white group-hover:bg-[#1db954] transition-colors"
+                className="h-full bg-white group-hover:bg-[#1d90f5] transition-colors"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -255,7 +255,7 @@ export default function SpotifyBottomPlayer({
           onClick={() => setShowLyrics(!showLyrics)}
           className={`p-1.5 rounded-full transition-colors cursor-pointer ${
             showLyrics
-              ? 'text-[#1db954] bg-white/10'
+              ? 'text-[#1d90f5] bg-white/10'
               : 'text-[#b3b3b3] hover:text-white'
           }`}
           title="Lyrics"
@@ -271,7 +271,7 @@ export default function SpotifyBottomPlayer({
           onClick={() => setActiveView(activeView === 'mixer' ? 'home' : 'mixer')}
           className={`relative p-1.5 rounded-full transition-colors cursor-pointer ${
             activeView === 'mixer'
-              ? 'text-[#1db954] bg-white/10'
+              ? 'text-[#1d90f5] bg-white/10'
               : 'text-[#b3b3b3] hover:text-white'
           }`}
           title="Ambient Sound Mixer"
@@ -280,7 +280,7 @@ export default function SpotifyBottomPlayer({
             <path d="M3 5.75A.75.75 0 0 1 3.75 5h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75zm0 6.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12zm0 6.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75z" />
           </svg>
           {activeCount > 0 && (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#1db954] shadow-sm shadow-[#1db954]" />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#1d90f5] shadow-sm shadow-[#1d90f5]" />
           )}
         </button>
 
@@ -310,7 +310,7 @@ export default function SpotifyBottomPlayer({
           <div className="relative w-20 sm:w-24 h-3 flex items-center cursor-pointer">
             <div className="w-full h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full overflow-hidden transition-all">
               <div
-                className="h-full bg-white group-hover:bg-[#1db954] transition-colors"
+                className="h-full bg-white group-hover:bg-[#1d90f5] transition-colors"
                 style={{ width: `${volumePercent}%` }}
               />
             </div>

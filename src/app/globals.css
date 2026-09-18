@@ -3,8 +3,8 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --spotify-green: #1db954;
-  --spotify-green-hover: #1ed760;
+  --chillify-blue: #1d90f5;
+  --chillify-blue-hover: #3b82f6;
   --spotify-black: #000000;
   --spotify-dark: #121212;
   --spotify-card: #181818;
@@ -21,7 +21,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Authentic Spotify Card */
+/* Chillify Spotify-Style Card */
 .spotify-card {
   background-color: #181818;
   transition: background-color 0.2s ease, transform 0.2s ease;
@@ -31,7 +31,7 @@ body {
   background-color: #282828;
 }
 
-/* Spotify Range Slider */
+/* Chillify Electric Blue Range Slider */
 .spotify-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -40,7 +40,7 @@ body {
   border-radius: 9999px;
   outline: none;
   cursor: pointer;
-  transition: height 0.15s ease;
+  transition: height 0.15s ease, background-color 0.15s ease;
 }
 
 .spotify-slider:hover {
@@ -84,7 +84,7 @@ body {
   opacity: 1;
 }
 
-/* Custom Spotify Scrollbars */
+/* Custom Chillify Blue Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -100,5 +100,5 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(29, 144, 245, 0.6);
 }

@@ -29,12 +29,12 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     await this.ensureYouTubeApiLoaded();
     await this.createPlayer();
 
-    // If no target pending, cue the default chill playlist
-    if (!this.pendingTarget) {
-      await this.loadPlaylist(DEFAULT_CHILL_PLAYLIST_ID);
-    } else {
+    // Only load if an explicit target was queued by the user
+    if (this.pendingTarget) {
       await this.applyTarget(this.pendingTarget);
       this.pendingTarget = null;
+    } else {
+      this.emitState('paused');
     }
   }
 

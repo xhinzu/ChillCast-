@@ -40,6 +40,62 @@ export const AMBIENT_SOUNDS: AmbientSoundConfig[] = [
     description: 'Subtle rolling thunderclaps',
     defaultVolume: 0.5,
   },
+  {
+    id: 'drums',
+    name: 'Lo-Fi Drums',
+    icon: '🥁',
+    description: 'Mellow boom-bap acoustic beats',
+    defaultVolume: 0.55,
+  },
+  {
+    id: 'bass',
+    name: 'Sub Bass',
+    icon: '🎸',
+    description: 'Deep warm lo-fi sub-bass pulse',
+    defaultVolume: 0.5,
+  },
+  {
+    id: 'chatter',
+    name: 'Cafe Chatter',
+    icon: '☕',
+    description: 'Cozy coffee shop murmur & clink',
+    defaultVolume: 0.4,
+  },
+  {
+    id: 'fireplace',
+    name: 'Fireplace',
+    icon: '🔥',
+    description: 'Warm hearth crackling embers',
+    defaultVolume: 0.45,
+  },
+  {
+    id: 'chenda',
+    name: 'Chenda Melam',
+    icon: '🪘',
+    description: 'Authentic Kerala temple percussion',
+    defaultVolume: 0.5,
+  },
+  {
+    id: 'dj',
+    name: 'DJ Scratch',
+    icon: '🎧',
+    description: 'Vinyl crackle & turntable sweeps',
+    defaultVolume: 0.35,
+  },
+  {
+    id: 'keyboard',
+    name: 'Typing ASMR',
+    icon: '⌨️',
+    description: 'Tactile mechanical keyboard clicks',
+    defaultVolume: 0.35,
+  },
+  {
+    id: 'waves',
+    name: 'Ocean Waves',
+    icon: '🌊',
+    description: 'Deep rolling coastal tidal surf',
+    defaultVolume: 0.5,
+  },
 ];
 
 interface AmbientContextType {

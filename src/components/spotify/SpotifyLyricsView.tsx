@@ -104,11 +104,11 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
   }, [activeLineIndex, autoScroll]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-gradient-to-b from-[#132a1e] via-[#0d1c14] to-[#121212] p-6 sm:p-10 rounded-lg overflow-hidden select-none">
+    <div className="w-full h-full flex flex-col bg-gradient-to-b from-[#0e243d] via-[#091726] to-[#121212] p-6 sm:p-10 rounded-lg overflow-hidden select-none">
       {/* Header bar */}
       <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#1db954]">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#1d90f5]">
             {lines.length > 0 ? 'Synced Karaoke Lyrics' : 'Lyrics'}
           </span>
           <h2 className="text-xl font-bold text-white truncate">
@@ -123,7 +123,7 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
               type="button"
               onClick={() => setAutoScroll(!autoScroll)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                autoScroll ? 'bg-[#1db954] text-black font-semibold' : 'bg-white/10 text-white'
+                autoScroll ? 'bg-[#1d90f5] text-white font-semibold' : 'bg-white/10 text-white'
               }`}
             >
               {autoScroll ? 'Auto-Scroll ON' : 'Auto-Scroll OFF'}
@@ -148,7 +148,7 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
       >
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3 text-[#b3b3b3]">
-            <div className="w-8 h-8 border-2 border-[#1db954] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[#1d90f5] border-t-transparent rounded-full animate-spin" />
             <p className="text-sm font-medium">Finding synchronized lyrics...</p>
           </div>
         ) : lyricsData?.instrumental ? (
@@ -190,7 +190,7 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
             <span className="text-3xl">🎤</span>
             <p className="text-base font-semibold text-white">No lyrics available for this track</p>
             <p className="text-xs text-zinc-400">
-              Try playing a song from the Spotify or YouTube playlists!
+              Try searching a song on YouTube or Spotify!
             </p>
           </div>
         )}
