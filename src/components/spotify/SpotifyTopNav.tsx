@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 
 interface SpotifyTopNavProps {
@@ -32,6 +33,21 @@ export default function SpotifyTopNav({
       setActiveView('home');
     }
   };
+
+  const [isCoffeeModalOpen, setIsCoffeeModalOpen] = useState(false);
+
+  // Close popup with Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCoffeeModalOpen(false);
+      }
+    };
+    if (isCoffeeModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCoffeeModalOpen]);
 
   return (
     <header className="h-14 w-full bg-black flex items-center justify-between px-2.5 sm:px-6 shrink-0 z-40 select-none">
@@ -75,7 +91,7 @@ export default function SpotifyTopNav({
           </button>
           <button
             type="button"
-            onClick={() => setActiveView(activeView === 'home' ? 'mixer' : 'home')}
+            onClick={() => setActiveView(activeView === 'home' ? 'ambience' : 'home')}
             className="w-8 h-8 rounded-full bg-[#121212] hover:bg-[#242424] text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
             title="Toggle View"
           >
@@ -137,20 +153,80 @@ export default function SpotifyTopNav({
           <span className="capitalize text-[11px] font-medium">{playbackState}</span>
         </div>
 
-        {/* Buy Me a Coffee Button */}
-        <a
-          href="https://buymeacoffee.com/sreedev"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Buy me a coffee"
+        {/* Buy Me a Coffee Button — Opens FamPay QR Popup */}
+        <button
+          type="button"
+          onClick={() => setIsCoffeeModalOpen(true)}
+          title="Buy me a coffee (FamPay / UPI QR)"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFDD00] hover:bg-[#ffea3b] text-black font-extrabold text-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer select-none"
         >
           <span className="text-sm">☕</span>
           <span className="tracking-tight text-xs font-black">
             <span className="hidden sm:inline">Buy me a </span>coffee
           </span>
-        </a>
+        </button>
       </div>
+
+      {/* ─────────────────────────────── FAMPAY QR CODE POPUP MODAL ─────────────────────────────── */}
+      {isCoffeeModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+          onClick={() => setIsCoffeeModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#161616] rounded-2xl border border-[#2e2e2e] shadow-2xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-150 relative text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsCoffeeModalOpen(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#242424] hover:bg-[#333333] text-[#b3b3b3] hover:text-white flex items-center justify-center transition-colors text-sm cursor-pointer"
+              title="Close"
+            >
+              ✕
+            </button>
+
+            {/* Header */}
+            <div className="space-y-1 pt-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFDD00]/15 text-[#FFDD00] border border-[#FFDD00]/30 text-xs font-bold mb-1">
+                <span>☕</span> Buy Me a Coffee
+              </div>
+              <h3 className="text-lg font-extrabold text-white tracking-tight">
+                Support Chillify 🥰
+              </h3>
+              <p className="text-xs text-[#b3b3b3]">
+                Scan with <strong className="text-white font-semibold">FamPay</strong> or any UPI App to buy me a coffee!
+              </p>
+            </div>
+
+            {/* FamPay QR Code Image Container */}
+            <div className="relative mx-auto w-64 h-64 sm:w-72 sm:h-72 rounded-2xl overflow-hidden bg-black border-2 border-[#FFDD00]/40 shadow-xl shadow-[#FFDD00]/5 flex items-center justify-center p-2">
+              <Image
+                src="/fampay-qr.png"
+                alt="FamPay UPI QR Code"
+                fill
+                sizes="(max-width: 640px) 256px, 288px"
+                className="object-contain rounded-xl p-1"
+                priority
+              />
+            </div>
+
+            {/* Supported UPI Badges & Thank You */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[10px] font-bold text-amber-300 border border-[#333333]">FamPay</span>
+                <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[10px] font-bold text-blue-300 border border-[#333333]">GPay</span>
+                <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[10px] font-bold text-purple-300 border border-[#333333]">PhonePe</span>
+                <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[10px] font-bold text-sky-300 border border-[#333333]">Paytm</span>
+              </div>
+              <p className="text-[11px] text-[#888888]">
+                Every coffee helps keep Chillify ad-free & hosted. Thank you! 💖
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
