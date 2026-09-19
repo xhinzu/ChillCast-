@@ -865,7 +865,7 @@ export default function SpotifyMainContent({
                 <span className="text-[11px] text-[#888888] font-medium">Tap to play continuous mix</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-2xl">
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 max-w-2xl md:max-w-3xl lg:max-w-4xl">
                 {/* 1. English Square Button */}
                 <div
                   onClick={() => {
@@ -1065,12 +1065,10 @@ export default function SpotifyMainContent({
         {/* ------------------------------------------------------------- */}
         {/* VIEW 4: AMBIENCE METER & SOUNDSCAPE MIXER                     */}
         {/* ------------------------------------------------------------- */}
-        {(isAmbienceView || (isHomeView && !isPlaylistView && !isPlaylistsView && !isSearchActive)) && (
+        {isAmbienceView && (
           <section
             aria-label="Ambient Soundscape Mixer"
-            className={`bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4 ${
-              isHomeView ? 'hidden md:block' : ''
-            }`}
+            className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4"
           >
             {/* Section Header & Master Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#282828]">

@@ -176,9 +176,6 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
     // Initialize Web Audio DSP chain
     this.initDsp();
-
-    // Load default initial track
-    await this.loadTrack(this.playlist[0]);
   }
 
   public async loadPlaylist(idOrUrl?: string): Promise<TrackInfo[]> {

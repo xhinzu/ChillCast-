@@ -273,8 +273,14 @@ export default function SpotifyBottomPlayer({
         </div>
       </div>
 
-      {/* ─────────────────────────────── DESKTOP PLAYER (hidden below md) ─────────────────────────────── */}
-      <div className="hidden md:flex h-20 w-full px-6 items-center justify-between bg-black border-t border-[#242424]">
+      {/* ─────────────────────────────── DESKTOP PLAYER (hidden below md, appears when song played) ─────────────────────────────── */}
+      <div
+        className={`hidden md:flex w-full px-6 items-center justify-between bg-black/95 backdrop-blur-xl border-[#242424] transition-all duration-300 ease-in-out ${
+          currentTrack
+            ? 'h-20 opacity-100 translate-y-0 border-t pointer-events-auto'
+            : 'h-0 opacity-0 overflow-hidden border-t-0 py-0 pointer-events-none'
+        }`}
+      >
       {/* 1. Left: Track Info & Artwork */}
       <div className="flex items-center gap-3 w-1/4 min-w-[160px] sm:min-w-[200px]">
         {/* Track Artwork */}
