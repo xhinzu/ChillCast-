@@ -63,6 +63,7 @@ export default function SpotifyMainContent({
   // YouTube Search States (Main Search)
   const [searchResults, setSearchResults] = useState<YouTubeSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [addedToast, setAddedToast] = useState<string | null>(null);
 
   // Add-to-Playlist Modal Popover State
@@ -119,33 +120,42 @@ export default function SpotifyMainContent({
     return 'Good evening';
   })();
 
-  // Debounced Main Search Query
+  // Debounced Main Search Query (400ms prevents aggressive request flooding)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setIsSearching(false);
+      setSearchError(null);
       return;
     }
 
     setIsSearching(true);
+    setSearchError(null);
     const timeout = setTimeout(() => {
       fetch(`/api/youtube/search?q=${encodeURIComponent(searchQuery.trim())}`)
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data.results)) {
             setSearchResults(data.results);
+            if (data.results.length === 0 && data.error) {
+              setSearchError('Search is temporarily busy. Click below to retry.');
+            }
           } else {
             setSearchResults([]);
+            if (data.error) {
+              setSearchError('Search service temporarily unavailable. Click below to retry.');
+            }
           }
         })
         .catch((err) => {
           console.error('Search fetch error:', err);
           setSearchResults([]);
+          setSearchError('Network error connecting to search. Click below to retry.');
         })
         .finally(() => {
           setIsSearching(false);
         });
-    }, 150);
+    }, 400);
 
     return () => clearTimeout(timeout);
   }, [searchQuery]);
@@ -175,7 +185,7 @@ export default function SpotifyMainContent({
         .finally(() => {
           setIsInlineSearching(false);
         });
-    }, 200);
+    }, 400);
 
     return () => clearTimeout(timeout);
   }, [inlineSearchQuery]);
@@ -628,11 +638,40 @@ export default function SpotifyMainContent({
             </div>
 
             {searchResults.length === 0 && !isSearching ? (
-              <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-2">
-                <span className="text-3xl">🔍</span>
-                <p className="text-sm font-semibold text-white">No songs found</p>
-                <p className="text-xs">Try searching for song titles, artists, or &ldquo;lofi beats&rdquo;.</p>
-              </div>
+              searchError ? (
+                <div className="p-8 text-center bg-[#181818] rounded-xl border border-rose-900/30 text-[#b3b3b3] space-y-3">
+                  <span className="text-3xl">⚠️</span>
+                  <p className="text-sm font-semibold text-white">{searchError}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearching(true);
+                      setSearchError(null);
+                      fetch(`/api/youtube/search?q=${encodeURIComponent(searchQuery.trim())}`)
+                        .then((res) => res.json())
+                        .then((data) => {
+                          if (Array.isArray(data.results)) {
+                            setSearchResults(data.results);
+                            if (data.results.length === 0 && data.error) {
+                              setSearchError('Search is temporarily busy. Click below to retry.');
+                            }
+                          }
+                        })
+                        .catch(() => setSearchError('Network error connecting to search.'))
+                        .finally(() => setIsSearching(false));
+                    }}
+                    className="px-4 py-2 rounded-full bg-[#1d90f5] hover:bg-[#2fa0ff] text-white text-xs font-semibold cursor-pointer transition-colors shadow"
+                  >
+                    Retry Search
+                  </button>
+                </div>
+              ) : (
+                <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-2">
+                  <span className="text-3xl">🔍</span>
+                  <p className="text-sm font-semibold text-white">No songs found</p>
+                  <p className="text-xs">Try searching for song titles, artists, or &ldquo;lofi beats&rdquo;.</p>
+                </div>
+              )
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {searchResults.map((video) => (
