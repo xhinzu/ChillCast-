@@ -183,28 +183,34 @@ export default function SpotifyBottomPlayer({
   const volumePercent = isMuted ? 0 : volume * 100;
 
   return (
-    <footer className="w-full bg-black border-t border-[#242424] shrink-0 z-50 select-none">
+    <footer className="w-full bg-transparent shrink-0 z-50 select-none">
 
-      {/* ─────────────────────────────── MOBILE MINI-PLAYER (Spotify-style, hidden on md+) ─────────────────────────────── */}
-      <div className="md:hidden">
-        {/* Thin progress bar across the top — always visible */}
-        <div className="w-full h-[2px] bg-[#282828]">
+      {/* ─────────────────────────────── MOBILE MINI-PLAYER (Floating above tab bar when song played) ─────────────────────────────── */}
+      <div
+        className={`md:hidden fixed bottom-[58px] inset-x-2 z-40 bg-[#161616]/95 backdrop-blur-xl border border-[#2c2c2c] rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
+          currentTrack
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : 'translate-y-16 opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Thin progress bar across the top */}
+        <div className="w-full h-[2.5px] bg-[#282828]">
           <div
             className="h-full bg-[#1d90f5] transition-none"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        {/* Single compact row — exactly like Spotify mini-player */}
-        <div className="flex items-center gap-3 px-3 h-[62px]">
+        {/* Single compact row — exactly like Spotify mobile mini-player */}
+        <div className="flex items-center gap-3 px-3 h-[58px]">
           {/* Album Art */}
-          <div className="relative w-[46px] h-[46px] rounded-md overflow-hidden bg-[#282828] shrink-0 shadow-lg">
+          <div className="relative w-[42px] h-[42px] rounded-lg overflow-hidden bg-[#242424] shrink-0 shadow-md">
             {currentTrack?.artworkUrl ? (
               <Image
                 src={currentTrack.artworkUrl}
                 alt={currentTrack.title}
                 fill
-                sizes="46px"
+                sizes="42px"
                 className="object-cover"
                 unoptimized
               />
@@ -215,13 +221,13 @@ export default function SpotifyBottomPlayer({
             )}
           </div>
 
-          {/* Title + Artist — flex-1 so it squishes if needed */}
+          {/* Title + Artist */}
           <div className="flex flex-col justify-center min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-white truncate leading-snug">
-              {currentTrack?.title || 'Chillify • Ready'}
+            <p className="text-[13px] font-bold text-white truncate leading-tight">
+              {currentTrack?.title || 'Playing Track'}
             </p>
-            <p className="text-[11px] text-[#b3b3b3] truncate leading-snug">
-              {currentTrack?.artist || 'Select a track to play'}
+            <p className="text-[11px] text-[#b3b3b3] truncate leading-tight mt-0.5">
+              {currentTrack?.artist || 'Unknown Artist'}
             </p>
           </div>
 
@@ -232,7 +238,7 @@ export default function SpotifyBottomPlayer({
             className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3]'}`}
             title={isLiked ? 'Unlike' : 'Like'}
           >
-            <svg className="w-[22px] h-[22px] fill-current" viewBox="0 0 24 24">
+            <svg className="w-[20px] h-[20px] fill-current" viewBox="0 0 24 24">
               {isLiked ? (
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               ) : (
@@ -245,7 +251,7 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={togglePlay}
-            className="w-[38px] h-[38px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
+            className="w-[36px] h-[36px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
@@ -262,13 +268,13 @@ export default function SpotifyBottomPlayer({
             className="p-2 shrink-0 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
             title="Next"
           >
-            <svg className="w-[22px] h-[22px] fill-current" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+            <svg className="w-[20px] h-[20px] fill-current" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
           </button>
         </div>
       </div>
 
       {/* ─────────────────────────────── DESKTOP PLAYER (hidden below md) ─────────────────────────────── */}
-      <div className="hidden md:flex h-20 w-full px-6 items-center justify-between">
+      <div className="hidden md:flex h-20 w-full px-6 items-center justify-between bg-black border-t border-[#242424]">
       {/* 1. Left: Track Info & Artwork */}
       <div className="flex items-center gap-3 w-1/4 min-w-[160px] sm:min-w-[200px]">
         {/* Track Artwork */}
@@ -559,9 +565,9 @@ export default function SpotifyBottomPlayer({
         {/* Ambient Mixer Shortcut Button */}
         <button
           type="button"
-          onClick={() => setActiveView(activeView === 'mixer' ? 'home' : 'mixer')}
+          onClick={() => setActiveView(activeView === 'ambience' || activeView === 'mixer' ? 'home' : 'ambience')}
           className={`relative p-1.5 rounded-full transition-colors cursor-pointer ${
-            activeView === 'mixer'
+            activeView === 'ambience' || activeView === 'mixer'
               ? 'text-[#1d90f5] bg-white/10'
               : 'text-[#b3b3b3] hover:text-white'
           }`}

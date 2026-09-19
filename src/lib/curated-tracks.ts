@@ -1,0 +1,268 @@
+export interface CuratedTrack {
+  id: string;
+  title: string;
+  artist: string;
+  duration: string;
+  thumbnail: string;
+}
+
+export const ENGLISH_TRACKS: CuratedTrack[] = [
+  {
+    id: 'GCdwKhTtNNw',
+    title: 'Sweater Weather',
+    artist: 'The Neighbourhood',
+    duration: '4:00',
+    thumbnail: 'https://img.youtube.com/vi/GCdwKhTtNNw/hqdefault.jpg',
+  },
+  {
+    id: '4NRXx6U8ABQ',
+    title: 'Blinding Lights',
+    artist: 'The Weeknd',
+    duration: '3:20',
+    thumbnail: 'https://img.youtube.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
+  },
+  {
+    id: '34Na4j8AVgA',
+    title: 'Starboy (feat. Daft Punk)',
+    artist: 'The Weeknd',
+    duration: '3:50',
+    thumbnail: 'https://img.youtube.com/vi/34Na4j8AVgA/hqdefault.jpg',
+  },
+  {
+    id: 'qX-eXm7_w3g',
+    title: 'Be My Own Boyfriend',
+    artist: 'Olivia Dean',
+    duration: '3:12',
+    thumbnail: 'https://img.youtube.com/vi/qX-eXm7_w3g/hqdefault.jpg',
+  },
+  {
+    id: '3pC0qg89vJc',
+    title: 'Dive',
+    artist: 'Olivia Dean',
+    duration: '3:28',
+    thumbnail: 'https://img.youtube.com/vi/3pC0qg89vJc/hqdefault.jpg',
+  },
+  {
+    id: 'kPa7bsKwL-8',
+    title: 'Die With A Smile',
+    artist: 'Lady Gaga, Bruno Mars',
+    duration: '4:11',
+    thumbnail: 'https://img.youtube.com/vi/kPa7bsKwL-8/hqdefault.jpg',
+  },
+  {
+    id: 'bo_efYhYU2A',
+    title: 'Shallow',
+    artist: 'Lady Gaga, Bradley Cooper',
+    duration: '3:36',
+    thumbnail: 'https://img.youtube.com/vi/bo_efYhYU2A/hqdefault.jpg',
+  },
+  {
+    id: 'id6lqC0bC1I',
+    title: "Beggin'",
+    artist: 'Måneskin',
+    duration: '3:31',
+    thumbnail: 'https://img.youtube.com/vi/id6lqC0bC1I/hqdefault.jpg',
+  },
+  {
+    id: 'yOb9Xaug35M',
+    title: 'I WANNA BE YOUR SLAVE',
+    artist: 'Måneskin',
+    duration: '2:53',
+    thumbnail: 'https://img.youtube.com/vi/yOb9Xaug35M/hqdefault.jpg',
+  },
+  {
+    id: 'yKNxeF4KMsY',
+    title: 'Yellow',
+    artist: 'Coldplay',
+    duration: '4:29',
+    thumbnail: 'https://img.youtube.com/vi/yKNxeF4KMsY/hqdefault.jpg',
+  },
+  {
+    id: 'bpOSxM0rNPM',
+    title: 'Do I Wanna Know?',
+    artist: 'Arctic Monkeys',
+    duration: '4:32',
+    thumbnail: 'https://img.youtube.com/vi/bpOSxM0rNPM/hqdefault.jpg',
+  },
+  {
+    id: 'kJQP7kiw5Fk',
+    title: 'Despacito',
+    artist: 'Luis Fonsi ft. Daddy Yankee',
+    duration: '3:48',
+    thumbnail: 'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg',
+  },
+];
+
+export const MALAYALAM_TRACKS: CuratedTrack[] = [
+  {
+    id: 'tOM-nWPcR4U',
+    title: 'Illuminati (Aavesham)',
+    artist: 'Sushin Shyam, Dabzee',
+    duration: '3:12',
+    thumbnail: 'https://img.youtube.com/vi/tOM-nWPcR4U/hqdefault.jpg',
+  },
+  {
+    id: 'jffk9f6a_5s',
+    title: 'Cherathukal (Kumbalangi Nights)',
+    artist: 'Sushin Shyam, Sithara Krishnakumar',
+    duration: '3:41',
+    thumbnail: 'https://img.youtube.com/vi/jffk9f6a_5s/hqdefault.jpg',
+  },
+  {
+    id: 'B_sQff87hCY',
+    title: 'Aaradhike (Ambili)',
+    artist: 'Rex Vijayan, Sooraj Santhosh',
+    duration: '4:14',
+    thumbnail: 'https://img.youtube.com/vi/B_sQff87hCY/hqdefault.jpg',
+  },
+  {
+    id: 'd6yM335kY48',
+    title: 'Uyire (Minnal Murali)',
+    artist: 'Shaan Rahman, Narayani Gopan',
+    duration: '3:42',
+    thumbnail: 'https://img.youtube.com/vi/d6yM335kY48/hqdefault.jpg',
+  },
+  {
+    id: 'O4kS6d4d_l0',
+    title: 'Parudeesa (Bheeshma Parvam)',
+    artist: 'Sushin Shyam, Sreenath Bhasi',
+    duration: '3:33',
+    thumbnail: 'https://img.youtube.com/vi/O4kS6d4d_l0/hqdefault.jpg',
+  },
+  {
+    id: 'K1ZzQ6K-gZc',
+    title: 'Thaniye (Guppy)',
+    artist: 'Vishnu Vijay, Sooraj Santhosh',
+    duration: '3:58',
+    thumbnail: 'https://img.youtube.com/vi/K1ZzQ6K-gZc/hqdefault.jpg',
+  },
+  {
+    id: '0G2VxhV_g10',
+    title: 'Malare (Premam)',
+    artist: 'Vijay Yesudas, Rajesh Murugesan',
+    duration: '4:42',
+    thumbnail: 'https://img.youtube.com/vi/0G2VxhV_g10/hqdefault.jpg',
+  },
+  {
+    id: '_4gqJ2Lqf4E',
+    title: 'Aaloshilam (Premalu)',
+    artist: 'Vishnu Vijay',
+    duration: '3:20',
+    thumbnail: 'https://img.youtube.com/vi/_4gqJ2Lqf4E/hqdefault.jpg',
+  },
+  {
+    id: 'k6PzG5e8hB0',
+    title: 'Kithaab (Aavesham)',
+    artist: 'Sushin Shyam',
+    duration: '3:15',
+    thumbnail: 'https://img.youtube.com/vi/k6PzG5e8hB0/hqdefault.jpg',
+  },
+  {
+    id: 'Q5W2_sXG3cM',
+    title: 'Alare (Member Rameshan)',
+    artist: 'Kailas, Ayraan, Nithya Mammen',
+    duration: '4:26',
+    thumbnail: 'https://img.youtube.com/vi/Q5W2_sXG3cM/hqdefault.jpg',
+  },
+  {
+    id: '2kZ6oK1Q3eM',
+    title: 'Mizhiyil Ninnum (Mayaanadhi)',
+    artist: 'Rex Vijayan, Shahabaz Aman',
+    duration: '4:18',
+    thumbnail: 'https://img.youtube.com/vi/2kZ6oK1Q3eM/hqdefault.jpg',
+  },
+  {
+    id: 'x7W7qBvG9yI',
+    title: 'Kannil Pettole (Thallumaala)',
+    artist: 'Vishnu Vijay',
+    duration: '3:52',
+    thumbnail: 'https://img.youtube.com/vi/x7W7qBvG9yI/hqdefault.jpg',
+  },
+];
+
+export const HINDI_TRACKS: CuratedTrack[] = [
+  {
+    id: 'cbqi61z54pY',
+    title: 'Tum Se Hi (Jab We Met)',
+    artist: 'Mohit Chauhan, Pritam',
+    duration: '5:21',
+    thumbnail: 'https://img.youtube.com/vi/cbqi61z54pY/hqdefault.jpg',
+  },
+  {
+    id: '5io_8Vw4jGg',
+    title: 'Zara Sa (Jannat)',
+    artist: 'KK, Pritam',
+    duration: '5:03',
+    thumbnail: 'https://img.youtube.com/vi/5io_8Vw4jGg/hqdefault.jpg',
+  },
+  {
+    id: 'jHNNMj5bNQw',
+    title: 'Kabira (Yeh Jawaani Hai Deewani)',
+    artist: 'Arijit Singh, Harshdeep Kaur',
+    duration: '4:11',
+    thumbnail: 'https://img.youtube.com/vi/jHNNMj5bNQw/hqdefault.jpg',
+  },
+  {
+    id: 'f632gM0x_78',
+    title: 'Pehle Bhi Main (Animal)',
+    artist: 'Vishal Mishra, Raj Shekhar',
+    duration: '4:10',
+    thumbnail: 'https://img.youtube.com/vi/f632gM0x_78/hqdefault.jpg',
+  },
+  {
+    id: 'T94PHkuydcw',
+    title: 'Kun Faya Kun (Rockstar)',
+    artist: 'A.R. Rahman, Mohit Chauhan, Javed Ali',
+    duration: '7:52',
+    thumbnail: 'https://img.youtube.com/vi/T94PHkuydcw/hqdefault.jpg',
+  },
+  {
+    id: 'AX6OrbgS8lI',
+    title: 'Tu Hai Kahan',
+    artist: 'AUR',
+    duration: '4:23',
+    thumbnail: 'https://img.youtube.com/vi/AX6OrbgS8lI/hqdefault.jpg',
+  },
+  {
+    id: 'BddP6PYo2gs',
+    title: 'Kesariya (Brahmāstra)',
+    artist: 'Arijit Singh, Pritam',
+    duration: '4:28',
+    thumbnail: 'https://img.youtube.com/vi/BddP6PYo2gs/hqdefault.jpg',
+  },
+  {
+    id: '284Ov7ysmfA',
+    title: 'Channa Mereya (Ae Dil Hai Mushkil)',
+    artist: 'Arijit Singh, Pritam',
+    duration: '4:49',
+    thumbnail: 'https://img.youtube.com/vi/284Ov7ysmfA/hqdefault.jpg',
+  },
+  {
+    id: 'gVY3z_i1F6E',
+    title: 'O Maahi (Dunki)',
+    artist: 'Arijit Singh, Pritam',
+    duration: '3:53',
+    thumbnail: 'https://img.youtube.com/vi/gVY3z_i1F6E/hqdefault.jpg',
+  },
+  {
+    id: 'JFcgOboQZ08',
+    title: 'Agar Tum Saath Ho (Tamasha)',
+    artist: 'Arijit Singh, Alka Yagnik',
+    duration: '5:41',
+    thumbnail: 'https://img.youtube.com/vi/JFcgOboQZ08/hqdefault.jpg',
+  },
+  {
+    id: 'k4yXQkG2s1E',
+    title: 'Ghungroo (War)',
+    artist: 'Arijit Singh, Shilpa Rao',
+    duration: '5:02',
+    thumbnail: 'https://img.youtube.com/vi/k4yXQkG2s1E/hqdefault.jpg',
+  },
+  {
+    id: 'ilNt2bikxZ8',
+    title: 'Raataan Lambiyan (Shershaah)',
+    artist: 'Jubin Nautiyal, Asees Kaur',
+    duration: '3:50',
+    thumbnail: 'https://img.youtube.com/vi/ilNt2bikxZ8/hqdefault.jpg',
+  },
+];

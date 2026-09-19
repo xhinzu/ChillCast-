@@ -121,9 +121,9 @@ export default function SpotifySidebar({
 
           <button
             type="button"
-            onClick={() => setActiveView('mixer')}
+            onClick={() => setActiveView('ambience')}
             className={`flex items-center justify-between px-3 py-2.5 rounded-md font-bold text-sm transition-colors cursor-pointer ${
-              activeView === 'mixer'
+              activeView === 'ambience' || activeView === 'mixer'
                 ? 'text-white'
                 : 'text-[#b3b3b3] hover:text-white'
             }`}

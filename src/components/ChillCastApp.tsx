@@ -10,7 +10,7 @@ import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
 import MobileTabBar from '@/components/spotify/MobileTabBar';
 
 function ChillifyShell() {
-  const { togglePlay } = usePlayback();
+  const { togglePlay, currentTrack } = usePlayback();
   const [activeView, setActiveView] = useState<string>('home');
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -57,7 +57,7 @@ function ChillifyShell() {
 
         {/* Main scrollable content area
             On mobile: extra bottom padding so content isn't hidden under
-            the fixed mini-player (64px) + tab bar (54px) = 118px */}
+            the floating mini-player (60px) + tab bar (54px) when active */}
         <div className="flex-1 overflow-hidden min-h-0 md:px-2 md:py-2">
           <SpotifyMainContent
             activeView={activeView}
@@ -65,7 +65,7 @@ function ChillifyShell() {
             showVideo={showVideo}
             setShowVideo={setShowVideo}
             searchQuery={searchQuery}
-            extraBottomPadding="pb-[120px] md:pb-0"
+            extraBottomPadding={currentTrack ? 'pb-[130px] md:pb-0' : 'pb-[64px] md:pb-0'}
           />
         </div>
       </div>

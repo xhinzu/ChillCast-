@@ -7,6 +7,7 @@ import { useAmbient } from '@/context/AmbientContext';
 import { YouTubeSearchResult } from '@/app/api/youtube/search/route';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 import { TrackInfo } from '@/types/playback';
+import { ENGLISH_TRACKS, MALAYALAM_TRACKS, HINDI_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
 
 interface SpotifyMainContentProps {
   activeView: string;
@@ -322,7 +323,133 @@ export default function SpotifyMainContent({
 
   const isSearchActive = searchQuery.trim().length > 0 || activeView === 'search';
   const isPlaylistsView = activeView === 'playlists';
+  const isAmbienceView = activeView === 'ambience' || activeView === 'mixer';
+  const isHomeView = !isSearchActive && !isPlaylistView && !isPlaylistsView && !isAmbienceView;
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
+
+  // Play a track from a curated list with queue support
+  const handlePlayCuratedTrack = (
+    track: CuratedTrack,
+    trackList: CuratedTrack[],
+    startIndex = 0
+  ) => {
+    if (typeof window !== 'undefined') {
+      const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
+      yt?.primeAudioStream?.(track.id);
+    }
+    const trackInfos: TrackInfo[] = trackList.map((t) => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist,
+      album: 'Chillify Curated',
+      duration: parseDurationSeconds(t.duration),
+      source: 'youtube',
+      sourceUrl: `https://www.youtube.com/watch?v=${t.id}`,
+      artworkUrl: t.thumbnail,
+    }));
+    playCustomTrackList(trackInfos, startIndex);
+  };
+
+  const renderCuratedShelf = (
+    title: string,
+    badge: string,
+    badgeColor: string,
+    subtitle: string,
+    tracks: CuratedTrack[],
+    icon: string
+  ) => (
+    <section aria-label={title} className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{icon}</span>
+            <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+              {title}
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase text-white ${badgeColor}`}>
+                {badge}
+              </span>
+            </h2>
+          </div>
+          <p className="text-xs text-[#a0a0a0] mt-0.5">{subtitle}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => handlePlayCuratedTrack(tracks[0], tracks, 0)}
+          className="px-3.5 py-1.5 rounded-full bg-[#1d90f5]/15 hover:bg-[#1d90f5] text-[#1d90f5] hover:text-white border border-[#1d90f5]/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105"
+          title={`Play all ${title}`}
+        >
+          <span className="text-[10px]">▶</span> Play All
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+        {tracks.map((track, idx) => (
+          <div
+            key={track.id}
+            onClick={() => handlePlayCuratedTrack(track, tracks, idx)}
+            className="spotify-card p-3 rounded-xl cursor-pointer group flex flex-col justify-between relative shadow-lg border border-transparent hover:border-[#2a2a2a] bg-[#181818] hover:bg-[#202020] transition-all duration-200"
+          >
+            {/* Video Thumbnail Tile */}
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-2.5 bg-zinc-900 shadow-md">
+              <Image
+                src={track.thumbnail}
+                alt={track.title}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                unoptimized
+              />
+              <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-medium text-white shadow">
+                {track.duration}
+              </span>
+
+              {/* Hover Play Button */}
+              <button
+                type="button"
+                className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-[#1d90f5] text-black shadow-xl flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 cursor-pointer"
+                title={`Play ${track.title}`}
+              >
+                <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Info & Add */}
+            <div className="flex flex-col justify-between flex-1 min-w-0">
+              <div>
+                <h3 className="font-bold text-xs sm:text-sm text-white line-clamp-1 group-hover:text-[#1d90f5] transition-colors">
+                  {track.title}
+                </h3>
+                <p className="text-[11px] text-[#999999] truncate mt-0.5">
+                  {track.artist}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlaylistTargetVideo({
+                    id: track.id,
+                    title: track.title,
+                    channel: track.artist,
+                    duration: track.duration,
+                    thumbnail: track.thumbnail,
+                  });
+                }}
+                className="mt-2 w-full py-1 px-2 rounded-full bg-[#242424] hover:bg-[#1d90f5] hover:text-white text-[#999999] text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                title="Add to Playlist"
+              >
+                <span>＋</span> Add
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <main className={`flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none ${extraBottomPadding}`}>
@@ -795,24 +922,60 @@ export default function SpotifyMainContent({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* VIEW 3: HOME VIEW (Greeting &amp; Ambient Soundscape Mixer)       */}
+        {/* VIEW 3: HOME VIEW (English, Malayalam, Hindi Curated Sections)  */}
         {/* ------------------------------------------------------------- */}
-        {!isSearchActive && !isPlaylistView && !isPlaylistsView && (
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              {greeting}
-            </h1>
-            <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
-              Welcome to <strong className="text-white">Chillify 🥰</strong> — your ambient lo-fi soundscape sanctuary.
-            </p>
-          </div>
+        {isHomeView && (
+          <section aria-label="Home Curated Shelves" className="space-y-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                {greeting}
+              </h1>
+              <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
+                Welcome to <strong className="text-white">Chillify 🥰</strong> — your ambient lo-fi soundscape sanctuary.
+              </p>
+            </div>
+
+            {/* 1. English Section */}
+            {renderCuratedShelf(
+              'English Vibes',
+              'HOT',
+              'bg-gradient-to-r from-blue-600 to-indigo-600',
+              'The Neighbourhood, The Weeknd, Olivia Dean, Lady Gaga, Måneskin & more',
+              ENGLISH_TRACKS,
+              '🇬🇧'
+            )}
+
+            {/* 2. Malayalam Section */}
+            {renderCuratedShelf(
+              'Malayalam Favorites',
+              'POPULAR',
+              'bg-gradient-to-r from-emerald-600 to-teal-600',
+              'Everyone\'s favorite songs: Cherathukal, Illuminati, Aaradhike, Uyire, Parudeesa & more',
+              MALAYALAM_TRACKS,
+              '🌴'
+            )}
+
+            {/* 3. Hindi Section */}
+            {renderCuratedShelf(
+              'Top Rated Hindi',
+              'TRENDING',
+              'bg-gradient-to-r from-amber-600 to-rose-600',
+              'Tum Se Hi, Zara Sa, Kabira, Pehle Bhi Main, Kun Faya Kun & more',
+              HINDI_TRACKS,
+              '🪔'
+            )}
+          </section>
         )}
 
-        {/* AMBIENT SOUNDSCAPE MIXER SHELF (All 13 procedural sounds) */}
-        {!isPlaylistView && !isPlaylistsView && (
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 4: AMBIENCE METER & SOUNDSCAPE MIXER                     */}
+        {/* ------------------------------------------------------------- */}
+        {(isAmbienceView || (isHomeView && !isPlaylistView && !isPlaylistsView && !isSearchActive)) && (
           <section
             aria-label="Ambient Soundscape Mixer"
-            className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4"
+            className={`bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4 ${
+              isHomeView ? 'hidden md:block' : ''
+            }`}
           >
             {/* Section Header & Master Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#282828]">
