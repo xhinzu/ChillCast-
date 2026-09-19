@@ -7,7 +7,7 @@ import { useAmbient } from '@/context/AmbientContext';
 import { YouTubeSearchResult } from '@/app/api/youtube/search/route';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 import { TrackInfo } from '@/types/playback';
-import { ENGLISH_TRACKS, MALAYALAM_TRACKS, HINDI_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
+import { ENGLISH_TRACKS, MALAYALAM_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
 
 interface SpotifyMainContentProps {
   activeView: string;
@@ -333,21 +333,17 @@ export default function SpotifyMainContent({
   // Track which curated playlist is currently playing
   const isEnglishPlaying = isPlaying && ENGLISH_TRACKS.some((t) => t.id === currentTrack?.id);
   const isMalayalamPlaying = isPlaying && MALAYALAM_TRACKS.some((t) => t.id === currentTrack?.id);
-  const isHindiPlaying = isPlaying && HINDI_TRACKS.some((t) => t.id === currentTrack?.id);
 
   // Play all songs of a curated category continuously as a playlist
-  const handlePlayCuratedPlaylist = (category: 'english' | 'malayalam' | 'hindi') => {
+  const handlePlayCuratedPlaylist = (category: 'english' | 'malayalam') => {
     let tracks: CuratedTrack[] = [];
     let albumName = '';
     if (category === 'english') {
       tracks = ENGLISH_TRACKS;
       albumName = 'English Vibes';
-    } else if (category === 'malayalam') {
+    } else {
       tracks = MALAYALAM_TRACKS;
       albumName = 'Malayalam Favorites';
-    } else {
-      tracks = HINDI_TRACKS;
-      albumName = 'Top Rated Hindi';
     }
 
     if (tracks.length === 0) return;
@@ -865,7 +861,7 @@ export default function SpotifyMainContent({
                 <span className="text-[11px] text-[#888888] font-medium">Tap to play continuous mix</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 max-w-2xl md:max-w-3xl lg:max-w-4xl">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 max-w-md sm:max-w-xl md:max-w-2xl">
                 {/* 1. English Square Button */}
                 <div
                   onClick={() => {
@@ -888,7 +884,7 @@ export default function SpotifyMainContent({
                       src={ENGLISH_TRACKS[0].thumbnail}
                       alt="English Vibes"
                       fill
-                      sizes="(max-width: 640px) 33vw, 220px"
+                      sizes="(max-width: 640px) 50vw, 320px"
                       className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
                       unoptimized
                     />
@@ -953,7 +949,7 @@ export default function SpotifyMainContent({
                       src={MALAYALAM_TRACKS[0].thumbnail}
                       alt="Malayalam Favorites"
                       fill
-                      sizes="(max-width: 640px) 33vw, 220px"
+                      sizes="(max-width: 640px) 50vw, 320px"
                       className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
                       unoptimized
                     />
@@ -987,69 +983,6 @@ export default function SpotifyMainContent({
                       }`}
                     >
                       {isMalayalamPlaying ? (
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
-                      ) : (
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Hindi Square Button */}
-                <div
-                  onClick={() => {
-                    if (isHindiPlaying) {
-                      togglePlay();
-                    } else {
-                      handlePlayCuratedPlaylist('hindi');
-                    }
-                  }}
-                  className={`group relative aspect-square rounded-2xl overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer select-none shadow-xl border ${
-                    isHindiPlaying
-                      ? 'border-[#f59e0b] ring-2 ring-[#f59e0b]/50 scale-[1.02] shadow-[#f59e0b]/20'
-                      : 'border-white/10 hover:border-[#f59e0b]/60 hover:scale-[1.03] active:scale-95'
-                  }`}
-                  title="Play Top Rated Hindi Playlist"
-                >
-                  <div className="absolute inset-0 z-0">
-                    <Image
-                      src={HINDI_TRACKS[0].thumbnail}
-                      alt="Top Rated Hindi"
-                      fill
-                      sizes="(max-width: 640px) 33vw, 220px"
-                      className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                    <div className="absolute inset-0 bg-amber-950/40 mix-blend-overlay" />
-                  </div>
-
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="text-xl sm:text-2xl drop-shadow">🪔</span>
-                    <span className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-200 border border-amber-400/40 backdrop-blur-sm">
-                      {HINDI_TRACKS.length}
-                    </span>
-                  </div>
-
-                  <div className="relative z-10 flex items-end justify-between gap-1">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[9px] sm:text-[10px] text-amber-300 font-bold uppercase tracking-wider">Playlist</p>
-                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate leading-tight group-hover:text-[#f59e0b] transition-colors">
-                        Hindi
-                      </h3>
-                      <p className="text-[10px] text-[#b3b3b3] truncate hidden sm:block">
-                        Tum Se Hi, Kabira, Zara Sa
-                      </p>
-                    </div>
-
-                    <div
-                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black shadow-2xl transition-all duration-200 shrink-0 ${
-                        isHindiPlaying
-                          ? 'bg-[#f59e0b] scale-105 shadow-[#f59e0b]/50'
-                          : 'bg-white group-hover:bg-[#f59e0b] group-hover:scale-110 shadow-lg'
-                      }`}
-                    >
-                      {isHindiPlaying ? (
                         <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
                       ) : (
                         <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
