@@ -123,10 +123,10 @@ export default function SpotifyTopNav({
         </div>
       </div>
 
-      {/* Right: Status indicator & Profile */}
+      {/* Right: Buy Me a Coffee & Status indicator */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Playback status pulse */}
-        <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[#181818] border border-[#282828] text-xs text-[#b3b3b3]">
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#181818] border border-[#282828] text-xs text-[#b3b3b3]">
           <span
             className={`w-2 h-2 rounded-full ${
               playbackState === 'playing'
@@ -134,16 +134,22 @@ export default function SpotifyTopNav({
                 : 'bg-zinc-600'
             }`}
           />
-          <span className="hidden sm:inline capitalize text-[11px] font-medium">{playbackState}</span>
+          <span className="capitalize text-[11px] font-medium">{playbackState}</span>
         </div>
 
-        {/* User Profile Avatar */}
-        <div
-          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#282828] hover:scale-105 transition-transform flex items-center justify-center text-xs font-bold text-white border border-[#3e3e3e] cursor-pointer shadow-md shrink-0"
-          title="Chillify User"
+        {/* Buy Me a Coffee Button */}
+        <a
+          href="https://buymeacoffee.com/sreedev"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Buy me a coffee"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFDD00] hover:bg-[#ffea3b] text-black font-extrabold text-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer select-none"
         >
-          ☕
-        </div>
+          <span className="text-sm">☕</span>
+          <span className="tracking-tight text-xs font-black">
+            <span className="hidden sm:inline">Buy me a </span>coffee
+          </span>
+        </a>
       </div>
     </header>
   );
