@@ -38,6 +38,9 @@ export default function SpotifyMainContent({
   extraBottomPadding = '',
 }: SpotifyMainContentProps) {
   const {
+    currentTrack,
+    isPlaying,
+    togglePlay,
     activeAdapterType,
     errorMessage,
     loadPlaylist,
@@ -327,129 +330,48 @@ export default function SpotifyMainContent({
   const isHomeView = !isSearchActive && !isPlaylistView && !isPlaylistsView && !isAmbienceView;
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
 
-  // Play a track from a curated list with queue support
-  const handlePlayCuratedTrack = (
-    track: CuratedTrack,
-    trackList: CuratedTrack[],
-    startIndex = 0
-  ) => {
+  // Track which curated playlist is currently playing
+  const isEnglishPlaying = isPlaying && ENGLISH_TRACKS.some((t) => t.id === currentTrack?.id);
+  const isMalayalamPlaying = isPlaying && MALAYALAM_TRACKS.some((t) => t.id === currentTrack?.id);
+  const isHindiPlaying = isPlaying && HINDI_TRACKS.some((t) => t.id === currentTrack?.id);
+
+  // Play all songs of a curated category continuously as a playlist
+  const handlePlayCuratedPlaylist = (category: 'english' | 'malayalam' | 'hindi') => {
+    let tracks: CuratedTrack[] = [];
+    let albumName = '';
+    if (category === 'english') {
+      tracks = ENGLISH_TRACKS;
+      albumName = 'English Vibes';
+    } else if (category === 'malayalam') {
+      tracks = MALAYALAM_TRACKS;
+      albumName = 'Malayalam Favorites';
+    } else {
+      tracks = HINDI_TRACKS;
+      albumName = 'Top Rated Hindi';
+    }
+
+    if (tracks.length === 0) return;
+
     if (typeof window !== 'undefined') {
       const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
-      yt?.primeAudioStream?.(track.id);
+      yt?.primeAudioStream?.(tracks[0].id);
     }
-    const trackInfos: TrackInfo[] = trackList.map((t) => ({
+
+    const trackInfos: TrackInfo[] = tracks.map((t) => ({
       id: t.id,
       title: t.title,
       artist: t.artist,
-      album: 'Chillify Curated',
+      album: albumName,
       duration: parseDurationSeconds(t.duration),
       source: 'youtube',
       sourceUrl: `https://www.youtube.com/watch?v=${t.id}`,
       artworkUrl: t.thumbnail,
     }));
-    playCustomTrackList(trackInfos, startIndex);
+
+    playCustomTrackList(trackInfos, 0);
+    setAddedToast(`Playing "${albumName}" (${tracks.length} songs)`);
+    setTimeout(() => setAddedToast(null), 3000);
   };
-
-  const renderCuratedShelf = (
-    title: string,
-    badge: string,
-    badgeColor: string,
-    subtitle: string,
-    tracks: CuratedTrack[],
-    icon: string
-  ) => (
-    <section aria-label={title} className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{icon}</span>
-            <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              {title}
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase text-white ${badgeColor}`}>
-                {badge}
-              </span>
-            </h2>
-          </div>
-          <p className="text-xs text-[#a0a0a0] mt-0.5">{subtitle}</p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => handlePlayCuratedTrack(tracks[0], tracks, 0)}
-          className="px-3.5 py-1.5 rounded-full bg-[#1d90f5]/15 hover:bg-[#1d90f5] text-[#1d90f5] hover:text-white border border-[#1d90f5]/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105"
-          title={`Play all ${title}`}
-        >
-          <span className="text-[10px]">▶</span> Play All
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-        {tracks.map((track, idx) => (
-          <div
-            key={track.id}
-            onClick={() => handlePlayCuratedTrack(track, tracks, idx)}
-            className="spotify-card p-3 rounded-xl cursor-pointer group flex flex-col justify-between relative shadow-lg border border-transparent hover:border-[#2a2a2a] bg-[#181818] hover:bg-[#202020] transition-all duration-200"
-          >
-            {/* Video Thumbnail Tile */}
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-2.5 bg-zinc-900 shadow-md">
-              <Image
-                src={track.thumbnail}
-                alt={track.title}
-                fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                unoptimized
-              />
-              <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-medium text-white shadow">
-                {track.duration}
-              </span>
-
-              {/* Hover Play Button */}
-              <button
-                type="button"
-                className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-[#1d90f5] text-black shadow-xl flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 cursor-pointer"
-                title={`Play ${track.title}`}
-              >
-                <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Info & Add */}
-            <div className="flex flex-col justify-between flex-1 min-w-0">
-              <div>
-                <h3 className="font-bold text-xs sm:text-sm text-white line-clamp-1 group-hover:text-[#1d90f5] transition-colors">
-                  {track.title}
-                </h3>
-                <p className="text-[11px] text-[#999999] truncate mt-0.5">
-                  {track.artist}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPlaylistTargetVideo({
-                    id: track.id,
-                    title: track.title,
-                    channel: track.artist,
-                    duration: track.duration,
-                    thumbnail: track.thumbnail,
-                  });
-                }}
-                className="mt-2 w-full py-1 px-2 rounded-full bg-[#242424] hover:bg-[#1d90f5] hover:text-white text-[#999999] text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                title="Add to Playlist"
-              >
-                <span>＋</span> Add
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
 
   return (
     <main className={`flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none ${extraBottomPadding}`}>
@@ -920,12 +842,11 @@ export default function SpotifyMainContent({
             )}
           </section>
         )}
-
         {/* ------------------------------------------------------------- */}
-        {/* VIEW 3: HOME VIEW (English, Malayalam, Hindi Curated Sections)  */}
+        {/* VIEW 3: HOME VIEW (3 Small Square Playlist Buttons)           */}
         {/* ------------------------------------------------------------- */}
         {isHomeView && (
-          <section aria-label="Home Curated Shelves" className="space-y-8">
+          <section aria-label="Home Curated Playlists" className="space-y-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {greeting}
@@ -935,35 +856,209 @@ export default function SpotifyMainContent({
               </p>
             </div>
 
-            {/* 1. English Section */}
-            {renderCuratedShelf(
-              'English Vibes',
-              'HOT',
-              'bg-gradient-to-r from-blue-600 to-indigo-600',
-              'The Neighbourhood, The Weeknd, Olivia Dean, Lady Gaga, Måneskin & more',
-              ENGLISH_TRACKS,
-              '🇬🇧'
-            )}
+            {/* 3 Curated Square Buttons */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
+                  <span>🎵</span> Featured Playlists
+                </h2>
+                <span className="text-[11px] text-[#888888] font-medium">Tap to play continuous mix</span>
+              </div>
 
-            {/* 2. Malayalam Section */}
-            {renderCuratedShelf(
-              'Malayalam Favorites',
-              'POPULAR',
-              'bg-gradient-to-r from-emerald-600 to-teal-600',
-              'Everyone\'s favorite songs: Cherathukal, Illuminati, Aaradhike, Uyire, Parudeesa & more',
-              MALAYALAM_TRACKS,
-              '🌴'
-            )}
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-2xl">
+                {/* 1. English Square Button */}
+                <div
+                  onClick={() => {
+                    if (isEnglishPlaying) {
+                      togglePlay();
+                    } else {
+                      handlePlayCuratedPlaylist('english');
+                    }
+                  }}
+                  className={`group relative aspect-square rounded-2xl overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer select-none shadow-xl border ${
+                    isEnglishPlaying
+                      ? 'border-[#1d90f5] ring-2 ring-[#1d90f5]/50 scale-[1.02] shadow-[#1d90f5]/20'
+                      : 'border-white/10 hover:border-[#1d90f5]/60 hover:scale-[1.03] active:scale-95'
+                  }`}
+                  title="Play English Vibes Playlist"
+                >
+                  {/* Background Artwork */}
+                  <div className="absolute inset-0 z-0">
+                    <Image
+                      src={ENGLISH_TRACKS[0].thumbnail}
+                      alt="English Vibes"
+                      fill
+                      sizes="(max-width: 640px) 33vw, 220px"
+                      className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                    <div className="absolute inset-0 bg-blue-950/40 mix-blend-overlay" />
+                  </div>
 
-            {/* 3. Hindi Section */}
-            {renderCuratedShelf(
-              'Top Rated Hindi',
-              'TRENDING',
-              'bg-gradient-to-r from-amber-600 to-rose-600',
-              'Tum Se Hi, Zara Sa, Kabira, Pehle Bhi Main, Kun Faya Kun & more',
-              HINDI_TRACKS,
-              '🪔'
-            )}
+                  {/* Top Badge */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="text-xl sm:text-2xl drop-shadow">🇬🇧</span>
+                    <span className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/40 backdrop-blur-sm">
+                      {ENGLISH_TRACKS.length}
+                    </span>
+                  </div>
+
+                  {/* Bottom: Name & Play Icon */}
+                  <div className="relative z-10 flex items-end justify-between gap-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] sm:text-[10px] text-blue-300 font-bold uppercase tracking-wider">Playlist</p>
+                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate leading-tight group-hover:text-[#1d90f5] transition-colors">
+                        English
+                      </h3>
+                      <p className="text-[10px] text-[#b3b3b3] truncate hidden sm:block">
+                        Weeknd, NBHD & more
+                      </p>
+                    </div>
+
+                    <div
+                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black shadow-2xl transition-all duration-200 shrink-0 ${
+                        isEnglishPlaying
+                          ? 'bg-[#1d90f5] scale-105 shadow-[#1d90f5]/50'
+                          : 'bg-white group-hover:bg-[#1d90f5] group-hover:scale-110 shadow-lg'
+                      }`}
+                    >
+                      {isEnglishPlaying ? (
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Malayalam Square Button */}
+                <div
+                  onClick={() => {
+                    if (isMalayalamPlaying) {
+                      togglePlay();
+                    } else {
+                      handlePlayCuratedPlaylist('malayalam');
+                    }
+                  }}
+                  className={`group relative aspect-square rounded-2xl overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer select-none shadow-xl border ${
+                    isMalayalamPlaying
+                      ? 'border-[#10b981] ring-2 ring-[#10b981]/50 scale-[1.02] shadow-[#10b981]/20'
+                      : 'border-white/10 hover:border-[#10b981]/60 hover:scale-[1.03] active:scale-95'
+                  }`}
+                  title="Play Malayalam Favorites Playlist"
+                >
+                  <div className="absolute inset-0 z-0">
+                    <Image
+                      src={MALAYALAM_TRACKS[0].thumbnail}
+                      alt="Malayalam Favorites"
+                      fill
+                      sizes="(max-width: 640px) 33vw, 220px"
+                      className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                    <div className="absolute inset-0 bg-emerald-950/40 mix-blend-overlay" />
+                  </div>
+
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="text-xl sm:text-2xl drop-shadow">🌴</span>
+                    <span className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 backdrop-blur-sm">
+                      {MALAYALAM_TRACKS.length}
+                    </span>
+                  </div>
+
+                  <div className="relative z-10 flex items-end justify-between gap-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] sm:text-[10px] text-emerald-300 font-bold uppercase tracking-wider">Playlist</p>
+                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate leading-tight group-hover:text-[#10b981] transition-colors">
+                        Malayalam
+                      </h3>
+                      <p className="text-[10px] text-[#b3b3b3] truncate hidden sm:block">
+                        Illuminati, Cherathukal
+                      </p>
+                    </div>
+
+                    <div
+                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black shadow-2xl transition-all duration-200 shrink-0 ${
+                        isMalayalamPlaying
+                          ? 'bg-[#10b981] scale-105 shadow-[#10b981]/50'
+                          : 'bg-white group-hover:bg-[#10b981] group-hover:scale-110 shadow-lg'
+                      }`}
+                    >
+                      {isMalayalamPlaying ? (
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Hindi Square Button */}
+                <div
+                  onClick={() => {
+                    if (isHindiPlaying) {
+                      togglePlay();
+                    } else {
+                      handlePlayCuratedPlaylist('hindi');
+                    }
+                  }}
+                  className={`group relative aspect-square rounded-2xl overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer select-none shadow-xl border ${
+                    isHindiPlaying
+                      ? 'border-[#f59e0b] ring-2 ring-[#f59e0b]/50 scale-[1.02] shadow-[#f59e0b]/20'
+                      : 'border-white/10 hover:border-[#f59e0b]/60 hover:scale-[1.03] active:scale-95'
+                  }`}
+                  title="Play Top Rated Hindi Playlist"
+                >
+                  <div className="absolute inset-0 z-0">
+                    <Image
+                      src={HINDI_TRACKS[0].thumbnail}
+                      alt="Top Rated Hindi"
+                      fill
+                      sizes="(max-width: 640px) 33vw, 220px"
+                      className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                    <div className="absolute inset-0 bg-amber-950/40 mix-blend-overlay" />
+                  </div>
+
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="text-xl sm:text-2xl drop-shadow">🪔</span>
+                    <span className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-200 border border-amber-400/40 backdrop-blur-sm">
+                      {HINDI_TRACKS.length}
+                    </span>
+                  </div>
+
+                  <div className="relative z-10 flex items-end justify-between gap-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] sm:text-[10px] text-amber-300 font-bold uppercase tracking-wider">Playlist</p>
+                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate leading-tight group-hover:text-[#f59e0b] transition-colors">
+                        Hindi
+                      </h3>
+                      <p className="text-[10px] text-[#b3b3b3] truncate hidden sm:block">
+                        Tum Se Hi, Kabira, Zara Sa
+                      </p>
+                    </div>
+
+                    <div
+                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black shadow-2xl transition-all duration-200 shrink-0 ${
+                        isHindiPlaying
+                          ? 'bg-[#f59e0b] scale-105 shadow-[#f59e0b]/50'
+                          : 'bg-white group-hover:bg-[#f59e0b] group-hover:scale-110 shadow-lg'
+                      }`}
+                    >
+                      {isHindiPlaying ? (
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
         )}
 
