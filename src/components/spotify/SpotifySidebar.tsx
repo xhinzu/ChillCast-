@@ -9,6 +9,7 @@ import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
 interface SpotifySidebarProps {
   activeView: string;
   setActiveView: (view: string) => void;
+  setSearchQuery?: (query: string) => void;
 }
 
 const STORAGE_KEY = 'chillify_saved_playlists';
@@ -16,6 +17,7 @@ const STORAGE_KEY = 'chillify_saved_playlists';
 export default function SpotifySidebar({
   activeView,
   setActiveView,
+  setSearchQuery,
 }: SpotifySidebarProps) {
   const { loadPlaylist, switchAdapter, loadCustomLocalFile } = usePlayback();
   const { activeCount } = useAmbient();
@@ -108,51 +110,48 @@ export default function SpotifySidebar({
     <>
       <aside className="hidden md:flex w-64 lg:w-72 xl:w-80 h-full flex-col gap-2 shrink-0 select-none pb-2">
         {/* Top Navigation Block */}
-        <nav className="bg-[#121212] rounded-lg p-3 sm:p-4 flex flex-col gap-1 shrink-0">
+        <nav className="bg-[#0e0d12] border border-[#231e2c] rounded-xl p-3 sm:p-4 flex flex-col gap-1 shrink-0 shadow-lg shadow-black/60">
           <button
             type="button"
-            onClick={() => setActiveView('home')}
-            className={`flex items-center gap-4 px-3 py-2.5 rounded-md font-bold text-sm transition-colors cursor-pointer ${
+            onClick={() => {
+              setActiveView('home');
+              setSearchQuery?.('');
+            }}
+            className={`flex items-center gap-4 px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
               activeView === 'home'
-                ? 'text-white'
-                : 'text-[#b3b3b3] hover:text-white'
+                ? 'text-white bg-[#1f1a29] border border-orange-500/30 shadow-sm'
+                : 'text-[#a1a1aa] hover:text-white hover:bg-[#16141d]'
             }`}
           >
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12.5 3.247a1 1 0 0 0-1 0L4 7.577V20h5v-6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6h5V7.577l-7.5-4.33zm-8.83 5.148 7.33-4.23a2 2 0 0 1 2 0l7.33 4.23A1 1 0 0 1 21 9.247V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.247a1 1 0 0 1 .67-.952z" />
-            </svg>
+            <span className="text-lg">🎃</span>
             <span>Home</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveView('ambience')}
-            className={`flex items-center justify-between px-3 py-2.5 rounded-md font-bold text-sm transition-colors cursor-pointer ${
+            className={`flex items-center justify-between px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
               activeView === 'ambience' || activeView === 'mixer'
-                ? 'text-white'
-                : 'text-[#b3b3b3] hover:text-white'
+                ? 'text-white bg-[#1f1a29] border border-orange-500/30 shadow-sm'
+                : 'text-[#a1a1aa] hover:text-white hover:bg-[#16141d]'
             }`}
           >
             <div className="flex items-center gap-4">
-              <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5.75A.75.75 0 0 1 3.75 5h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75zm0 6.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12zm0 6.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75z" />
-              </svg>
+              <span className="text-lg">🦇</span>
               <span>Ambience</span>
             </div>
             {activeCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-[#1d90f5] shadow-sm shadow-[#1d90f5]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ff7518] shadow-md shadow-[#ff7518]" />
             )}
           </button>
         </nav>
 
         {/* "Your Library" Block */}
-        <section className="bg-[#121212] rounded-lg p-3 sm:p-4 flex-1 flex flex-col overflow-hidden">
+        <section className="bg-[#0e0d12] border border-[#231e2c] rounded-xl p-3 sm:p-4 flex-1 flex flex-col overflow-hidden shadow-lg shadow-black/60">
           {/* Library Header with + Button */}
-          <div className="flex items-center justify-between text-[#b3b3b3] mb-3">
-            <div className="flex items-center gap-3 font-bold text-sm hover:text-white transition-colors">
-              <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14.5 2.134a1 1 0 0 1 1 0l6 3.464a1 1 0 0 1 .5.866V18a1 1 0 0 1-.5.866l-6 3.464a1 1 0 0 1-1 0l-6-3.464a1 1 0 0 1-.5-.866V6.464a1 1 0 0 1 .5-.866l6-3.464zM4.75 5a.75.75 0 0 0-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75V5.75A.75.75 0 0 0 6.25 5h-1.5z" />
-              </svg>
+          <div className="flex items-center justify-between text-[#a1a1aa] mb-3">
+            <div className="flex items-center gap-2.5 font-bold text-sm hover:text-white transition-colors">
+              <span className="text-base">💀</span>
               <span>Playlists</span>
             </div>
 

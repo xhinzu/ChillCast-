@@ -5,11 +5,7 @@ import Image from 'next/image';
 import { TrackInfo } from '@/types/playback';
 import { SavedPlaylistItem } from '@/components/spotify/AddSourceModal';
 import SongSelectorModal from './SongSelectorModal';
-import {
-  TRENDING_ENGLISH_SONGS,
-  TRENDING_MALAYALAM_SONGS,
-  catalogSongToTrackInfo,
-} from '@/lib/music-data';
+import { YTPlayer } from '@/types/youtube';
 
 interface DualVinylMixerProps {
   savedPlaylists: SavedPlaylistItem[];
@@ -28,166 +24,279 @@ export default function DualVinylMixer({
   className = '',
 }: DualVinylMixerProps) {
   // -------------------------------------------------------------
-  // DECK A STATES
+  // DECK A STATES (Starts with NO song loaded)
   // -------------------------------------------------------------
-  const [trackA, setTrackA] = useState<TrackInfo>(() =>
-    catalogSongToTrackInfo(TRENDING_ENGLISH_SONGS[0])
-  );
+  const [trackA, setTrackA] = useState<TrackInfo | null>(null);
   const [isPlayingA, setIsPlayingA] = useState(false);
   const [currentTimeA, setCurrentTimeA] = useState(0);
-  const [durationA, setDurationA] = useState(240);
+  const [durationA, setDurationA] = useState(0);
   const [volumeA, setVolumeA] = useState(0.85);
   const [isLoadingA, setIsLoadingA] = useState(false);
   const [errorA, setErrorA] = useState<string | null>(null);
 
   // -------------------------------------------------------------
-  // DECK B STATES
+  // DECK B STATES (Starts with NO song loaded)
   // -------------------------------------------------------------
-  const [trackB, setTrackB] = useState<TrackInfo>(() =>
-    catalogSongToTrackInfo(TRENDING_MALAYALAM_SONGS[0])
-  );
+  const [trackB, setTrackB] = useState<TrackInfo | null>(null);
   const [isPlayingB, setIsPlayingB] = useState(false);
   const [currentTimeB, setCurrentTimeB] = useState(0);
-  const [durationB, setDurationB] = useState(192);
+  const [durationB, setDurationB] = useState(0);
   const [volumeB, setVolumeB] = useState(0.85);
   const [isLoadingB, setIsLoadingB] = useState(false);
   const [errorB, setErrorB] = useState<string | null>(null);
 
   // -------------------------------------------------------------
-  // MIXER / CROSSFADER STATE (-1 = Full Deck A, 0 = Both 100%, +1 = Full Deck B)
+  // CROSSFADER STATE (-1 = Full Deck A, 0 = Both 100%, +1 = Full Deck B)
   // -------------------------------------------------------------
   const [crossfader, setCrossfader] = useState(0);
 
   // Song Selector Modal state
   const [selectorDeck, setSelectorDeck] = useState<'Deck A' | 'Deck B' | null>(null);
 
-  // Independent HTMLAudioElement references
-  const audioRefA = useRef<HTMLAudioElement | null>(null);
-  const audioRefB = useRef<HTMLAudioElement | null>(null);
+  // HTMLAudioElement references for local / blob audio tracks
+  const localAudioRefA = useRef<HTMLAudioElement | null>(null);
+  const localAudioRefB = useRef<HTMLAudioElement | null>(null);
 
-  // Calculate DJ contour crossfader gains (both 100% in center, smooth fade to sides)
+  // YouTube Player instances for YouTube tracks
+  const ytPlayerA = useRef<YTPlayer | null>(null);
+  const ytPlayerB = useRef<YTPlayer | null>(null);
+  const [isYtApiReady, setIsYtApiReady] = useState(false);
+
+  // -------------------------------------------------------------
+  // DJ CONTOUR GAIN CALCULATION
+  // -------------------------------------------------------------
   const getGains = useCallback((cf: number) => {
     let gainA = 1;
     let gainB = 1;
     if (cf < 0) {
-      // Moving left: A stays 1.0, B decreases to 0 at -1
       gainA = 1;
       gainB = Math.max(0, 1 + cf);
     } else if (cf > 0) {
-      // Moving right: B stays 1.0, A decreases to 0 at +1
       gainB = 1;
       gainA = Math.max(0, 1 - cf);
     }
     return { gainA, gainB };
   }, []);
 
-  // Update actual audio element volumes when volume or crossfader changes
+  // Ensure YouTube Iframe API is loaded in browser
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (window.YT && window.YT.Player) {
+      setIsYtApiReady(true);
+      return;
+    }
+
+    const scriptTag = document.getElementById('youtube-iframe-api');
+    if (!scriptTag) {
+      const tag = document.createElement('script');
+      tag.id = 'youtube-iframe-api';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScript = document.getElementsByTagName('script')[0];
+      firstScript?.parentNode?.insertBefore(tag, firstScript);
+    }
+
+    const prevOnReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (prevOnReady) prevOnReady();
+      setIsYtApiReady(true);
+    };
+  }, []);
+
+  // Initialize YouTube Iframe Players for Deck A and Deck B
+  useEffect(() => {
+    if (!isYtApiReady || typeof window === 'undefined' || !window.YT) return;
+
+    // Deck A YT Player
+    if (!ytPlayerA.current && document.getElementById('mixer-yt-deck-a')) {
+      try {
+        ytPlayerA.current = new window.YT.Player('mixer-yt-deck-a', {
+          height: '1',
+          width: '1',
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            playsinline: 1,
+            rel: 0,
+            origin: window.location.origin,
+          },
+          events: {
+            onStateChange: (e: { data: number }) => {
+              if (e.data === 1) setIsPlayingA(true);
+              if (e.data === 2 || e.data === 0) setIsPlayingA(false);
+            },
+          },
+        });
+      } catch (err) {
+        console.warn('Mixer YT Player A init:', err);
+      }
+    }
+
+    // Deck B YT Player
+    if (!ytPlayerB.current && document.getElementById('mixer-yt-deck-b')) {
+      try {
+        ytPlayerB.current = new window.YT.Player('mixer-yt-deck-b', {
+          height: '1',
+          width: '1',
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            playsinline: 1,
+            rel: 0,
+            origin: window.location.origin,
+          },
+          events: {
+            onStateChange: (e: { data: number }) => {
+              if (e.data === 1) setIsPlayingB(true);
+              if (e.data === 2 || e.data === 0) setIsPlayingB(false);
+            },
+          },
+        });
+      } catch (err) {
+        console.warn('Mixer YT Player B init:', err);
+      }
+    }
+  }, [isYtApiReady]);
+
+  // Synchronize Volumes (Combined Deck Volume * Crossfader Gain)
   useEffect(() => {
     const { gainA, gainB } = getGains(crossfader);
-    if (audioRefA.current) {
-      audioRefA.current.volume = Math.max(0, Math.min(1, volumeA * gainA));
+
+    // Deck A
+    const effectiveVolA = Math.max(0, Math.min(1, volumeA * gainA));
+    if (localAudioRefA.current) {
+      localAudioRefA.current.volume = effectiveVolA;
     }
-    if (audioRefB.current) {
-      audioRefB.current.volume = Math.max(0, Math.min(1, volumeB * gainB));
+    if (ytPlayerA.current && typeof ytPlayerA.current.setVolume === 'function') {
+      try {
+        ytPlayerA.current.setVolume(Math.round(effectiveVolA * 100));
+      } catch {}
+    }
+
+    // Deck B
+    const effectiveVolB = Math.max(0, Math.min(1, volumeB * gainB));
+    if (localAudioRefB.current) {
+      localAudioRefB.current.volume = effectiveVolB;
+    }
+    if (ytPlayerB.current && typeof ytPlayerB.current.setVolume === 'function') {
+      try {
+        ytPlayerB.current.setVolume(Math.round(effectiveVolB * 100));
+      } catch {}
     }
   }, [volumeA, volumeB, crossfader, getGains]);
 
-  // Resolve audio streaming source
-  const getAudioSource = (track: TrackInfo): string => {
-    if (track.sourceUrl && (track.sourceUrl.startsWith('http') || track.sourceUrl.startsWith('blob:'))) {
-      return track.sourceUrl;
-    }
-    // Stream via backend YouTube stream proxy
-    return `/api/youtube/stream?v=${encodeURIComponent(track.id)}`;
-  };
-
-  // -------------------------------------------------------------
-  // DECK A AUDIO LIFECYCLE
-  // -------------------------------------------------------------
+  // Polling position timer for active decks
   useEffect(() => {
-    const audio = new Audio();
-    audioRefA.current = audio;
-    audio.crossOrigin = 'anonymous';
-    audio.preload = 'metadata';
-
-    const onTimeUpdate = () => setCurrentTimeA(audio.currentTime);
-    const onLoadedMetadata = () => {
-      setIsLoadingA(false);
-      setErrorA(null);
-      if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
-        setDurationA(audio.duration);
+    const timer = setInterval(() => {
+      // Deck A timer
+      if (isPlayingA) {
+        if (trackA?.source === 'local' && localAudioRefA.current) {
+          setCurrentTimeA(localAudioRefA.current.currentTime);
+          if (localAudioRefA.current.duration) {
+            setDurationA(localAudioRefA.current.duration);
+          }
+        } else if (ytPlayerA.current && typeof ytPlayerA.current.getCurrentTime === 'function') {
+          try {
+            const t = ytPlayerA.current.getCurrentTime();
+            if (typeof t === 'number') setCurrentTimeA(t);
+            const d = ytPlayerA.current.getDuration();
+            if (typeof d === 'number' && d > 0) setDurationA(d);
+          } catch {}
+        }
       }
-    };
-    const onEnded = () => setIsPlayingA(false);
-    const onPlay = () => setIsPlayingA(true);
-    const onPause = () => setIsPlayingA(false);
-    const onError = () => {
-      setIsLoadingA(false);
-      setIsPlayingA(false);
-      // Fallback gracefully without breaking UI
-      console.warn('Mixer Deck A stream fallback');
-    };
 
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('error', onError);
+      // Deck B timer
+      if (isPlayingB) {
+        if (trackB?.source === 'local' && localAudioRefB.current) {
+          setCurrentTimeB(localAudioRefB.current.currentTime);
+          if (localAudioRefB.current.duration) {
+            setDurationB(localAudioRefB.current.duration);
+          }
+        } else if (ytPlayerB.current && typeof ytPlayerB.current.getCurrentTime === 'function') {
+          try {
+            const t = ytPlayerB.current.getCurrentTime();
+            if (typeof t === 'number') setCurrentTimeB(t);
+            const d = ytPlayerB.current.getDuration();
+            if (typeof d === 'number' && d > 0) setDurationB(d);
+          } catch {}
+        }
+      }
+    }, 400);
 
-    // Initial track load
-    audio.src = getAudioSource(trackA);
+    return () => clearInterval(timer);
+  }, [isPlayingA, isPlayingB, trackA, trackB]);
 
-    return () => {
-      audio.pause();
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('error', onError);
-      audio.src = '';
-      audioRefA.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Update track A source when trackA changes
-  const changeTrackA = (newTrack: TrackInfo) => {
+  // -------------------------------------------------------------
+  // DECK A PLAYBACK ACTIONS
+  // -------------------------------------------------------------
+  const loadTrackA = (newTrack: TrackInfo) => {
     setTrackA(newTrack);
     setCurrentTimeA(0);
     setErrorA(null);
-    setIsLoadingA(true);
-    if (audioRefA.current) {
-      audioRefA.current.src = getAudioSource(newTrack);
-      if (isPlayingA) {
-        audioRefA.current.play().catch(() => setIsPlayingA(false));
+    setIsLoadingA(false);
+    setIsPlayingA(false);
+
+    if (newTrack.duration && newTrack.duration > 0) {
+      setDurationA(newTrack.duration);
+    }
+
+    if (newTrack.source === 'local' && newTrack.sourceUrl) {
+      if (!localAudioRefA.current) {
+        localAudioRefA.current = new Audio();
+      }
+      localAudioRefA.current.src = newTrack.sourceUrl;
+      localAudioRefA.current.currentTime = 0;
+    } else if (ytPlayerA.current && typeof ytPlayerA.current.cueVideoById === 'function') {
+      try {
+        ytPlayerA.current.cueVideoById({ videoId: newTrack.id, startSeconds: 0 });
+      } catch (err) {
+        console.warn('Error loading video on Deck A:', err);
       }
     }
   };
 
   const togglePlayA = async () => {
-    if (!audioRefA.current) return;
+    if (!trackA) {
+      setSelectorDeck('Deck A');
+      return;
+    }
+
     try {
       if (isPlayingA) {
-        audioRefA.current.pause();
+        if (trackA.source === 'local' && localAudioRefA.current) {
+          localAudioRefA.current.pause();
+        } else if (ytPlayerA.current && typeof ytPlayerA.current.pauseVideo === 'function') {
+          ytPlayerA.current.pauseVideo();
+        }
+        setIsPlayingA(false);
       } else {
         setIsLoadingA(true);
-        await audioRefA.current.play();
+        if (trackA.source === 'local' && localAudioRefA.current) {
+          await localAudioRefA.current.play();
+          setIsPlayingA(true);
+        } else if (ytPlayerA.current && typeof ytPlayerA.current.playVideo === 'function') {
+          ytPlayerA.current.playVideo();
+          setIsPlayingA(true);
+        }
         setIsLoadingA(false);
       }
     } catch {
       setIsLoadingA(false);
       setIsPlayingA(false);
-      setErrorA('Playback prevented by browser or stream busy');
+      setErrorA('Click play to begin mixing');
     }
   };
 
   const seekA = (secs: number) => {
-    if (audioRefA.current) {
-      const clamped = Math.max(0, Math.min(durationA, secs));
-      audioRefA.current.currentTime = clamped;
-      setCurrentTimeA(clamped);
+    const clamped = Math.max(0, Math.min(durationA || 300, secs));
+    setCurrentTimeA(clamped);
+
+    if (trackA?.source === 'local' && localAudioRefA.current) {
+      localAudioRefA.current.currentTime = clamped;
+    } else if (ytPlayerA.current && typeof ytPlayerA.current.seekTo === 'function') {
+      try {
+        ytPlayerA.current.seekTo(clamped, true);
+      } catch {}
     }
   };
 
@@ -195,90 +304,76 @@ export default function DualVinylMixer({
   const forwardA = () => seekA(currentTimeA + 5);
 
   // -------------------------------------------------------------
-  // DECK B AUDIO LIFECYCLE
+  // DECK B PLAYBACK ACTIONS
   // -------------------------------------------------------------
-  useEffect(() => {
-    const audio = new Audio();
-    audioRefB.current = audio;
-    audio.crossOrigin = 'anonymous';
-    audio.preload = 'metadata';
-
-    const onTimeUpdate = () => setCurrentTimeB(audio.currentTime);
-    const onLoadedMetadata = () => {
-      setIsLoadingB(false);
-      setErrorB(null);
-      if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
-        setDurationB(audio.duration);
-      }
-    };
-    const onEnded = () => setIsPlayingB(false);
-    const onPlay = () => setIsPlayingB(true);
-    const onPause = () => setIsPlayingB(false);
-    const onError = () => {
-      setIsLoadingB(false);
-      setIsPlayingB(false);
-      console.warn('Mixer Deck B stream fallback');
-    };
-
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('error', onError);
-
-    // Initial track load
-    audio.src = getAudioSource(trackB);
-
-    return () => {
-      audio.pause();
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('error', onError);
-      audio.src = '';
-      audioRefB.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const changeTrackB = (newTrack: TrackInfo) => {
+  const loadTrackB = (newTrack: TrackInfo) => {
     setTrackB(newTrack);
     setCurrentTimeB(0);
     setErrorB(null);
-    setIsLoadingB(true);
-    if (audioRefB.current) {
-      audioRefB.current.src = getAudioSource(newTrack);
-      if (isPlayingB) {
-        audioRefB.current.play().catch(() => setIsPlayingB(false));
+    setIsLoadingB(false);
+    setIsPlayingB(false);
+
+    if (newTrack.duration && newTrack.duration > 0) {
+      setDurationB(newTrack.duration);
+    }
+
+    if (newTrack.source === 'local' && newTrack.sourceUrl) {
+      if (!localAudioRefB.current) {
+        localAudioRefB.current = new Audio();
+      }
+      localAudioRefB.current.src = newTrack.sourceUrl;
+      localAudioRefB.current.currentTime = 0;
+    } else if (ytPlayerB.current && typeof ytPlayerB.current.cueVideoById === 'function') {
+      try {
+        ytPlayerB.current.cueVideoById({ videoId: newTrack.id, startSeconds: 0 });
+      } catch (err) {
+        console.warn('Error loading video on Deck B:', err);
       }
     }
   };
 
   const togglePlayB = async () => {
-    if (!audioRefB.current) return;
+    if (!trackB) {
+      setSelectorDeck('Deck B');
+      return;
+    }
+
     try {
       if (isPlayingB) {
-        audioRefB.current.pause();
+        if (trackB.source === 'local' && localAudioRefB.current) {
+          localAudioRefB.current.pause();
+        } else if (ytPlayerB.current && typeof ytPlayerB.current.pauseVideo === 'function') {
+          ytPlayerB.current.pauseVideo();
+        }
+        setIsPlayingB(false);
       } else {
         setIsLoadingB(true);
-        await audioRefB.current.play();
+        if (trackB.source === 'local' && localAudioRefB.current) {
+          await localAudioRefB.current.play();
+          setIsPlayingB(true);
+        } else if (ytPlayerB.current && typeof ytPlayerB.current.playVideo === 'function') {
+          ytPlayerB.current.playVideo();
+          setIsPlayingB(true);
+        }
         setIsLoadingB(false);
       }
     } catch {
       setIsLoadingB(false);
       setIsPlayingB(false);
-      setErrorB('Playback prevented by browser or stream busy');
+      setErrorB('Click play to begin mixing');
     }
   };
 
   const seekB = (secs: number) => {
-    if (audioRefB.current) {
-      const clamped = Math.max(0, Math.min(durationB, secs));
-      audioRefB.current.currentTime = clamped;
-      setCurrentTimeB(clamped);
+    const clamped = Math.max(0, Math.min(durationB || 300, secs));
+    setCurrentTimeB(clamped);
+
+    if (trackB?.source === 'local' && localAudioRefB.current) {
+      localAudioRefB.current.currentTime = clamped;
+    } else if (ytPlayerB.current && typeof ytPlayerB.current.seekTo === 'function') {
+      try {
+        ytPlayerB.current.seekTo(clamped, true);
+      } catch {}
     }
   };
 
@@ -289,418 +384,415 @@ export default function DualVinylMixer({
 
   return (
     <div
-      className={`bg-gradient-to-b from-[#161922] via-[#12141c] to-[#0d0e14] border border-[#262c3d] rounded-2xl p-4 sm:p-5 shadow-2xl relative select-none flex flex-col justify-between ${className}`}
+      className={`rounded-2xl bg-gradient-to-b from-[#131018] via-[#0d0c11] to-[#07070a] border border-orange-500/30 p-4 sm:p-5 shadow-2xl shadow-orange-950/30 flex flex-col gap-4 relative overflow-hidden ${className}`}
     >
-      {/* Top Console Bar */}
-      <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-[#232938]">
+      {/* Hidden YouTube Iframe Targets */}
+      <div className="absolute -left-[9999px] -top-[9999px] pointer-events-none opacity-0">
+        <div id="mixer-yt-deck-a" />
+        <div id="mixer-yt-deck-b" />
+      </div>
+
+      {/* Spooky Ambient Background Glows */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header with Halloween Graffiti Tag */}
+      <div className="flex items-center justify-between border-b border-[#24202d] pb-3 z-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1d90f5] to-[#7928ca] flex items-center justify-center text-sm shadow-md shadow-[#1d90f5]/20">
-            🎛️
+          <div className="w-8 h-8 rounded-lg bg-[#ff7518] flex items-center justify-center text-black font-black text-sm shadow-md shadow-orange-500/30">
+            🎃
           </div>
           <div>
-            <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-2">
-              Dual Vinyl Music Mixer
-              {(isPlayingA || isPlayingB) && (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-ping" />
-                  {isPlayingA && isPlayingB ? 'DUAL MIXING' : isPlayingA ? 'DECK A ACTIVE' : 'DECK B ACTIVE'}
-                </span>
-              )}
-            </h2>
-            <p className="text-[11px] text-[#8e98a8]">Two-deck interactive DJ mixer • Real independent audio playback</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-1.5">
+                DUAL VINYL MUSIC MIXER <span className="text-orange-500 font-mono text-xs">v2.0</span>
+              </h2>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-orange-950/60 border border-orange-500/40 text-orange-400 text-[10px] font-black uppercase tracking-wider">
+                🦇 TRICK OR TREAT
+              </span>
+            </div>
+            <p className="text-[11px] text-[#938f9d]">
+              Independent two-deck audio engine • Mix any song concurrently
+            </p>
           </div>
         </div>
 
-        {/* Global Stop / Sync status */}
-        {(isPlayingA || isPlayingB) && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              if (audioRefA.current) audioRefA.current.pause();
-              if (audioRefB.current) audioRefB.current.pause();
-              setIsPlayingA(false);
-              setIsPlayingB(false);
-            }}
-            className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#222838] hover:bg-rose-900/40 text-[#a0aab8] hover:text-rose-200 border border-[#30384c] transition-colors cursor-pointer"
+            onClick={resetCrossfader}
+            className="text-[10px] px-2.5 py-1 rounded-full bg-[#1b1822] hover:bg-[#282433] text-[#cfcbd8] hover:text-[#ff7518] border border-[#2e2a38] transition-colors cursor-pointer font-bold"
+            title="Reset crossfader to center (50/50)"
           >
-            ⏹️ Stop Decks
+            🕸️ Center Mix
           </button>
-        )}
+        </div>
       </div>
 
-      {/* Turntables Container (2 Decks Side-by-Side) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+      {/* ------------------------------------------------------------- */}
+      {/* TWO DECKS SIDE BY SIDE                                        */}
+      {/* ------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 z-10">
         {/* ========================================================= */}
-        {/* DECK A — LEFT TURNTABLE */}
+        {/* DECK A — LEFT TURNTABLE (PUMPKIN ORANGE)                  */}
         {/* ========================================================= */}
-        <div
-          className={`flex flex-col items-center bg-[#0e1017] p-3.5 sm:p-4 rounded-xl border transition-all duration-300 ${
-            isPlayingA
-              ? 'border-[#1d90f5]/60 shadow-lg shadow-[#1d90f5]/15 ring-1 ring-[#1d90f5]/40'
-              : 'border-[#1f2433] hover:border-[#2d354a]'
-          }`}
-        >
-          {/* Deck Header Badge */}
-          <div className="w-full flex items-center justify-between mb-2">
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-black tracking-wider uppercase bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/40">
-              Deck A
+        <div className="flex flex-col items-center bg-[#0d0c11] border border-orange-500/25 hover:border-orange-500/50 rounded-2xl p-4 transition-all shadow-lg relative group">
+          {/* Deck Badge & Song Selection Button */}
+          <div className="w-full flex items-center justify-between mb-3">
+            <span className="px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
+              <span>🎃</span> DECK A
             </span>
+
             <button
               type="button"
               onClick={() => setSelectorDeck('Deck A')}
-              className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#1b202e] hover:bg-[#1d90f5] text-[#b3b3b3] hover:text-white transition-colors cursor-pointer border border-[#283044]"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-950/40 hover:bg-[#ff7518] text-orange-400 hover:text-black border border-orange-500/40 text-[11px] font-black transition-all cursor-pointer shadow-sm"
             >
-              🔄 Load Song
+              <span>📂</span> {trackA ? 'Change Track' : 'Load Song'}
             </button>
           </div>
 
-          {/* Vinyl Record Turntable */}
-          <div className="relative my-2 flex items-center justify-center">
-            {/* Tone Arm / Stylus */}
+          {/* Vinyl Record */}
+          <div className="relative my-2">
             <div
-              className={`absolute -top-1 -right-2 z-20 w-12 h-20 pointer-events-none transition-transform duration-500 origin-top-right ${
-                isPlayingA ? 'rotate-12' : '-rotate-6 opacity-60'
+              className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full relative flex items-center justify-center vinyl-grooves transition-shadow duration-300 ${
+                isPlayingA
+                  ? 'vinyl-rotating shadow-2xl shadow-orange-500/40 ring-2 ring-orange-500/50'
+                  : 'vinyl-paused ring-1 ring-[#262230]'
               }`}
             >
-              <div className="w-1.5 h-16 bg-gradient-to-b from-[#888888] to-[#444444] rounded-full shadow-md ml-auto mr-1" />
-              <div className="w-3.5 h-3.5 rounded-sm bg-[#1d90f5] ml-auto -mt-1 shadow" />
-            </div>
-
-            {/* Circular Vinyl Disc */}
-            <div
-              className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full vinyl-grooves relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
-                isPlayingA ? 'vinyl-rotating ring-2 ring-[#1d90f5] shadow-xl shadow-[#1d90f5]/25' : 'vinyl-paused'
-              }`}
-            >
-              {/* Vinyl Sheen Overlay */}
-              <div className="absolute inset-0 vinyl-sheen-overlay rounded-full pointer-events-none" />
+              {/* Surface Sheen Reflection */}
+              <div className="absolute inset-0 rounded-full vinyl-sheen-overlay pointer-events-none" />
 
               {/* Center Vinyl Label */}
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#1d90f5] shadow-inner bg-black flex items-center justify-center">
-                <Image
-                  src={trackA.artworkUrl || `https://img.youtube.com/vi/${trackA.id}/hqdefault.jpg`}
-                  alt={trackA.title}
-                  fill
-                  className="object-cover opacity-85"
-                  unoptimized
-                />
-                <div className="absolute inset-0 bg-[#1d90f5]/20 mix-blend-overlay" />
-
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full relative overflow-hidden bg-gradient-to-br from-[#2a1708] to-[#120a04] border-2 border-orange-500/80 flex items-center justify-center shadow-inner">
+                {trackA?.artworkUrl ? (
+                  <Image
+                    src={trackA.artworkUrl}
+                    alt={trackA.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-1">
+                    <span className="text-xl">🎃</span>
+                    <span className="text-[8px] font-black text-orange-400 tracking-tighter uppercase leading-none mt-0.5">
+                      DECK A
+                    </span>
+                  </div>
+                )}
                 {/* Center Spindle Hole */}
-                <div className="relative z-10 w-3.5 h-3.5 rounded-full bg-[#111111] border border-white/60 shadow-sm" />
+                <div className="absolute w-3.5 h-3.5 rounded-full bg-black border border-orange-500/80 z-10" />
               </div>
             </div>
-          </div>
 
-          {/* Deck Track Info */}
-          <div className="w-full text-center mt-1 px-1">
-            <p className="text-xs font-bold text-white truncate" title={trackA.title}>
-              {trackA.title}
-            </p>
-            <p className="text-[10px] text-[#8e98a8] truncate">{trackA.artist}</p>
-          </div>
-
-          {/* Scrubbing Seek Slider */}
-          <div className="w-full mt-2.5 space-y-1">
-            <input
-              type="range"
-              min="0"
-              max={durationA || 100}
-              step="0.5"
-              value={currentTimeA}
-              onChange={(e) => seekA(parseFloat(e.target.value))}
-              className="w-full spotify-slider"
-              title="Seek Position"
+            {/* Turntable Stylus / Tone Arm Indicator */}
+            <div
+              className={`absolute top-0 right-2 w-1.5 h-16 bg-gradient-to-b from-[#888888] to-[#ff7518] rounded-full origin-top transition-transform duration-500 shadow-md ${
+                isPlayingA ? 'rotate-16' : '-rotate-12'
+              }`}
             />
-            <div className="flex items-center justify-between text-[10px] font-mono text-[#8e98a8]">
+          </div>
+
+          {/* Track Metadata Info */}
+          <div className="w-full text-center mt-2 px-1">
+            <p className="text-xs font-black text-white truncate group-hover:text-orange-400 transition-colors">
+              {trackA ? trackA.title : 'Ready to Mix • Deck A'}
+            </p>
+            <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
+              {trackA ? trackA.artist : 'Click "Load Song" to choose track'}
+            </p>
+          </div>
+
+          {/* Progress / Seek Slider */}
+          <div className="w-full mt-3 space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-[#716e7a] font-mono">
               <span>{formatTime(currentTimeA)}</span>
               <span>{formatTime(durationA)}</span>
             </div>
+            <input
+              type="range"
+              min={0}
+              max={durationA || 100}
+              step={1}
+              value={currentTimeA}
+              onChange={(e) => seekA(Number(e.target.value))}
+              disabled={!trackA}
+              className="w-full spotify-slider"
+              title="Seek position"
+            />
           </div>
 
           {/* Playback Controls (-5s, Play/Pause, +5s) */}
-          <div className="flex items-center justify-center gap-3 mt-2.5">
+          <div className="flex items-center justify-center gap-3 mt-3 w-full">
             <button
               type="button"
               onClick={rewindA}
-              className="w-8 h-8 rounded-full bg-[#1b202e] hover:bg-[#252c40] text-[#a0aab8] hover:text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer border border-[#283044]"
+              disabled={!trackA}
+              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
               title="Rewind 5 seconds"
             >
-              ⏪
+              -5s
             </button>
 
             <button
               type="button"
               onClick={togglePlayA}
-              disabled={isLoadingA}
-              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg ${
-                isPlayingA
-                  ? 'bg-[#1d90f5] text-white scale-105 shadow-[#1d90f5]/40'
-                  : 'bg-white hover:bg-[#1d90f5] text-black hover:text-white'
-              }`}
+              className="w-11 h-11 rounded-full bg-[#ff7518] hover:bg-[#ff8c00] text-black font-black flex items-center justify-center text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-orange-500/30"
               title={isPlayingA ? 'Pause Deck A' : 'Play Deck A'}
             >
               {isLoadingA ? (
-                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs animate-spin">⏳</span>
               ) : isPlayingA ? (
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                '❚❚'
               ) : (
-                <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                '▶'
               )}
             </button>
 
             <button
               type="button"
               onClick={forwardA}
-              className="w-8 h-8 rounded-full bg-[#1b202e] hover:bg-[#252c40] text-[#a0aab8] hover:text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer border border-[#283044]"
+              disabled={!trackA}
+              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
               title="Forward 5 seconds"
             >
-              ⏩
+              +5s
             </button>
           </div>
 
           {/* Deck A Volume Slider */}
-          <div className="w-full flex items-center gap-2 mt-3 pt-2 border-t border-[#1b202e]">
-            <span className="text-[10px] text-[#8e98a8] font-bold">Vol</span>
+          <div className="w-full mt-3 flex items-center gap-2 px-1">
+            <span className="text-[10px] text-[#8e8b98] font-bold">Vol</span>
             <input
               type="range"
-              min="0"
-              max="1"
-              step="0.01"
+              min={0}
+              max={1}
+              step={0.01}
               value={volumeA}
-              onChange={(e) => setVolumeA(parseFloat(e.target.value))}
+              onChange={(e) => setVolumeA(Number(e.target.value))}
               className="flex-1 spotify-slider"
               title={`Deck A Volume: ${Math.round(volumeA * 100)}%`}
             />
-            <span className="text-[10px] text-[#8e98a8] font-mono w-7 text-right">
+            <span className="text-[10px] text-[#8e8b98] font-mono w-7 text-right">
               {Math.round(volumeA * 100)}%
             </span>
           </div>
 
-          {errorA && <p className="text-[10px] text-rose-400 mt-1">{errorA}</p>}
+          {errorA && (
+            <p className="text-[10px] text-orange-400 mt-1 font-semibold">{errorA}</p>
+          )}
         </div>
 
         {/* ========================================================= */}
-        {/* DECK B — RIGHT TURNTABLE */}
+        {/* DECK B — RIGHT TURNTABLE (HAUNTED PURPLE)                 */}
         {/* ========================================================= */}
-        <div
-          className={`flex flex-col items-center bg-[#0e1017] p-3.5 sm:p-4 rounded-xl border transition-all duration-300 ${
-            isPlayingB
-              ? 'border-[#a855f7]/60 shadow-lg shadow-[#a855f7]/15 ring-1 ring-[#a855f7]/40'
-              : 'border-[#1f2433] hover:border-[#2d354a]'
-          }`}
-        >
-          {/* Deck Header Badge */}
-          <div className="w-full flex items-center justify-between mb-2">
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-black tracking-wider uppercase bg-[#a855f7]/20 text-[#c084fc] border border-[#a855f7]/40">
-              Deck B
+        <div className="flex flex-col items-center bg-[#0d0c11] border border-purple-500/25 hover:border-purple-500/50 rounded-2xl p-4 transition-all shadow-lg relative group">
+          {/* Deck Badge & Song Selection Button */}
+          <div className="w-full flex items-center justify-between mb-3">
+            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
+              <span>💀</span> DECK B
             </span>
+
             <button
               type="button"
               onClick={() => setSelectorDeck('Deck B')}
-              className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#1b202e] hover:bg-[#a855f7] text-[#b3b3b3] hover:text-white transition-colors cursor-pointer border border-[#283044]"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/40 hover:bg-[#a855f7] text-purple-400 hover:text-black border border-purple-500/40 text-[11px] font-black transition-all cursor-pointer shadow-sm"
             >
-              🔄 Load Song
+              <span>📂</span> {trackB ? 'Change Track' : 'Load Song'}
             </button>
           </div>
 
-          {/* Vinyl Record Turntable */}
-          <div className="relative my-2 flex items-center justify-center">
-            {/* Tone Arm / Stylus */}
+          {/* Vinyl Record */}
+          <div className="relative my-2">
             <div
-              className={`absolute -top-1 -right-2 z-20 w-12 h-20 pointer-events-none transition-transform duration-500 origin-top-right ${
-                isPlayingB ? 'rotate-12' : '-rotate-6 opacity-60'
+              className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full relative flex items-center justify-center vinyl-grooves transition-shadow duration-300 ${
+                isPlayingB
+                  ? 'vinyl-rotating shadow-2xl shadow-purple-500/40 ring-2 ring-purple-500/50'
+                  : 'vinyl-paused ring-1 ring-[#262230]'
               }`}
             >
-              <div className="w-1.5 h-16 bg-gradient-to-b from-[#888888] to-[#444444] rounded-full shadow-md ml-auto mr-1" />
-              <div className="w-3.5 h-3.5 rounded-sm bg-[#a855f7] ml-auto -mt-1 shadow" />
-            </div>
-
-            {/* Circular Vinyl Disc */}
-            <div
-              className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full vinyl-grooves relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
-                isPlayingB ? 'vinyl-rotating ring-2 ring-[#a855f7] shadow-xl shadow-[#a855f7]/25' : 'vinyl-paused'
-              }`}
-            >
-              {/* Vinyl Sheen Overlay */}
-              <div className="absolute inset-0 vinyl-sheen-overlay rounded-full pointer-events-none" />
+              {/* Surface Sheen Reflection */}
+              <div className="absolute inset-0 rounded-full vinyl-sheen-overlay pointer-events-none" />
 
               {/* Center Vinyl Label */}
-              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-[#a855f7] shadow-inner bg-black flex items-center justify-center">
-                <Image
-                  src={trackB.artworkUrl || `https://img.youtube.com/vi/${trackB.id}/hqdefault.jpg`}
-                  alt={trackB.title}
-                  fill
-                  className="object-cover opacity-85"
-                  unoptimized
-                />
-                <div className="absolute inset-0 bg-[#a855f7]/20 mix-blend-overlay" />
-
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full relative overflow-hidden bg-gradient-to-br from-[#1b0826] to-[#0a0310] border-2 border-purple-500/80 flex items-center justify-center shadow-inner">
+                {trackB?.artworkUrl ? (
+                  <Image
+                    src={trackB.artworkUrl}
+                    alt={trackB.title}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-1">
+                    <span className="text-xl">💀</span>
+                    <span className="text-[8px] font-black text-purple-400 tracking-tighter uppercase leading-none mt-0.5">
+                      DECK B
+                    </span>
+                  </div>
+                )}
                 {/* Center Spindle Hole */}
-                <div className="relative z-10 w-3.5 h-3.5 rounded-full bg-[#111111] border border-white/60 shadow-sm" />
+                <div className="absolute w-3.5 h-3.5 rounded-full bg-black border border-purple-500/80 z-10" />
               </div>
             </div>
-          </div>
 
-          {/* Deck Track Info */}
-          <div className="w-full text-center mt-1 px-1">
-            <p className="text-xs font-bold text-white truncate" title={trackB.title}>
-              {trackB.title}
-            </p>
-            <p className="text-[10px] text-[#8e98a8] truncate">{trackB.artist}</p>
-          </div>
-
-          {/* Scrubbing Seek Slider */}
-          <div className="w-full mt-2.5 space-y-1">
-            <input
-              type="range"
-              min="0"
-              max={durationB || 100}
-              step="0.5"
-              value={currentTimeB}
-              onChange={(e) => seekB(parseFloat(e.target.value))}
-              className="w-full spotify-slider"
-              title="Seek Position"
+            {/* Turntable Stylus / Tone Arm Indicator */}
+            <div
+              className={`absolute top-0 right-2 w-1.5 h-16 bg-gradient-to-b from-[#888888] to-[#a855f7] rounded-full origin-top transition-transform duration-500 shadow-md ${
+                isPlayingB ? 'rotate-16' : '-rotate-12'
+              }`}
             />
-            <div className="flex items-center justify-between text-[10px] font-mono text-[#8e98a8]">
+          </div>
+
+          {/* Track Metadata Info */}
+          <div className="w-full text-center mt-2 px-1">
+            <p className="text-xs font-black text-white truncate group-hover:text-purple-400 transition-colors">
+              {trackB ? trackB.title : 'Ready to Mix • Deck B'}
+            </p>
+            <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
+              {trackB ? trackB.artist : 'Click "Load Song" to choose track'}
+            </p>
+          </div>
+
+          {/* Progress / Seek Slider */}
+          <div className="w-full mt-3 space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-[#716e7a] font-mono">
               <span>{formatTime(currentTimeB)}</span>
               <span>{formatTime(durationB)}</span>
             </div>
+            <input
+              type="range"
+              min={0}
+              max={durationB || 100}
+              step={1}
+              value={currentTimeB}
+              onChange={(e) => seekB(Number(e.target.value))}
+              disabled={!trackB}
+              className="w-full spotify-slider"
+              title="Seek position"
+            />
           </div>
 
           {/* Playback Controls (-5s, Play/Pause, +5s) */}
-          <div className="flex items-center justify-center gap-3 mt-2.5">
+          <div className="flex items-center justify-center gap-3 mt-3 w-full">
             <button
               type="button"
               onClick={rewindB}
-              className="w-8 h-8 rounded-full bg-[#1b202e] hover:bg-[#252c40] text-[#a0aab8] hover:text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer border border-[#283044]"
+              disabled={!trackB}
+              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
               title="Rewind 5 seconds"
             >
-              ⏪
+              -5s
             </button>
 
             <button
               type="button"
               onClick={togglePlayB}
-              disabled={isLoadingB}
-              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg ${
-                isPlayingB
-                  ? 'bg-[#a855f7] text-white scale-105 shadow-[#a855f7]/40'
-                  : 'bg-white hover:bg-[#a855f7] text-black hover:text-white'
-              }`}
+              className="w-11 h-11 rounded-full bg-[#a855f7] hover:bg-[#b06cf7] text-black font-black flex items-center justify-center text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-purple-500/30"
               title={isPlayingB ? 'Pause Deck B' : 'Play Deck B'}
             >
               {isLoadingB ? (
-                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs animate-spin">⏳</span>
               ) : isPlayingB ? (
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                '❚❚'
               ) : (
-                <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                '▶'
               )}
             </button>
 
             <button
               type="button"
               onClick={forwardB}
-              className="w-8 h-8 rounded-full bg-[#1b202e] hover:bg-[#252c40] text-[#a0aab8] hover:text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer border border-[#283044]"
+              disabled={!trackB}
+              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
               title="Forward 5 seconds"
             >
-              ⏩
+              +5s
             </button>
           </div>
 
           {/* Deck B Volume Slider */}
-          <div className="w-full flex items-center gap-2 mt-3 pt-2 border-t border-[#1b202e]">
-            <span className="text-[10px] text-[#8e98a8] font-bold">Vol</span>
+          <div className="w-full mt-3 flex items-center gap-2 px-1">
+            <span className="text-[10px] text-[#8e8b98] font-bold">Vol</span>
             <input
               type="range"
-              min="0"
-              max="1"
-              step="0.01"
+              min={0}
+              max={1}
+              step={0.01}
               value={volumeB}
-              onChange={(e) => setVolumeB(parseFloat(e.target.value))}
+              onChange={(e) => setVolumeB(Number(e.target.value))}
               className="flex-1 spotify-slider"
               title={`Deck B Volume: ${Math.round(volumeB * 100)}%`}
             />
-            <span className="text-[10px] text-[#8e98a8] font-mono w-7 text-right">
+            <span className="text-[10px] text-[#8e8b98] font-mono w-7 text-right">
               {Math.round(volumeB * 100)}%
             </span>
           </div>
 
-          {errorB && <p className="text-[10px] text-rose-400 mt-1">{errorB}</p>}
+          {errorB && (
+            <p className="text-[10px] text-purple-400 mt-1 font-semibold">{errorB}</p>
+          )}
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* MIXING CONSOLE / DJ CROSSFADER */}
-      {/* ========================================================= */}
-      <div className="mt-4 pt-3.5 border-t border-[#232938] bg-[#0b0c12] p-3.5 rounded-xl border border-[#1b202e]">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black uppercase text-[#1d90f5]">◄ Deck A</span>
-            <span className="text-[10px] text-[#6e7787]">•</span>
-            <span className="text-[11px] font-bold text-[#a0aab8]">DJ Crossfader</span>
-            <span className="text-[10px] text-[#6e7787]">•</span>
-            <span className="text-[11px] font-black uppercase text-[#c084fc]">Deck B ►</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={resetCrossfader}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
-              crossfader === 0
-                ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/30'
-                : 'bg-[#1f2536] hover:bg-[#2b334a] text-[#8e98a8] hover:text-white'
-            }`}
-            title="Reset Crossfader to Center"
-          >
-            RESET CENTER
-          </button>
+      {/* ------------------------------------------------------------- */}
+      {/* MASTER DJ CROSSFADER (DECK A <-> EQUAL <-> DECK B)           */}
+      {/* ------------------------------------------------------------- */}
+      <div className="bg-[#0a090e] border border-[#24202c] rounded-xl p-3.5 flex flex-col gap-2 z-10 shadow-inner">
+        <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider">
+          <span className="text-orange-400 flex items-center gap-1">
+            <span>🎃</span> DECK A
+          </span>
+          <span className="text-[#a1a1aa] text-[10px] font-mono">
+            {crossfader === 0
+              ? '⚖️ EQUAL BLEND'
+              : crossfader < 0
+              ? `🎃 DECK A +${Math.round(-crossfader * 100)}%`
+              : `💀 DECK B +${Math.round(crossfader * 100)}%`}
+          </span>
+          <span className="text-purple-400 flex items-center gap-1">
+            DECK B <span>💀</span>
+          </span>
         </div>
 
-        {/* Crossfader Track with Center Notch */}
-        <div className="relative flex items-center py-1">
+        {/* Crossfader Range Control */}
+        <div className="relative py-1">
           <input
             type="range"
-            min="-1"
-            max="1"
-            step="0.02"
+            min={-1}
+            max={1}
+            step={0.02}
             value={crossfader}
-            onChange={(e) => setCrossfader(parseFloat(e.target.value))}
+            onChange={(e) => setCrossfader(Number(e.target.value))}
             className="w-full crossfader-slider"
-            title={`Crossfader: ${crossfader < 0 ? `Deck A +${Math.round(-crossfader * 100)}%` : crossfader > 0 ? `Deck B +${Math.round(crossfader * 100)}%` : 'Center 50/50'}`}
+            title="DJ Crossfader"
           />
-          {/* Visual Center Indicator Dot */}
-          <div className="absolute left-1/2 -translate-x-1/2 w-1.5 h-3 bg-[#444444] rounded-full pointer-events-none" />
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-[#6e7787] mt-1 font-mono">
-          <span className={crossfader < 0 ? 'text-[#1d90f5] font-bold' : ''}>
-            {crossfader <= 0 ? '100%' : `${Math.round(Math.max(0, 1 - crossfader) * 100)}%`}
-          </span>
-          <span className="text-[9px] uppercase tracking-wider text-[#8e98a8]">
-            {crossfader === 0 ? 'Equal Blend' : crossfader < 0 ? 'Favoring Deck A' : 'Favoring Deck B'}
-          </span>
-          <span className={crossfader > 0 ? 'text-[#c084fc] font-bold' : ''}>
-            {crossfader >= 0 ? '100%' : `${Math.round(Math.max(0, 1 + crossfader) * 100)}%`}
-          </span>
+        <div className="flex items-center justify-between text-[9px] text-[#716e7a] font-mono">
+          <span>100% DECK A</span>
+          <span className="text-[#a1a1aa]">CENTER BLEND</span>
+          <span>100% DECK B</span>
         </div>
       </div>
 
-      {/* Song Selection Popover */}
+      {/* Song Selector Modal */}
       {selectorDeck && (
         <SongSelectorModal
-          isOpen={true}
-          deckName={selectorDeck}
+          isOpen={!!selectorDeck}
           onClose={() => setSelectorDeck(null)}
-          onSelectSong={(song) => {
+          deckName={selectorDeck}
+          savedPlaylists={savedPlaylists}
+          onSelectSong={(chosenTrack) => {
             if (selectorDeck === 'Deck A') {
-              changeTrackA(song);
+              loadTrackA(chosenTrack);
             } else {
-              changeTrackB(song);
+              loadTrackB(chosenTrack);
             }
           }}
-          savedPlaylists={savedPlaylists}
         />
       )}
     </div>

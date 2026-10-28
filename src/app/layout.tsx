@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chillify 🥰 — Ambient Lo-Fi & Music Player",
-  description: "Spotify-inspired music player blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Spotify.",
+  title: "Chillify 🎃 — Ambient Lo-Fi & Halloween Beats",
+  description: "Spotify-inspired music player blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Halloween vibes.",
   icons: {
     icon: "/favicon.ico",
   },

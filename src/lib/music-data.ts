@@ -1,63 +1,205 @@
-import { CuratedTrack, ENGLISH_TRACKS, MALAYALAM_TRACKS, HINDI_TRACKS } from './curated-tracks';
 import { TrackInfo } from '@/types/playback';
 import { SavedPlaylistItem } from '@/components/spotify/AddSourceModal';
 
-export interface CatalogSong {
+export interface TrendingSong {
   id: string;
   title: string;
   artist: string;
   duration: string;
   thumbnail: string;
-  category: 'english' | 'malayalam' | 'hindi' | 'recommended';
-  album?: string;
+  genre: string;
+  badge?: string;
+  sourceUrl?: string;
 }
 
-// Convert CuratedTrack to CatalogSong
-export const TRENDING_ENGLISH_SONGS: CatalogSong[] = ENGLISH_TRACKS.map((t) => ({
-  ...t,
-  category: 'english',
-}));
-
-export const TRENDING_MALAYALAM_SONGS: CatalogSong[] = MALAYALAM_TRACKS.map((t) => ({
-  ...t,
-  category: 'malayalam',
-}));
-
-export const RECOMMENDED_SONGS: CatalogSong[] = [
-  ...HINDI_TRACKS.map((t) => ({ ...t, category: 'recommended' as const })),
+// -------------------------------------------------------------
+// ALL-GENRE TRENDING SONGS (LATEST VIRAL HITS FROM YT & IG)
+// -------------------------------------------------------------
+export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
   {
-    id: 'kffacxfA7G4',
-    title: 'Baby (Justin Bieber)',
-    artist: 'Justin Bieber, Ludacris',
-    duration: '3:45',
-    thumbnail: 'https://img.youtube.com/vi/kffacxfA7G4/hqdefault.jpg',
-    category: 'recommended',
+    id: 'ekr2nIex040',
+    title: 'APT.',
+    artist: 'ROSÉ & Bruno Mars',
+    duration: '2:53',
+    thumbnail: 'https://img.youtube.com/vi/ekr2nIex040/hqdefault.jpg',
+    genre: 'Viral Pop / Punk',
+    badge: '🔥 #1 Global YT & IG',
   },
   {
-    id: 'fJ9rUzIMcZQ',
-    title: 'Bohemian Rhapsody',
-    artist: 'Queen',
-    duration: '5:59',
-    thumbnail: 'https://img.youtube.com/vi/fJ9rUzIMcZQ/hqdefault.jpg',
-    category: 'recommended',
+    id: 'kPa7bsKwL-c',
+    title: 'Die With A Smile',
+    artist: 'Lady Gaga & Bruno Mars',
+    duration: '4:11',
+    thumbnail: 'https://img.youtube.com/vi/kPa7bsKwL-c/hqdefault.jpg',
+    genre: 'Pop / Soul',
+    badge: '📱 IG Viral',
   },
   {
-    id: 'CevxZvSJLk8',
-    title: 'Roar',
-    artist: 'Katy Perry',
+    id: 'hOHKltAiKXQ',
+    title: 'Big Dawgs',
+    artist: 'Hanumankind, Kalmi',
+    duration: '3:54',
+    thumbnail: 'https://img.youtube.com/vi/hOHKltAiKXQ/hqdefault.jpg',
+    genre: 'Hip-Hop / Rap',
+    badge: '⚡ Global Sensation',
+  },
+  {
+    id: 'eVli-tstM5E',
+    title: 'Espresso',
+    artist: 'Sabrina Carpenter',
+    duration: '2:55',
+    thumbnail: 'https://img.youtube.com/vi/eVli-tstM5E/hqdefault.jpg',
+    genre: 'Nu-Disco / Pop',
+    badge: '✨ Billboard Hot 100',
+  },
+  {
+    id: 'V9PVRfjEBTI',
+    title: 'Birds of a Feather',
+    artist: 'Billie Eilish',
+    duration: '3:17',
+    thumbnail: 'https://img.youtube.com/vi/V9PVRfjEBTI/hqdefault.jpg',
+    genre: 'Alt Pop / Indie',
+    badge: '🎃 Spooky Melancholy',
+  },
+  {
+    id: '5S-XQ_9c3vg',
+    title: 'Timeless',
+    artist: 'The Weeknd, Playboi Carti',
+    duration: '4:16',
+    thumbnail: 'https://img.youtube.com/vi/5S-XQ_9c3vg/hqdefault.jpg',
+    genre: 'Trap / R&B',
+    badge: '🔥 YT Trending',
+  },
+  {
+    id: 'T6eK-2OQtew',
+    title: 'Not Like Us',
+    artist: 'Kendrick Lamar',
+    duration: '4:34',
+    thumbnail: 'https://img.youtube.com/vi/T6eK-2OQtew/hqdefault.jpg',
+    genre: 'West Coast Hip-Hop',
+    badge: '💀 Record Breaker',
+  },
+  {
+    id: 'GCdwKhTtNNw',
+    title: 'Sweater Weather',
+    artist: 'The Neighbourhood',
+    duration: '4:00',
+    thumbnail: 'https://img.youtube.com/vi/GCdwKhTtNNw/hqdefault.jpg',
+    genre: 'Indie Rock / Alt',
+    badge: '🍂 Autumn Lo-Fi Hit',
+  },
+  {
+    id: '34Na4j8AVgA',
+    title: 'Starboy (feat. Daft Punk)',
+    artist: 'The Weeknd',
+    duration: '3:50',
+    thumbnail: 'https://img.youtube.com/vi/34Na4j8AVgA/hqdefault.jpg',
+    genre: 'Synthpop / R&B',
+    badge: '⚡ 2B+ Streams',
+  },
+  {
+    id: 'tOM-nWPcR4U',
+    title: 'Illuminati (Aavesham)',
+    artist: 'Sushin Shyam, Dabzee',
+    duration: '3:12',
+    thumbnail: 'https://img.youtube.com/vi/tOM-nWPcR4U/hqdefault.jpg',
+    genre: 'Malayalam Hip-Hop / EDM',
+    badge: '📱 Reels Anthem',
+  },
+  {
+    id: 'lkPI4Xl6i8M',
+    title: 'Tauba Tauba (Bad Newz)',
+    artist: 'Karan Aujla',
+    duration: '3:27',
+    thumbnail: 'https://img.youtube.com/vi/lkPI4Xl6i8M/hqdefault.jpg',
+    genre: 'Punjabi Pop / Dance',
+    badge: '🔥 IG Trend King',
+  },
+  {
+    id: 'B9synWjqBn8',
+    title: 'FE!N',
+    artist: 'Travis Scott ft. Playboi Carti',
+    duration: '3:11',
+    thumbnail: 'https://img.youtube.com/vi/B9synWjqBn8/hqdefault.jpg',
+    genre: 'Rage / Trap',
+    badge: '💀 Mosh Anthem',
+  },
+  {
+    id: '8nL8e2C92jA',
+    title: 'Gata Only',
+    artist: 'FloyyMenor, Cris Mj',
     duration: '3:42',
-    thumbnail: 'https://img.youtube.com/vi/CevxZvSJLk8/hqdefault.jpg',
-    category: 'recommended',
+    thumbnail: 'https://img.youtube.com/vi/8nL8e2C92jA/hqdefault.jpg',
+    genre: 'Reggaeton / Latin',
+    badge: '⚡ Global Top 10',
   },
   {
-    id: 'JGwWNGJdvx8',
-    title: 'Shape of You',
-    artist: 'Ed Sheeran',
-    duration: '3:53',
-    thumbnail: 'https://img.youtube.com/vi/JGwWNGJdvx8/hqdefault.jpg',
-    category: 'recommended',
+    id: 'PEM0Vs8jf1w',
+    title: 'Golden Hour',
+    artist: 'JVKE',
+    duration: '3:29',
+    thumbnail: 'https://img.youtube.com/vi/PEM0Vs8jf1w/hqdefault.jpg',
+    genre: 'Chamber Pop / Lo-Fi',
+    badge: '✨ Aesthetic Viral',
+  },
+  {
+    id: 'GxldQ9GyXfY',
+    title: 'Until I Found You',
+    artist: 'Stephen Sanchez',
+    duration: '2:57',
+    thumbnail: 'https://img.youtube.com/vi/GxldQ9GyXfY/hqdefault.jpg',
+    genre: 'Doo-Wop / Retro Pop',
+    badge: '🍂 Vintage Classic',
+  },
+  {
+    id: 'a3Ue-LN5B9U',
+    title: 'Aasa Kooda',
+    artist: 'Sai Abhyankkar',
+    duration: '3:40',
+    thumbnail: 'https://img.youtube.com/vi/a3Ue-LN5B9U/hqdefault.jpg',
+    genre: 'Tamil Indie Pop',
+    badge: '📱 Reels Viral',
+  },
+  {
+    id: 'VNs_cCtdbPc',
+    title: 'Millionaire (GLORY)',
+    artist: 'Yo Yo Honey Singh',
+    duration: '3:19',
+    thumbnail: 'https://img.youtube.com/vi/VNs_cCtdbPc/hqdefault.jpg',
+    genre: 'Desi Hip-Hop',
+    badge: '🔥 Chart Buster',
+  },
+  {
+    id: 'EPyl1LgNfQ8',
+    title: 'Cherathukal (Kumbalangi Nights)',
+    artist: 'Sushin Shyam, Sithara',
+    duration: '3:41',
+    thumbnail: 'https://img.youtube.com/vi/EPyl1LgNfQ8/hqdefault.jpg',
+    genre: 'Acoustic Soul / Lo-Fi',
+    badge: '🌙 Pure Night Chills',
+  },
+  {
+    id: 'syFZfO_wfMQ',
+    title: 'Night Changes',
+    artist: 'One Direction',
+    duration: '3:46',
+    thumbnail: 'https://img.youtube.com/vi/syFZfO_wfMQ/hqdefault.jpg',
+    genre: 'Pop Ballad / Nostalgia',
+    badge: '✨ Timeless Viral',
+  },
+  {
+    id: '4NRXx6U8ABQ',
+    title: 'Blinding Lights',
+    artist: 'The Weeknd',
+    duration: '3:20',
+    thumbnail: 'https://img.youtube.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
+    genre: 'Synthwave / Retro',
+    badge: '⚡ All-Time Top 1',
   },
 ];
+
+// Compatibility alias for components
+export const TRENDING_SONGS = ALL_GENRE_TRENDING_SONGS;
 
 export function parseDurationToSeconds(durStr: string): number {
   if (!durStr) return 0;
@@ -68,7 +210,7 @@ export function parseDurationToSeconds(durStr: string): number {
   return 0;
 }
 
-export function catalogSongToTrackInfo(song: CatalogSong): TrackInfo {
+export function trendingSongToTrackInfo(song: TrendingSong): TrackInfo {
   return {
     id: song.id,
     title: song.title,
@@ -76,7 +218,7 @@ export function catalogSongToTrackInfo(song: CatalogSong): TrackInfo {
     duration: parseDurationToSeconds(song.duration),
     artworkUrl: song.thumbnail,
     source: 'youtube',
-    sourceUrl: song.id,
+    sourceUrl: `https://www.youtube.com/watch?v=${song.id}`,
   };
 }
 
@@ -87,8 +229,8 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
     subtitle: '10 songs • Liked Songs',
     type: 'custom',
     targetUrl: '',
-    icon: '💙',
-    tracks: ENGLISH_TRACKS.slice(0, 10).map((t, idx) => ({
+    icon: '🎃',
+    tracks: ALL_GENRE_TRENDING_SONGS.slice(0, 10).map((t, idx) => ({
       id: t.id,
       title: t.title,
       artist: t.artist,
@@ -96,17 +238,23 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 3600000,
     })),
-    description: 'Your favorite liked tracks on Chillify',
+    description: 'Your favorite liked tracks on Chillify 🎃',
     createdAt: Date.now() - 86400000,
   },
   {
-    id: 'chaya-ego',
-    title: 'Chaya ⚡ EGO',
-    subtitle: '12 songs • Custom Playlist',
+    id: 'spooky-vibes',
+    title: 'Halloween Chills 🦇',
+    subtitle: 'Viral Beats & Spooky Night Lo-Fi',
     type: 'custom',
     targetUrl: '',
-    icon: '☕',
-    tracks: MALAYALAM_TRACKS.slice(0, 6).map((t, idx) => ({
+    icon: '💀',
+    tracks: [
+      ALL_GENRE_TRENDING_SONGS[0], // APT.
+      ALL_GENRE_TRENDING_SONGS[1], // Die With A Smile
+      ALL_GENRE_TRENDING_SONGS[4], // Birds of a Feather
+      ALL_GENRE_TRENDING_SONGS[7], // Sweater Weather
+      ALL_GENRE_TRENDING_SONGS[8], // Starboy
+    ].map((t, idx) => ({
       id: t.id,
       title: t.title,
       artist: t.artist,
@@ -114,17 +262,23 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 1800000,
     })),
-    description: 'Aesthetic Malayalam lofi cafe vibes',
+    description: 'Curated Halloween nighttime vibes and eerie basslines',
     createdAt: Date.now() - 72000000,
   },
   {
-    id: 'goolar-kunju',
-    title: 'goolar kunju',
-    subtitle: '8 songs • Custom Playlist',
+    id: 'ig-viral-mix',
+    title: 'Reels & TikTok Hits 🔥',
+    subtitle: 'Top Trending Audio of 2026',
     type: 'custom',
     targetUrl: '',
-    icon: '🐥',
-    tracks: ENGLISH_TRACKS.slice(3, 9).map((t, idx) => ({
+    icon: '📱',
+    tracks: [
+      ALL_GENRE_TRENDING_SONGS[2], // Big Dawgs
+      ALL_GENRE_TRENDING_SONGS[3], // Espresso
+      ALL_GENRE_TRENDING_SONGS[9], // Illuminati
+      ALL_GENRE_TRENDING_SONGS[10], // Tauba Tauba
+      ALL_GENRE_TRENDING_SONGS[11], // FE!N
+    ].map((t, idx) => ({
       id: t.id,
       title: t.title,
       artist: t.artist,
@@ -132,31 +286,22 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 2400000,
     })),
-    description: 'Cozy late night headphone chillout',
-    createdAt: Date.now() - 54000000,
+    description: 'All viral hits currently dominating Instagram and YouTube',
+    createdAt: Date.now() - 50000000,
   },
   {
-    id: 't-val',
-    title: 'T ⚡ VAL',
-    subtitle: '10 songs • Custom Playlist',
+    id: 'lofi-midnight',
+    title: 'Haunted Midnight Lo-Fi 🌙',
+    subtitle: 'Chill late-night beats to relax/study to',
     type: 'custom',
     targetUrl: '',
-    icon: '⚡',
+    icon: '🕸️',
     tracks: [
-      ...MALAYALAM_TRACKS.slice(0, 5).map((t) => ({ ...t, addedAt: Date.now() })),
-      ...ENGLISH_TRACKS.slice(0, 5).map((t) => ({ ...t, addedAt: Date.now() })),
-    ],
-    description: 'High energy beats & fast tempo chill',
-    createdAt: Date.now() - 36000000,
-  },
-  {
-    id: 'xhinzu-spdy',
-    title: 'xhinzu 🎧 SPDY',
-    subtitle: '14 songs • Custom Playlist',
-    type: 'custom',
-    targetUrl: '',
-    icon: '🎧',
-    tracks: HINDI_TRACKS.slice(0, 8).map((t, idx) => ({
+      ALL_GENRE_TRENDING_SONGS[13], // Golden Hour
+      ALL_GENRE_TRENDING_SONGS[14], // Until I Found You
+      ALL_GENRE_TRENDING_SONGS[17], // Cherathukal
+      ALL_GENRE_TRENDING_SONGS[18], // Night Changes
+    ].map((t, idx) => ({
       id: t.id,
       title: t.title,
       artist: t.artist,
@@ -164,7 +309,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 3000000,
     })),
-    description: 'Curated by xhinzu on Chillify',
-    createdAt: Date.now() - 18000000,
+    description: 'Warm, acoustic, lo-fi sanctuary for spooky night owls',
+    createdAt: Date.now() - 36000000,
   },
 ];

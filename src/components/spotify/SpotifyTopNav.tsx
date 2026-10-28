@@ -61,8 +61,8 @@ export default function SpotifyTopNav({
           className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group"
           title="Chillify Home"
         >
-          {/* Spotify Wave Icon in Electric Blue */}
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1d90f5] flex items-center justify-center text-black shadow-md transition-transform group-hover:scale-105 shrink-0">
+          {/* Spotify Wave Icon in Halloween Orange */}
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ff7518] flex items-center justify-center text-black shadow-lg shadow-orange-600/30 transition-transform group-hover:scale-105 shrink-0">
             <svg
               className="w-4 h-4 sm:w-5 sm:h-5 fill-current"
               viewBox="0 0 24 24"
@@ -71,11 +71,11 @@ export default function SpotifyTopNav({
               <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.623.623 0 0 1-.858.207c-2.35-1.436-5.308-1.76-8.794-.963a.625.625 0 0 1-.28-1.218c3.815-.873 7.078-.504 9.725 1.116.295.18.388.567.207.858zm1.224-2.723a.782.782 0 0 1-1.077.257c-2.69-1.654-6.79-2.133-9.972-1.167a.782.782 0 0 1-.462-1.493c3.637-1.104 8.163-.574 11.254 1.326.37.228.487.712.257 1.077zm.105-2.836C14.692 8.95 9.38 8.773 6.302 9.708a.938.938 0 1 1-.548-1.794c3.518-1.069 9.387-.864 13.13 1.36a.938.938 0 0 1-1.029 1.59z" />
             </svg>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
               Chillify
             </span>
-            <span className="text-sm sm:text-base">🥰</span>
+            <span className="text-base sm:text-lg animate-bounce" style={{ animationDuration: '3s' }}>🎃</span>
           </div>
         </div>
 
@@ -83,27 +83,40 @@ export default function SpotifyTopNav({
         <div className="hidden sm:flex items-center gap-2 ml-2">
           <button
             type="button"
-            onClick={() => setActiveView('home')}
-            className="w-8 h-8 rounded-full bg-[#121212] hover:bg-[#242424] text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+            onClick={() => {
+              setActiveView('home');
+              setSearchQuery('');
+            }}
+            className="w-8 h-8 rounded-full bg-[#121114] hover:bg-[#221f28] text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#2b2633]"
             title="Go to Home"
           >
             ‹
           </button>
           <button
             type="button"
-            onClick={() => setActiveView(activeView === 'home' ? 'ambience' : 'home')}
-            className="w-8 h-8 rounded-full bg-[#121212] hover:bg-[#242424] text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+            onClick={() => {
+              setActiveView(activeView === 'home' ? 'ambience' : 'home');
+              setSearchQuery('');
+            }}
+            className="w-8 h-8 rounded-full bg-[#121114] hover:bg-[#221f28] text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#2b2633]"
             title="Toggle View"
           >
             ›
           </button>
+        </div>
+
+        {/* Halloween Graffiti Badge */}
+        <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-orange-950/60 via-purple-950/40 to-orange-950/60 border border-orange-500/40 text-orange-400 text-[11px] font-black tracking-wider uppercase shadow-md shadow-orange-950/50">
+          <span>🦇</span>
+          <span className="text-white drop-shadow-[0_0_8px_rgba(255,117,24,0.8)]">Trick or Treat</span>
+          <span>🎃</span>
         </div>
       </div>
 
       {/* Center: Functional YouTube Music Search Bar */}
       <div className="flex-1 max-w-lg mx-2 sm:mx-4">
         <div className="relative flex items-center">
-          <span className="absolute left-3 sm:left-3.5 text-[#b3b3b3] text-sm pointer-events-none">
+          <span className="absolute left-3 sm:left-3.5 text-[#ff7518] text-sm pointer-events-none opacity-80">
             <svg
               className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current"
               viewBox="0 0 24 24"
@@ -122,15 +135,15 @@ export default function SpotifyTopNav({
                 setActiveView('search');
               }
             }}
-            placeholder="Search songs, lo-fi beats..."
-            className="w-full h-9 sm:h-10 rounded-full bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white placeholder-[#b3b3b3] text-xs pl-8 sm:pl-10 pr-8 sm:pr-9 outline-none border border-transparent focus:border-[#1d90f5] transition-all"
+            placeholder="Search haunted beats, viral hits, spooky lo-fi..."
+            className="w-full h-9 sm:h-10 rounded-full bg-[#18171d] hover:bg-[#201d27] focus:bg-[#201d27] text-white placeholder-[#8d8a96] text-xs pl-8 sm:pl-10 pr-8 sm:pr-9 outline-none border border-[#2c2736] focus:border-[#ff7518] focus:ring-1 focus:ring-[#ff7518]/50 transition-all shadow-inner"
           />
 
           {searchQuery && (
             <button
               type="button"
               onClick={handleClearSearch}
-              className="absolute right-2.5 sm:right-3 text-[#b3b3b3] hover:text-white text-xs cursor-pointer p-1"
+              className="absolute right-2.5 sm:right-3 text-[#b3b3b3] hover:text-[#ff7518] text-xs cursor-pointer p-1"
               title="Clear search"
             >
               ✕
@@ -193,7 +206,7 @@ export default function SpotifyTopNav({
                 <span>☕</span> Buy Me a Coffee
               </div>
               <h3 className="text-lg font-extrabold text-white tracking-tight">
-                Support Chillify 🥰
+                Support Chillify 🎃
               </h3>
               <p className="text-xs text-[#b3b3b3]">
                 Scan with <strong className="text-white font-semibold">FamPay</strong> or any UPI App to buy me a coffee!

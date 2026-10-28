@@ -54,6 +54,7 @@ function ChillifyShell() {
           <SpotifySidebar
             activeView={activeView}
             setActiveView={setActiveView}
+            setSearchQuery={setSearchQuery}
           />
         </div>
 
@@ -65,6 +66,7 @@ function ChillifyShell() {
             showVideo={showVideo}
             setShowVideo={setShowVideo}
             searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
             extraBottomPadding={currentTrack ? 'pb-[130px] md:pb-0' : 'pb-[64px] md:pb-0'}
             onToggleNowPlaying={() => setShowNowPlaying((prev) => !prev)}
             isNowPlayingOpen={showNowPlaying}
