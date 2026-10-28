@@ -1019,7 +1019,7 @@ export default function SpotifyMainContent({
                     )}
                   </h2>
                   <p className="text-xs text-[#b3b3b3]">
-                    13 real-time procedural soundscapes: rain, wind, birds, drums, bass, cafe chatter, fireplace, chenda melam & more
+                    9 real-time procedural soundscapes: rain, wind, birds, crickets, thunder, drums, bass, cafe chatter & fireplace
                   </p>
                 </div>
               </div>
@@ -1057,7 +1057,7 @@ export default function SpotifyMainContent({
               </div>
             </div>
 
-            {/* 13 Ambient Soundscape Channels Grid */}
+            {/* 9 Ambient Soundscape Channels Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pt-2">
               {ambientSounds.map((sound) => {
                 const state = soundStates[sound.id];

@@ -7,11 +7,7 @@ export type AmbientSoundId =
   | 'drums'
   | 'bass'
   | 'chatter'
-  | 'fireplace'
-  | 'chenda'
-  | 'dj'
-  | 'keyboard'
-  | 'waves';
+  | 'fireplace';
 
 export interface AmbientSoundConfig {
   id: AmbientSoundId;

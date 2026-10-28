@@ -68,34 +68,6 @@ export const AMBIENT_SOUNDS: AmbientSoundConfig[] = [
     description: 'Warm hearth crackling embers',
     defaultVolume: 0.45,
   },
-  {
-    id: 'chenda',
-    name: 'Chenda Melam',
-    icon: '🪘',
-    description: 'Authentic Kerala temple percussion',
-    defaultVolume: 0.5,
-  },
-  {
-    id: 'dj',
-    name: 'DJ Scratch',
-    icon: '🎧',
-    description: 'Vinyl crackle & turntable sweeps',
-    defaultVolume: 0.35,
-  },
-  {
-    id: 'keyboard',
-    name: 'Typing ASMR',
-    icon: '⌨️',
-    description: 'Tactile mechanical keyboard clicks',
-    defaultVolume: 0.35,
-  },
-  {
-    id: 'waves',
-    name: 'Ocean Waves',
-    icon: '🌊',
-    description: 'Deep rolling coastal tidal surf',
-    defaultVolume: 0.5,
-  },
 ];
 
 interface AmbientContextType {
