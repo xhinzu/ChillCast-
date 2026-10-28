@@ -33,6 +33,7 @@ export default function SpotifyBottomPlayer({
     activeAdapterType,
     isSpatial8D,
     isMuffled,
+    deckPlayback,
     togglePlay,
     seek,
     setVolume,
@@ -183,8 +184,30 @@ export default function SpotifyBottomPlayer({
 
   const customPlaylists = savedPlaylists.filter((p) => p.type === 'custom');
 
-  const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const isDeckActive = !!deckPlayback;
+  const activeTrack = isDeckActive ? deckPlayback.track : currentTrack;
+  const activeIsPlaying = isDeckActive ? deckPlayback.isPlaying : isPlaying;
+  const activeCurrentTime = isDeckActive ? deckPlayback.currentTime : currentTime;
+  const activeDuration = isDeckActive ? deckPlayback.duration : duration;
+
+  const progressPercent = activeDuration > 0 ? Math.min(100, (activeCurrentTime / activeDuration) * 100) : 0;
   const volumePercent = isMuted ? 0 : volume * 100;
+
+  const handleUniversalPlayPause = () => {
+    if (isDeckActive) {
+      window.dispatchEvent(new CustomEvent('chillify_deck_toggle', { detail: { deck: deckPlayback.deck } }));
+    } else {
+      togglePlay();
+    }
+  };
+
+  const handleUniversalSeek = (secs: number) => {
+    if (isDeckActive) {
+      window.dispatchEvent(new CustomEvent('chillify_deck_seek', { detail: { deck: deckPlayback.deck, time: secs } }));
+    } else {
+      seek(secs);
+    }
+  };
 
   return (
     <footer className="w-full bg-transparent shrink-0 z-50 select-none">
@@ -192,7 +215,7 @@ export default function SpotifyBottomPlayer({
       {/* ─────────────────────────────── MOBILE MINI-PLAYER (Floating above tab bar when song played) ─────────────────────────────── */}
       <div
         className={`md:hidden fixed bottom-[58px] inset-x-2 z-40 bg-[#161616]/95 backdrop-blur-xl border border-[#2c2c2c] rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
-          currentTrack
+          activeTrack
             ? 'translate-y-0 opacity-100 pointer-events-auto'
             : 'translate-y-16 opacity-0 pointer-events-none'
         }`}
@@ -200,7 +223,7 @@ export default function SpotifyBottomPlayer({
         {/* Thin progress bar across the top */}
         <div className="w-full h-[2.5px] bg-[#282828]">
           <div
-            className="h-full bg-[#1d90f5] transition-none"
+            className="h-full bg-[#ff7518] transition-none"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -209,10 +232,10 @@ export default function SpotifyBottomPlayer({
         <div className="flex items-center gap-3 px-3 h-[58px]">
           {/* Album Art */}
           <div className="relative w-[42px] h-[42px] rounded-lg overflow-hidden bg-[#242424] shrink-0 shadow-md">
-            {currentTrack?.artworkUrl ? (
+            {activeTrack?.artworkUrl ? (
               <Image
-                src={currentTrack.artworkUrl}
-                alt={currentTrack.title}
+                src={activeTrack.artworkUrl}
+                alt={activeTrack.title}
                 fill
                 sizes="42px"
                 className="object-cover"
@@ -220,18 +243,29 @@ export default function SpotifyBottomPlayer({
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-lg text-zinc-500">
-                🎵
+                🎃
               </div>
             )}
           </div>
 
-          {/* Title + Artist */}
+          {/* Title + Artist + Deck Indicator */}
           <div className="flex flex-col justify-center min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-white truncate leading-tight">
-              {currentTrack?.title || 'Playing Track'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[13px] font-bold text-white truncate leading-tight">
+                {activeTrack?.title || 'Playing Track'}
+              </p>
+              {isDeckActive && (
+                <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase shrink-0 ${
+                  deckPlayback.deck === 'Deck A'
+                    ? 'bg-orange-500/20 text-[#ff7518] border border-orange-500/40'
+                    : 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                }`}>
+                  {deckPlayback.deck}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-[#b3b3b3] truncate leading-tight mt-0.5">
-              {currentTrack?.artist || 'Unknown Artist'}
+              {activeTrack?.artist || 'Unknown Artist'}
             </p>
           </div>
 
@@ -239,7 +273,7 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={handleToggleLike}
-            className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3]'}`}
+            className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-[#ff7518]' : 'text-[#b3b3b3]'}`}
             title={isLiked ? 'Unlike' : 'Like'}
           >
             <svg className="w-[20px] h-[20px] fill-current" viewBox="0 0 24 24">
@@ -254,11 +288,11 @@ export default function SpotifyBottomPlayer({
           {/* Play / Pause */}
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={handleUniversalPlayPause}
             className="w-[36px] h-[36px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
-            title={isPlaying ? 'Pause' : 'Play'}
+            title={activeIsPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? (
+            {activeIsPlaying ? (
               <svg className="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
             ) : (
               <svg className="w-[18px] h-[18px] fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
@@ -280,7 +314,7 @@ export default function SpotifyBottomPlayer({
       {/* ─────────────────────────────── DESKTOP PLAYER (hidden below md, appears when song played) ─────────────────────────────── */}
       <div
         className={`hidden md:flex w-full px-6 items-center justify-between bg-black/95 backdrop-blur-xl border-[#242424] transition-all duration-300 ease-in-out ${
-          currentTrack
+          activeTrack
             ? 'h-20 opacity-100 translate-y-0 border-t pointer-events-auto'
             : 'h-0 opacity-0 overflow-hidden border-t-0 py-0 pointer-events-none'
         }`}
@@ -289,10 +323,10 @@ export default function SpotifyBottomPlayer({
       <div className="flex items-center gap-3 w-1/4 min-w-[160px] sm:min-w-[200px]">
         {/* Track Artwork */}
         <div className="relative w-14 h-14 rounded-md overflow-hidden bg-[#282828] shrink-0 shadow-md">
-          {currentTrack?.artworkUrl ? (
+          {activeTrack?.artworkUrl ? (
             <Image
-              src={currentTrack.artworkUrl}
-              alt={currentTrack.title}
+              src={activeTrack.artworkUrl}
+              alt={activeTrack.title}
               fill
               sizes="56px"
               className="object-cover"
@@ -300,24 +334,35 @@ export default function SpotifyBottomPlayer({
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-xl text-zinc-500">
-              🎵
+              🎃
             </div>
           )}
         </div>
 
-        {/* Title & Artist */}
+        {/* Title & Artist & Deck Indicator */}
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <p
-            className="text-xs sm:text-sm font-semibold text-white truncate hover:underline cursor-pointer"
-            title={currentTrack?.title || 'No Track Selected'}
-          >
-            {currentTrack?.title || 'Chillify • Ready'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p
+              className="text-xs sm:text-sm font-semibold text-white truncate hover:underline cursor-pointer"
+              title={activeTrack?.title || 'No Track Selected'}
+            >
+              {activeTrack?.title || 'Chillify • Ready'}
+            </p>
+            {isDeckActive && (
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 shadow-sm ${
+                deckPlayback.deck === 'Deck A'
+                  ? 'bg-orange-500/20 text-[#ff7518] border border-orange-500/40'
+                  : 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+              }`}>
+                🎛️ {deckPlayback.deck}
+              </span>
+            )}
+          </div>
           <p
             className="text-[11px] text-[#b3b3b3] truncate hover:underline hover:text-white cursor-pointer transition-colors"
-            title={currentTrack?.artist || 'Ready'}
+            title={activeTrack?.artist || 'Ready'}
           >
-            {currentTrack?.artist || 'Select a playlist or track'}
+            {activeTrack?.artist || 'Select a playlist or track'}
           </p>
         </div>
 
@@ -437,7 +482,7 @@ export default function SpotifyBottomPlayer({
           {/* Rewind 5s */}
           <button
             type="button"
-            onClick={() => seek(Math.max(0, currentTime - 5))}
+            onClick={() => handleUniversalSeek(Math.max(0, activeCurrentTime - 5))}
             className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer text-xs hidden sm:block"
             title="Rewind 5s"
           >
@@ -447,11 +492,11 @@ export default function SpotifyBottomPlayer({
           {/* Play / Pause - Authentic Circular Button */}
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={handleUniversalPlayPause}
             className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow cursor-pointer"
-            title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            title={activeIsPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >
-            {isPlaying ? (
+            {activeIsPlaying ? (
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
               </svg>
@@ -465,7 +510,7 @@ export default function SpotifyBottomPlayer({
           {/* Forward 5s */}
           <button
             type="button"
-            onClick={() => seek(Math.min(duration, currentTime + 5))}
+            onClick={() => handleUniversalSeek(Math.min(activeDuration, activeCurrentTime + 5))}
             className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer text-xs hidden sm:block"
             title="Forward 5s"
           >
@@ -489,7 +534,7 @@ export default function SpotifyBottomPlayer({
             type="button"
             onClick={() => setIsRepeat(!isRepeat)}
             className={`transition-colors cursor-pointer hidden sm:block ${
-              isRepeat ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
+              isRepeat ? 'text-[#ff7518]' : 'text-[#b3b3b3] hover:text-white'
             }`}
             title="Enable Repeat"
           >
@@ -501,28 +546,28 @@ export default function SpotifyBottomPlayer({
 
         {/* Scrubber Timeline */}
         <div className="w-full flex items-center gap-2 text-[11px] font-mono text-[#b3b3b3]">
-          <span className="w-9 text-right">{formatTime(currentTime)}</span>
+          <span className="w-9 text-right">{formatTime(activeCurrentTime)}</span>
 
-          {/* Spotify Blue Range Scrubber */}
+          {/* Orange Halloween Range Scrubber */}
           <div className="relative flex-1 flex items-center group h-3 cursor-pointer">
             <div className="w-full h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full overflow-hidden transition-all">
               <div
-                className="h-full bg-white group-hover:bg-[#1d90f5] transition-colors"
+                className="h-full bg-white group-hover:bg-[#ff7518] transition-colors"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
             <input
               type="range"
               min="0"
-              max={duration > 0 ? duration : 100}
+              max={activeDuration > 0 ? activeDuration : 100}
               step="0.1"
-              value={currentTime}
-              onChange={(e) => seek(parseFloat(e.target.value))}
+              value={activeCurrentTime}
+              onChange={(e) => handleUniversalSeek(parseFloat(e.target.value))}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>
 
-          <span className="w-9">{formatTime(duration)}</span>
+          <span className="w-9">{formatTime(activeDuration)}</span>
         </div>
       </div>
 

@@ -31,7 +31,14 @@ export default function SpotifyNowPlayingPanel({
     playCustomTrackList,
     isSpatial8D,
     isMuffled,
+    deckPlayback,
   } = usePlayback();
+
+  const isDeckActive = !!deckPlayback;
+  const activeTrack = isDeckActive ? deckPlayback.track : currentTrack;
+  const activeIsPlaying = isDeckActive ? deckPlayback.isPlaying : isPlaying;
+  const activeCurrentTime = isDeckActive ? deckPlayback.currentTime : currentTime;
+  const activeDuration = isDeckActive ? deckPlayback.duration : duration;
 
   const [isLiked, setIsLiked] = useState(false);
   const [, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -151,7 +158,7 @@ export default function SpotifyNowPlayingPanel({
 
       {/* 2. Scrollable Body */}
       <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1">
-        {!currentTrack ? (
+        {!activeTrack ? (
           /* Polished Empty State */
           <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4 text-[#8e8b98]">
             <div className="w-20 h-20 rounded-full bg-orange-950/30 border border-orange-500/30 flex items-center justify-center text-3xl shadow-lg shadow-orange-950/40 animate-pulse">
@@ -160,7 +167,7 @@ export default function SpotifyNowPlayingPanel({
             <div>
               <h4 className="text-sm font-extrabold text-white">No Song Playing</h4>
               <p className="text-xs text-[#8e8b98] mt-1 max-w-[200px]">
-                Choose a song from your playlists or trending music to start listening.
+                Choose a song from your playlists, trending music, or spin tracks on the Dual Vinyl Mixer!
               </p>
             </div>
             <button
@@ -177,14 +184,30 @@ export default function SpotifyNowPlayingPanel({
         ) : (
           /* Active Playing State */
           <>
-            {/* Large Artwork */}
+            {/* If Deck Active: Header Banner */}
+            {isDeckActive && (
+              <div className="flex items-center justify-between p-2 rounded-xl bg-orange-950/40 border border-orange-500/40">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  deckPlayback.deck === 'Deck A'
+                    ? 'bg-orange-500/20 text-[#ff7518] border border-orange-500/40'
+                    : 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                }`}>
+                  🎛️ {deckPlayback.deck}
+                </span>
+                <span className="text-[10px] font-mono text-orange-300 font-bold">
+                  {activeIsPlaying ? 'SPINNING LIVE' : 'PAUSED'}
+                </span>
+              </div>
+            )}
+
+            {/* Large Artwork with Vinyl Glow */}
             <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-black shadow-2xl border border-orange-500/30 group">
-              {currentTrack.artworkUrl ? (
+              {activeTrack.artworkUrl ? (
                 <Image
-                  src={currentTrack.artworkUrl}
-                  alt={currentTrack.title}
+                  src={activeTrack.artworkUrl}
+                  alt={activeTrack.title}
                   fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  className={`object-cover transition-transform duration-500 ${activeIsPlaying ? 'scale-105' : ''}`}
                   unoptimized
                 />
               ) : (
@@ -194,7 +217,7 @@ export default function SpotifyNowPlayingPanel({
               )}
 
               {/* Dynamic Equalizer Overlay when playing */}
-              {isPlaying && (
+              {activeIsPlaying && (
                 <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-orange-500/40 flex items-center gap-1.5 shadow-lg">
                   <div className="flex items-end gap-0.5 h-3">
                     <span className="w-0.5 bg-[#ff7518] rounded-full animate-bounce h-2" />
@@ -202,7 +225,7 @@ export default function SpotifyNowPlayingPanel({
                     <span className="w-0.5 bg-[#ff7518] rounded-full animate-bounce h-1.5 delay-150" />
                   </div>
                   <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">
-                    Playing
+                    {isDeckActive ? `${deckPlayback.deck} Mixing` : 'Playing'}
                   </span>
                 </div>
               )}
@@ -213,16 +236,16 @@ export default function SpotifyNowPlayingPanel({
               <div className="min-w-0 flex-1">
                 <h4
                   className="text-base font-extrabold text-white truncate hover:text-[#ff7518] transition-colors cursor-pointer"
-                  title={currentTrack.title}
+                  title={activeTrack.title}
                 >
-                  {currentTrack.title}
+                  {activeTrack.title}
                 </h4>
                 <p className="text-xs text-[#a1a1aa] truncate mt-0.5">
-                  {currentTrack.artist || 'Unknown Artist'}
+                  {activeTrack.artist || 'Unknown Artist'}
                 </p>
-                {currentTrack.album && (
+                {activeTrack.album && (
                   <p className="text-[11px] text-[#716e7a] truncate mt-0.5">
-                    {currentTrack.album}
+                    {activeTrack.album}
                   </p>
                 )}
               </div>
@@ -241,7 +264,7 @@ export default function SpotifyNowPlayingPanel({
             {/* Playback Badge & Active Effects */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#1e1b26] text-[#a1a1aa] border border-[#2e2938]">
-                {currentTrack.source === 'local' ? '📁 Local File' : '▶️ YouTube Stream'}
+                {isDeckActive ? `🎛️ Dual Vinyl ${deckPlayback.deck}` : activeTrack.source === 'local' ? '📁 Local File' : '▶️ YouTube Stream'}
               </span>
 
               {isSpatial8D && (
@@ -260,14 +283,14 @@ export default function SpotifyNowPlayingPanel({
             {/* Progress Bar & Timestamps */}
             <div className="space-y-1 bg-[#14121a] p-3 rounded-xl border border-[#231e2c]">
               <div className="flex items-center justify-between text-[11px] font-mono text-[#8e8b98]">
-                <span>{formatDuration(currentTime)}</span>
-                <span>{formatDuration(duration)}</span>
+                <span>{formatDuration(activeCurrentTime)}</span>
+                <span>{formatDuration(activeDuration)}</span>
               </div>
               <div className="w-full bg-[#24202e] h-1.5 rounded-full overflow-hidden">
                 <div
                   className="bg-[#ff7518] h-full rounded-full transition-all duration-150 shadow-sm shadow-orange-500"
                   style={{
-                    width: duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : '0%',
+                    width: activeDuration > 0 ? `${Math.min(100, (activeCurrentTime / activeDuration) * 100)}%` : '0%',
                   }}
                 />
               </div>
