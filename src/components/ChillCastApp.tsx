@@ -8,12 +8,14 @@ import SpotifySidebar from '@/components/spotify/SpotifySidebar';
 import SpotifyMainContent from '@/components/spotify/SpotifyMainContent';
 import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
 import MobileTabBar from '@/components/spotify/MobileTabBar';
+import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 
 function ChillifyShell() {
   const { togglePlay, currentTrack } = usePlayback();
   const [activeView, setActiveView] = useState<string>('home');
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
 
   // Global spacebar hotkey for play/pause
   useEffect(() => {
@@ -45,19 +47,17 @@ function ChillifyShell() {
         setSearchQuery={setSearchQuery}
       />
 
-      {/* 2. Main Middle: Sidebar (desktop only) + Scrollable Content */}
+      {/* 2. Main Middle: Sidebar + Main Discovery Content + Right-side Now Playing Panel */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Sidebar — hidden on mobile, visible on md+ */}
-        <div className="hidden md:flex px-2 py-2 h-full">
+        {/* Left Sidebar — hidden on mobile, visible on md+ (17-19% width) */}
+        <div className="hidden md:flex px-2 py-2 h-full shrink-0">
           <SpotifySidebar
             activeView={activeView}
             setActiveView={setActiveView}
           />
         </div>
 
-        {/* Main scrollable content area
-            On mobile: extra bottom padding so content isn't hidden under
-            the floating mini-player (60px) + tab bar (54px) when active */}
+        {/* Center main scrollable content area (55-60% width) */}
         <div className="flex-1 overflow-hidden min-h-0 md:px-2 md:py-2">
           <SpotifyMainContent
             activeView={activeView}
@@ -66,20 +66,30 @@ function ChillifyShell() {
             setShowVideo={setShowVideo}
             searchQuery={searchQuery}
             extraBottomPadding={currentTrack ? 'pb-[130px] md:pb-0' : 'pb-[64px] md:pb-0'}
+            onToggleNowPlaying={() => setShowNowPlaying((prev) => !prev)}
+            isNowPlayingOpen={showNowPlaying}
           />
         </div>
+
+        {/* Right Persistent Now Playing Panel (22-25% width on xl+, toggleable) */}
+        {showNowPlaying && (
+          <div className="hidden xl:flex px-2 py-2 h-full shrink-0">
+            <SpotifyNowPlayingPanel
+              onClose={() => setShowNowPlaying(false)}
+            />
+          </div>
+        )}
       </div>
 
-      {/* 3. Bottom Player Bar
-          Desktop: stays in normal flex flow (h-20)
-          Mobile: compact mini-player (64px) in normal flex flow,
-                  sitting just above the fixed MobileTabBar */}
+      {/* 3. Bottom Player Bar */}
       <div className="md:block shrink-0">
         <SpotifyBottomPlayer
           showVideo={showVideo}
           setShowVideo={setShowVideo}
           activeView={activeView}
           setActiveView={setActiveView}
+          onToggleNowPlaying={() => setShowNowPlaying((prev) => !prev)}
+          isNowPlayingOpen={showNowPlaying}
         />
       </div>
 

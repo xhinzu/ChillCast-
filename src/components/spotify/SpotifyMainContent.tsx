@@ -8,6 +8,16 @@ import { YouTubeSearchResult } from '@/app/api/youtube/search/route';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 import { TrackInfo } from '@/types/playback';
 import { ENGLISH_TRACKS, MALAYALAM_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
+import DualVinylMixer from '@/components/mixer/DualVinylMixer';
+import {
+  TRENDING_ENGLISH_SONGS,
+  TRENDING_MALAYALAM_SONGS,
+  RECOMMENDED_SONGS,
+  DEFAULT_STARTER_PLAYLISTS,
+  parseDurationToSeconds,
+  catalogSongToTrackInfo,
+  CatalogSong,
+} from '@/lib/music-data';
 
 interface SpotifyMainContentProps {
   activeView: string;
@@ -17,6 +27,8 @@ interface SpotifyMainContentProps {
   searchQuery: string;
   /** Extra Tailwind classes injected by parent for mobile bottom-padding compensation */
   extraBottomPadding?: string;
+  onToggleNowPlaying?: () => void;
+  isNowPlayingOpen?: boolean;
 }
 
 const STORAGE_KEY = 'chillify_saved_playlists';
@@ -85,12 +97,16 @@ export default function SpotifyMainContent({
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setSavedPlaylists(JSON.parse(stored));
-      } else {
-        setSavedPlaylists([]);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSavedPlaylists(parsed);
+          return;
+        }
       }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STARTER_PLAYLISTS));
+      setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
     } catch {
-      setSavedPlaylists([]);
+      setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
     }
   };
 
@@ -367,6 +383,124 @@ export default function SpotifyMainContent({
     playCustomTrackList(trackInfos, 0);
     setAddedToast(`Playing "${albumName}" (${tracks.length} songs)`);
     setTimeout(() => setAddedToast(null), 3000);
+  };
+
+  // Check if track is liked
+  const isTrackLiked = (trackId: string) => {
+    const likedPl = savedPlaylists.find((p) => p.id === 'liked-songs');
+    return likedPl?.tracks?.some((t) => t.id === trackId) || false;
+  };
+
+  // Toggle track like
+  const handleToggleTrackLike = (track: {
+    id: string;
+    title: string;
+    artist: string;
+    duration?: string;
+    thumbnail?: string;
+  }) => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
+
+      let likedPlaylist = prev.find((p) => p.id === 'liked-songs');
+      if (!likedPlaylist) {
+        likedPlaylist = {
+          id: 'liked-songs',
+          title: 'Liked Songs',
+          subtitle: '0 songs • Liked Songs',
+          type: 'custom',
+          targetUrl: '',
+          icon: '💙',
+          tracks: [],
+          description: 'Your favorite liked tracks on Chillify',
+          createdAt: Date.now(),
+        };
+        prev = [likedPlaylist, ...prev];
+      }
+
+      const prevTracks = likedPlaylist.tracks || [];
+      const alreadyLiked = prevTracks.some((t) => t.id === track.id);
+
+      let newTracks: CustomPlaylistTrack[];
+      if (alreadyLiked) {
+        newTracks = prevTracks.filter((t) => t.id !== track.id);
+        setAddedToast(`Removed "${track.title}" from Liked Songs`);
+      } else {
+        const newTrack: CustomPlaylistTrack = {
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          duration: track.duration || '3:30',
+          thumbnail: track.thumbnail || `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`,
+          addedAt: Date.now(),
+        };
+        newTracks = [newTrack, ...prevTracks];
+        setAddedToast(`Added "${track.title}" to Liked Songs 💙`);
+      }
+
+      setTimeout(() => setAddedToast(null), 2500);
+
+      const updated = prev.map((p) => {
+        if (p.id === 'liked-songs') {
+          return {
+            ...p,
+            tracks: newTracks,
+            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
+          };
+        }
+        return p;
+      });
+
+      savePlaylists(updated);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Play Trending English list starting at index
+  const handlePlayTrendingEnglish = (startIndex = 0) => {
+    const trackInfos: TrackInfo[] = TRENDING_ENGLISH_SONGS.map((s) => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: 'Trending English',
+      duration: parseDurationToSeconds(s.duration),
+      source: 'youtube',
+      sourceUrl: `https://www.youtube.com/watch?v=${s.id}`,
+      artworkUrl: s.thumbnail,
+    }));
+    playCustomTrackList(trackInfos, startIndex);
+  };
+
+  // Play Trending Malayalam list starting at index
+  const handlePlayTrendingMalayalam = (startIndex = 0) => {
+    const trackInfos: TrackInfo[] = TRENDING_MALAYALAM_SONGS.map((s) => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: 'Trending Malayalam',
+      duration: parseDurationToSeconds(s.duration),
+      source: 'youtube',
+      sourceUrl: `https://www.youtube.com/watch?v=${s.id}`,
+      artworkUrl: s.thumbnail,
+    }));
+    playCustomTrackList(trackInfos, startIndex);
+  };
+
+  // Play Recommended list starting at index
+  const handlePlayRecommended = (startIndex = 0) => {
+    const trackInfos: TrackInfo[] = RECOMMENDED_SONGS.map((s) => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: 'Recommended for You',
+      duration: parseDurationToSeconds(s.duration),
+      source: 'youtube',
+      sourceUrl: `https://www.youtube.com/watch?v=${s.id}`,
+      artworkUrl: s.thumbnail,
+    }));
+    playCustomTrackList(trackInfos, startIndex);
   };
 
   return (
@@ -839,10 +973,11 @@ export default function SpotifyMainContent({
           </section>
         )}
         {/* ------------------------------------------------------------- */}
-        {/* VIEW 3: HOME VIEW (3 Small Square Playlist Buttons)           */}
+        {/* VIEW 3: HOME VIEW (Personalized Discovery & Dual Vinyl Mixer) */}
         {/* ------------------------------------------------------------- */}
         {isHomeView && (
-          <section aria-label="Home Curated Playlists" className="space-y-6">
+          <section aria-label="Home Music Discovery" className="space-y-8">
+            {/* Header Greeting */}
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {greeting}
@@ -852,144 +987,442 @@ export default function SpotifyMainContent({
               </p>
             </div>
 
-            {/* 3 Curated Square Buttons */}
+            {/* ========================================================= */}
+            {/* SECTION A: YOUR PLAYLISTS (Horizontal Cards Layout)       */}
+            {/* ========================================================= */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
-                  <span>🎵</span> Featured Playlists
+                  <span>📁</span> Your Playlists
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#1e2433] text-[#93a2b7] border border-[#2a3449]">
+                    {savedPlaylists.length}
+                  </span>
                 </h2>
-                <span className="text-[11px] text-[#888888] font-medium">Tap to play continuous mix</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('playlists')}
+                  className="text-xs text-[#8e98a8] hover:text-[#1d90f5] font-semibold transition-colors cursor-pointer"
+                >
+                  View Library →
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 max-w-md sm:max-w-xl md:max-w-2xl">
-                {/* 1. English Square Button */}
-                <div
-                  onClick={() => {
-                    if (isEnglishPlaying) {
-                      togglePlay();
-                    } else {
-                      handlePlayCuratedPlaylist('english');
-                    }
-                  }}
-                  className={`group relative aspect-square rounded-2xl overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer select-none shadow-xl border ${
-                    isEnglishPlaying
-                      ? 'border-[#1d90f5] ring-2 ring-[#1d90f5]/50 scale-[1.02] shadow-[#1d90f5]/20'
-                      : 'border-white/10 hover:border-[#1d90f5]/60 hover:scale-[1.03] active:scale-95'
-                  }`}
-                  title="Play English Vibes Playlist"
-                >
-                  {/* Background Artwork */}
-                  <div className="absolute inset-0 z-0">
-                    <Image
-                      src={ENGLISH_TRACKS[0].thumbnail}
-                      alt="English Vibes"
-                      fill
-                      sizes="(max-width: 640px) 50vw, 320px"
-                      className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                    <div className="absolute inset-0 bg-blue-950/40 mix-blend-overlay" />
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {savedPlaylists.map((pl) => {
+                  const isCurrentPlaylistPlaying =
+                    isPlaying && pl.tracks?.some((t) => t.id === currentTrack?.id);
+                  const isLiked = pl.id === 'liked-songs';
+                  const songCount = pl.tracks ? pl.tracks.length : 0;
 
-                  {/* Top Badge */}
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="text-xl sm:text-2xl drop-shadow">🇬🇧</span>
-                    <span className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/40 backdrop-blur-sm">
-                      {ENGLISH_TRACKS.length}
-                    </span>
-                  </div>
-
-                  {/* Bottom: Name & Play Icon */}
-                  <div className="relative z-10 flex items-end justify-between gap-1">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[9px] sm:text-[10px] text-blue-300 font-bold uppercase tracking-wider">Playlist</p>
-                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate leading-tight group-hover:text-[#1d90f5] transition-colors">
-                        English
-                      </h3>
-                      <p className="text-[10px] text-[#b3b3b3] truncate hidden sm:block">
-                        Weeknd, NBHD & more
-                      </p>
-                    </div>
-
+                  return (
                     <div
-                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black shadow-2xl transition-all duration-200 shrink-0 ${
-                        isEnglishPlaying
-                          ? 'bg-[#1d90f5] scale-105 shadow-[#1d90f5]/50'
-                          : 'bg-white group-hover:bg-[#1d90f5] group-hover:scale-110 shadow-lg'
+                      key={pl.id}
+                      onClick={() => {
+                        if (pl.type === 'custom') {
+                          setActiveView(`playlist:${pl.id}`);
+                        } else {
+                          loadPlaylist(pl.targetUrl, pl.type);
+                        }
+                      }}
+                      className={`group relative p-3 rounded-xl border transition-all duration-300 cursor-pointer select-none flex flex-col justify-between overflow-hidden shadow-md ${
+                        isCurrentPlaylistPlaying
+                          ? 'bg-gradient-to-b from-[#18283d] to-[#111924] border-[#1d90f5] ring-1 ring-[#1d90f5]/50 scale-[1.02]'
+                          : 'bg-[#181818] hover:bg-[#222222] border-[#262626] hover:border-[#383838] hover:scale-[1.02]'
                       }`}
+                      title={`Open "${pl.title}"`}
                     >
-                      {isEnglishPlaying ? (
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
-                      ) : (
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      )}
+                      {/* Top Artwork / Icon & Play Overlay */}
+                      <div className="relative aspect-square w-full rounded-lg overflow-hidden mb-2.5 flex items-center justify-center bg-black/40 shadow">
+                        {isLiked ? (
+                          <div className="w-full h-full bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca] flex items-center justify-center text-3xl shadow-md">
+                            💙
+                          </div>
+                        ) : pl.tracks && pl.tracks.length > 0 && pl.tracks[0].thumbnail ? (
+                          <Image
+                            src={pl.tracks[0].thumbnail}
+                            alt={pl.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-[#202020] flex items-center justify-center text-2xl">
+                            {pl.icon || '🎵'}
+                          </div>
+                        )}
+
+                        {/* Floating Play Button */}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isCurrentPlaylistPlaying) {
+                              togglePlay();
+                            } else {
+                              handlePlayCustomPlaylist(pl, 0);
+                            }
+                          }}
+                          className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-xl transition-all duration-200 cursor-pointer ${
+                            isCurrentPlaylistPlaying
+                              ? 'bg-[#1d90f5] text-white opacity-100 scale-100 shadow-[#1d90f5]/50'
+                              : 'bg-white text-black hover:bg-[#1d90f5] hover:text-white opacity-0 group-hover:opacity-100 group-hover:scale-105'
+                          }`}
+                          title="Play Playlist"
+                        >
+                          {isCurrentPlaylistPlaying ? (
+                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Name & Count */}
+                      <div className="min-w-0">
+                        <h3
+                          className={`text-xs font-bold truncate transition-colors ${
+                            isCurrentPlaylistPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                          }`}
+                        >
+                          {pl.title}
+                        </h3>
+                        <p className="text-[10px] text-[#8e98a8] truncate mt-0.5">
+                          {songCount} {songCount === 1 ? 'song' : 'songs'}
+                        </p>
+                      </div>
                     </div>
+                  );
+                })}
+
+                {/* Inline "+ Create Playlist" Card */}
+                <div
+                  onClick={() => setShowCreateInline(true)}
+                  className="group relative p-3 rounded-xl border border-dashed border-[#333333] hover:border-[#1d90f5] bg-[#141414] hover:bg-[#1a1f29] transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center text-center space-y-2 min-h-[140px]"
+                  title="Create a new playlist"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#202020] group-hover:bg-[#1d90f5] text-[#b3b3b3] group-hover:text-white flex items-center justify-center text-xl transition-colors">
+                    ＋
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white group-hover:text-[#1d90f5] transition-colors">
+                      New Playlist
+                    </p>
+                    <p className="text-[10px] text-[#8e98a8]">Create custom mix</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================================= */}
+            {/* SECTION B & 3: DISCOVERY SECTIONS + DUAL VINYL MIXER      */}
+            {/* ========================================================= */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Trending English & Trending Malayalam */}
+              <div className="xl:col-span-6 space-y-6">
+                {/* 1. Trending English */}
+                <div className="bg-[#161616] p-4 sm:p-5 rounded-2xl border border-[#242424] shadow-md space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#242424]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🇬🇧</span>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+                          Trending English
+                        </h2>
+                        <p className="text-[10px] text-[#8e98a8]">Top global chart hits & chill aesthetics</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handlePlayTrendingEnglish(0)}
+                      className="px-3 py-1 rounded-full text-xs font-bold bg-[#1d90f5] hover:bg-[#2fa0ff] text-white shadow-md transition-colors cursor-pointer"
+                    >
+                      ▶ Play All
+                    </button>
+                  </div>
+
+                  {/* Compact Song Rows */}
+                  <div className="space-y-1">
+                    {TRENDING_ENGLISH_SONGS.slice(0, 6).map((song, idx) => {
+                      const isThisPlaying = isPlaying && currentTrack?.id === song.id;
+                      const liked = isTrackLiked(song.id);
+
+                      return (
+                        <div
+                          key={song.id}
+                          onClick={() => handlePlayTrendingEnglish(idx)}
+                          className={`flex items-center justify-between gap-3 p-2 rounded-xl transition-colors cursor-pointer group ${
+                            isThisPlaying
+                              ? 'bg-[#1b2b3d] border border-[#1d90f5]/40 text-white'
+                              : 'hover:bg-[#202020]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {/* Track Artwork / Hover Play */}
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-black shrink-0 border border-[#2a2a2a]">
+                              <Image
+                                src={song.thumbnail}
+                                alt={song.title}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                              <div
+                                className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${
+                                  isThisPlaying ? 'opacity-100 bg-[#1d90f5]/30' : 'opacity-0 group-hover:opacity-100'
+                                }`}
+                              >
+                                {isThisPlaying ? (
+                                  <div className="flex items-end gap-0.5 h-3">
+                                    <span className="w-0.5 bg-white rounded-full animate-bounce h-2" />
+                                    <span className="w-0.5 bg-white rounded-full animate-bounce h-3 delay-75" />
+                                    <span className="w-0.5 bg-white rounded-full animate-bounce h-1.5 delay-150" />
+                                  </div>
+                                ) : (
+                                  <span className="text-white text-xs font-bold">▶</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Title & Artist */}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-xs font-bold truncate transition-colors ${
+                                  isThisPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                                }`}
+                              >
+                                {song.title}
+                              </p>
+                              <p className="text-[11px] text-[#8e98a8] truncate">{song.artist}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-mono text-[#8e98a8] hidden sm:inline">
+                              {song.duration}
+                            </span>
+
+                            {/* Like Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTrackLike(song);
+                              }}
+                              className={`p-1.5 rounded-full transition-transform hover:scale-110 cursor-pointer ${
+                                liked ? 'text-[#1d90f5]' : 'text-[#666666] hover:text-white'
+                              }`}
+                              title={liked ? 'Liked' : 'Like'}
+                            >
+                              {liked ? '💙' : '🤍'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* 2. Malayalam Square Button */}
-                <div
-                  onClick={() => {
-                    if (isMalayalamPlaying) {
-                      togglePlay();
-                    } else {
-                      handlePlayCuratedPlaylist('malayalam');
-                    }
-                  }}
-                  className={`group relative aspect-square rounded-2xl overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 cursor-pointer select-none shadow-xl border ${
-                    isMalayalamPlaying
-                      ? 'border-[#10b981] ring-2 ring-[#10b981]/50 scale-[1.02] shadow-[#10b981]/20'
-                      : 'border-white/10 hover:border-[#10b981]/60 hover:scale-[1.03] active:scale-95'
-                  }`}
-                  title="Play Malayalam Favorites Playlist"
-                >
-                  <div className="absolute inset-0 z-0">
-                    <Image
-                      src={MALAYALAM_TRACKS[0].thumbnail}
-                      alt="Malayalam Favorites"
-                      fill
-                      sizes="(max-width: 640px) 50vw, 320px"
-                      className="object-cover opacity-50 group-hover:opacity-65 transition-all duration-300 group-hover:scale-105"
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                    <div className="absolute inset-0 bg-emerald-950/40 mix-blend-overlay" />
-                  </div>
-
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="text-xl sm:text-2xl drop-shadow">🌴</span>
-                    <span className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 backdrop-blur-sm">
-                      {MALAYALAM_TRACKS.length}
-                    </span>
-                  </div>
-
-                  <div className="relative z-10 flex items-end justify-between gap-1">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[9px] sm:text-[10px] text-emerald-300 font-bold uppercase tracking-wider">Playlist</p>
-                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate leading-tight group-hover:text-[#10b981] transition-colors">
-                        Malayalam
-                      </h3>
-                      <p className="text-[10px] text-[#b3b3b3] truncate hidden sm:block">
-                        Illuminati, Cherathukal
-                      </p>
+                {/* 2. Trending Malayalam */}
+                <div className="bg-[#161616] p-4 sm:p-5 rounded-2xl border border-[#242424] shadow-md space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#242424]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🌴</span>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+                          Trending Malayalam
+                        </h2>
+                        <p className="text-[10px] text-[#8e98a8]">Authentic Mollywood vibes, Sushin Shyam & hits</p>
+                      </div>
                     </div>
-
-                    <div
-                      className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-black shadow-2xl transition-all duration-200 shrink-0 ${
-                        isMalayalamPlaying
-                          ? 'bg-[#10b981] scale-105 shadow-[#10b981]/50'
-                          : 'bg-white group-hover:bg-[#10b981] group-hover:scale-110 shadow-lg'
-                      }`}
+                    <button
+                      type="button"
+                      onClick={() => handlePlayTrendingMalayalam(0)}
+                      className="px-3 py-1 rounded-full text-xs font-bold bg-[#10b981] hover:bg-[#059669] text-white shadow-md transition-colors cursor-pointer"
                     >
-                      {isMalayalamPlaying ? (
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
-                      ) : (
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      )}
-                    </div>
+                      ▶ Play All
+                    </button>
+                  </div>
+
+                  {/* Compact Song Rows */}
+                  <div className="space-y-1">
+                    {TRENDING_MALAYALAM_SONGS.slice(0, 6).map((song, idx) => {
+                      const isThisPlaying = isPlaying && currentTrack?.id === song.id;
+                      const liked = isTrackLiked(song.id);
+
+                      return (
+                        <div
+                          key={song.id}
+                          onClick={() => handlePlayTrendingMalayalam(idx)}
+                          className={`flex items-center justify-between gap-3 p-2 rounded-xl transition-colors cursor-pointer group ${
+                            isThisPlaying
+                              ? 'bg-[#1b2b3d] border border-[#10b981]/40 text-white'
+                              : 'hover:bg-[#202020]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {/* Track Artwork / Hover Play */}
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-black shrink-0 border border-[#2a2a2a]">
+                              <Image
+                                src={song.thumbnail}
+                                alt={song.title}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                              <div
+                                className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${
+                                  isThisPlaying ? 'opacity-100 bg-[#10b981]/30' : 'opacity-0 group-hover:opacity-100'
+                                }`}
+                              >
+                                {isThisPlaying ? (
+                                  <div className="flex items-end gap-0.5 h-3">
+                                    <span className="w-0.5 bg-white rounded-full animate-bounce h-2" />
+                                    <span className="w-0.5 bg-white rounded-full animate-bounce h-3 delay-75" />
+                                    <span className="w-0.5 bg-white rounded-full animate-bounce h-1.5 delay-150" />
+                                  </div>
+                                ) : (
+                                  <span className="text-white text-xs font-bold">▶</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Title & Artist */}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-xs font-bold truncate transition-colors ${
+                                  isThisPlaying ? 'text-[#10b981]' : 'text-white group-hover:text-[#10b981]'
+                                }`}
+                              >
+                                {song.title}
+                              </p>
+                              <p className="text-[11px] text-[#8e98a8] truncate">{song.artist}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-mono text-[#8e98a8] hidden sm:inline">
+                              {song.duration}
+                            </span>
+
+                            {/* Like Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTrackLike(song);
+                              }}
+                              className={`p-1.5 rounded-full transition-transform hover:scale-110 cursor-pointer ${
+                                liked ? 'text-[#10b981]' : 'text-[#666666] hover:text-white'
+                              }`}
+                              title={liked ? 'Liked' : 'Like'}
+                            >
+                              {liked ? '💙' : '🤍'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
+              </div>
+
+              {/* Right Column: Dual Vinyl Music Mixer */}
+              <div className="xl:col-span-6">
+                <DualVinylMixer savedPlaylists={savedPlaylists} className="h-full" />
+              </div>
+            </div>
+
+            {/* ========================================================= */}
+            {/* SECTION D: GOOD SONGS / RECOMMENDED FOR YOU (Carousel)    */}
+            {/* ========================================================= */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
+                    <span>✨</span> Recommended for You
+                  </h2>
+                  <p className="text-[11px] text-[#8e98a8]">Curated selection of aesthetic chill, Bollywood & global hits</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handlePlayRecommended(0)}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1d90f5] hover:bg-[#2fa0ff] text-white shadow-md transition-colors cursor-pointer"
+                >
+                  ▶ Play All
+                </button>
+              </div>
+
+              {/* Responsive Cards Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+                {RECOMMENDED_SONGS.slice(0, 6).map((song, idx) => {
+                  const isThisPlaying = isPlaying && currentTrack?.id === song.id;
+                  const liked = isTrackLiked(song.id);
+
+                  return (
+                    <div
+                      key={song.id}
+                      onClick={() => handlePlayRecommended(idx)}
+                      className={`group p-3 rounded-xl border transition-all duration-300 cursor-pointer select-none flex flex-col justify-between shadow-md ${
+                        isThisPlaying
+                          ? 'bg-gradient-to-b from-[#18283d] to-[#111924] border-[#1d90f5] ring-1 ring-[#1d90f5]/50 scale-[1.02]'
+                          : 'bg-[#181818] hover:bg-[#222222] border-[#262626] hover:border-[#383838] hover:scale-[1.02]'
+                      }`}
+                      title={`Play "${song.title}"`}
+                    >
+                      <div className="relative aspect-square w-full rounded-lg overflow-hidden mb-2.5 bg-black shadow">
+                        <Image
+                          src={song.thumbnail}
+                          alt={song.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          unoptimized
+                        />
+
+                        {/* Floating Play Button Overlay */}
+                        <div
+                          className={`absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-xl transition-all duration-200 ${
+                            isThisPlaying
+                              ? 'bg-[#1d90f5] text-white opacity-100 scale-100 shadow-[#1d90f5]/50'
+                              : 'bg-white text-black hover:bg-[#1d90f5] hover:text-white opacity-0 group-hover:opacity-100 group-hover:scale-105'
+                          }`}
+                        >
+                          {isThisPlaying ? (
+                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3
+                          className={`text-xs font-bold truncate transition-colors ${
+                            isThisPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                          }`}
+                        >
+                          {song.title}
+                        </h3>
+                        <p className="text-[10px] text-[#8e98a8] truncate mt-0.5">{song.artist}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-[#666666] mt-2 pt-1 border-t border-[#222222]">
+                        <span className="font-mono">{song.duration}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTrackLike(song);
+                          }}
+                          className={`hover:scale-110 transition-transform cursor-pointer ${
+                            liked ? 'text-[#1d90f5]' : 'text-[#666666] hover:text-white'
+                          }`}
+                        >
+                          {liked ? '💙' : '🤍'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>

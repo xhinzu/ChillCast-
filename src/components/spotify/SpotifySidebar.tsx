@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import AddSourceModal, { SavedPlaylistItem } from './AddSourceModal';
+import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
 
 interface SpotifySidebarProps {
   activeView: string;
@@ -30,10 +31,14 @@ export default function SpotifySidebar({
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setSavedPlaylists(parsed);
+            return;
           }
         }
+        // Initialize with default starter playlists if empty
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STARTER_PLAYLISTS));
+        setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
       } catch {
         // ignore
       }

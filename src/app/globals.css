@@ -102,3 +102,75 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(29, 144, 245, 0.6);
 }
+
+/* Vinyl Record Rotations & Styling */
+@keyframes vinyl-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vinyl-rotating {
+  animation: vinyl-spin 3s linear infinite;
+}
+
+.vinyl-paused {
+  animation-play-state: paused !important;
+}
+
+/* Realistic Vinyl Grooves */
+.vinyl-grooves {
+  background:
+    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.88) 37%, transparent 38%),
+    repeating-radial-gradient(circle at center, #101010 0px, #101010 2px, #1c1c1c 3px, #101010 4px);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.9), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+/* Vinyl Surface Sheen */
+.vinyl-sheen-overlay {
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 44%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.05) 56%,
+    transparent 100%
+  );
+}
+
+/* Custom Crossfader Slider Track */
+.crossfader-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #242424;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  border: 1px solid #333333;
+}
+
+.crossfader-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
+  border: 2px solid #1d90f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+.crossfader-slider::-moz-range-thumb {
+  width: 22px;
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
+  border: 2px solid #1d90f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}

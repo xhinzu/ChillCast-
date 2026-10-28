@@ -11,6 +11,8 @@ interface SpotifyBottomPlayerProps {
   setShowVideo: (show: boolean) => void;
   activeView: string;
   setActiveView: (view: string) => void;
+  onToggleNowPlaying?: () => void;
+  isNowPlayingOpen?: boolean;
 }
 
 export default function SpotifyBottomPlayer({
@@ -18,6 +20,8 @@ export default function SpotifyBottomPlayer({
   setShowVideo,
   activeView,
   setActiveView,
+  onToggleNowPlaying,
+  isNowPlayingOpen,
 }: SpotifyBottomPlayerProps) {
   const {
     currentTrack,
@@ -586,6 +590,22 @@ export default function SpotifyBottomPlayer({
             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#1d90f5] shadow-sm shadow-[#1d90f5]" />
           )}
         </button>
+
+        {/* Now Playing View Toggle Button */}
+        {onToggleNowPlaying && (
+          <button
+            type="button"
+            onClick={onToggleNowPlaying}
+            className={`p-1.5 rounded-full transition-colors cursor-pointer hidden md:flex ${
+              isNowPlayingOpen ? 'text-[#1d90f5] bg-white/10' : 'text-[#b3b3b3] hover:text-white'
+            }`}
+            title="Now Playing View (Toggle Right Panel)"
+          >
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H5V5h9v12zm5 0h-3V5h3v12z" />
+            </svg>
+          </button>
+        )}
 
         {/* Volume Mute & Slider */}
         <div className="flex items-center gap-2 group">
