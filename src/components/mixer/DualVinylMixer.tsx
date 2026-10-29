@@ -6,7 +6,6 @@ import { TrackInfo } from '@/types/playback';
 import { SavedPlaylistItem } from '@/components/spotify/AddSourceModal';
 import SongSelectorModal from './SongSelectorModal';
 import { YTPlayer } from '@/types/youtube';
-import { usePlayback } from '@/context/PlaybackContext';
 
 interface DualVinylMixerProps {
   savedPlaylists: SavedPlaylistItem[];
@@ -24,8 +23,6 @@ export default function DualVinylMixer({
   savedPlaylists,
   className = '',
 }: DualVinylMixerProps) {
-  const { setDeckPlayback } = usePlayback();
-
   // -------------------------------------------------------------
   // DECK A STATES (Starts with NO song loaded)
   // -------------------------------------------------------------
@@ -384,107 +381,6 @@ export default function DualVinylMixer({
   const forwardB = () => seekB(currentTimeB + 5);
 
   const resetCrossfader = () => setCrossfader(0);
-
-  // Synchronize active deck playback to global context for side and bottom panels
-  useEffect(() => {
-    if (isPlayingA && !isPlayingB) {
-      if (trackA) {
-        setDeckPlayback({
-          deck: 'Deck A',
-          track: trackA,
-          isPlaying: true,
-          currentTime: currentTimeA,
-          duration: durationA || 210,
-          volume: volumeA,
-        });
-      }
-    } else if (isPlayingB && !isPlayingA) {
-      if (trackB) {
-        setDeckPlayback({
-          deck: 'Deck B',
-          track: trackB,
-          isPlaying: true,
-          currentTime: currentTimeB,
-          duration: durationB || 210,
-          volume: volumeB,
-        });
-      }
-    } else if (isPlayingA && isPlayingB) {
-      const activeDeck = crossfader <= 0 ? 'Deck A' : 'Deck B';
-      const activeTr = activeDeck === 'Deck A' ? trackA : trackB;
-      if (activeTr) {
-        setDeckPlayback({
-          deck: activeDeck,
-          track: activeTr,
-          isPlaying: true,
-          currentTime: activeDeck === 'Deck A' ? currentTimeA : currentTimeB,
-          duration: (activeDeck === 'Deck A' ? durationA : durationB) || 210,
-          volume: activeDeck === 'Deck A' ? volumeA : volumeB,
-        });
-      }
-    } else if (trackA || trackB) {
-      // If paused, keep displaying the loaded track with paused status
-      const pausedDeck = trackA ? 'Deck A' : 'Deck B';
-      const pausedTr = pausedDeck === 'Deck A' ? trackA : trackB;
-      if (pausedTr) {
-        setDeckPlayback({
-          deck: pausedDeck,
-          track: pausedTr,
-          isPlaying: false,
-          currentTime: pausedDeck === 'Deck A' ? currentTimeA : currentTimeB,
-          duration: (pausedDeck === 'Deck A' ? durationA : durationB) || 210,
-          volume: pausedDeck === 'Deck A' ? volumeA : volumeB,
-        });
-      }
-    } else {
-      setDeckPlayback(null);
-    }
-  }, [
-    isPlayingA,
-    isPlayingB,
-    trackA,
-    trackB,
-    currentTimeA,
-    currentTimeB,
-    durationA,
-    durationB,
-    volumeA,
-    volumeB,
-    crossfader,
-    setDeckPlayback,
-  ]);
-
-  // Listen for bottom player deck remote controls
-  useEffect(() => {
-    const handleToggle = (e: Event) => {
-      const custom = e as CustomEvent<{ deck?: 'Deck A' | 'Deck B' }>;
-      const target = custom.detail?.deck;
-      if (target === 'Deck A' || (!target && (isPlayingA || trackA))) {
-        togglePlayA();
-      } else if (target === 'Deck B' || (!target && (isPlayingB || trackB))) {
-        togglePlayB();
-      }
-    };
-
-    const handleSeek = (e: Event) => {
-      const custom = e as CustomEvent<{ deck?: 'Deck A' | 'Deck B'; time: number }>;
-      const { deck, time } = custom.detail || {};
-      if (typeof time === 'number') {
-        if (deck === 'Deck A' || (!deck && isPlayingA)) {
-          seekA(time);
-        } else if (deck === 'Deck B' || (!deck && isPlayingB)) {
-          seekB(time);
-        }
-      }
-    };
-
-    window.addEventListener('chillify_deck_toggle', handleToggle);
-    window.addEventListener('chillify_deck_seek', handleSeek);
-    return () => {
-      window.removeEventListener('chillify_deck_toggle', handleToggle);
-      window.removeEventListener('chillify_deck_seek', handleSeek);
-    };
-  }, [isPlayingA, isPlayingB, trackA, trackB, togglePlayA, togglePlayB, seekA, seekB]);
 
   return (
     <div

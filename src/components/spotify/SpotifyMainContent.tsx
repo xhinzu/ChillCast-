@@ -951,14 +951,8 @@ export default function SpotifyMainContent({
         {/* ------------------------------------------------------------- */}
         {/* VIEW 3: HOME VIEW (Personalized Discovery & Dual Vinyl Mixer) */}
         {/* ------------------------------------------------------------- */}
-        <section
-          aria-label="Home Music Discovery"
-          className={
-            isHomeView
-              ? 'space-y-8'
-              : 'pointer-events-none absolute -left-[9999px] -top-[9999px] w-0 h-0 overflow-hidden opacity-0'
-          }
-        >
+        {isHomeView && (
+          <section aria-label="Home Music Discovery" className="space-y-8">
             {/* Header Greeting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-orange-950/30 via-purple-950/20 to-transparent p-5 rounded-2xl border border-orange-500/20">
               <div>
@@ -1278,189 +1272,155 @@ export default function SpotifyMainContent({
               </div>
             </div>
           </section>
+        )}
 
         {/* ------------------------------------------------------------- */}
         {/* VIEW 4: AMBIENCE METER & SOUNDSCAPE MIXER                     */}
         {/* ------------------------------------------------------------- */}
-        <section
-          aria-label="Ambient Soundscape Mixer"
-          className={
-            isAmbienceView
-              ? 'bg-[#0e0c12] p-5 sm:p-6 rounded-2xl border border-orange-500/30 shadow-2xl space-y-4'
-              : 'hidden'
-          }
-        >
-          {/* Section Header & Master Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#24202c]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-orange-500/20 text-[#ff7518] border border-orange-500/40 flex items-center justify-center text-xl font-bold">
-                🎃
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  Ambient Soundscape Mixer
-                  {activeCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#ff7518] text-black shadow-md shadow-orange-500/40">
-                      {activeCount} ACTIVE
-                    </span>
-                  )}
-                </h2>
-                <p className="text-xs text-[#a1a1aa]">
-                  7 YouTube soundscapes: Spooky 🎃, Rain 🌧️, Thunder ⚡, Wind 🍃, Drums 🥁, Fireplace 🔥 & Birds 🐦
-                </p>
-              </div>
-            </div>
-
-            {/* Master Volume & Stop All */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 bg-[#14121a] px-3.5 py-1.5 rounded-full border border-[#2b2636]">
-                <button
-                  type="button"
-                  onClick={toggleMasterMute}
-                  className="text-xs text-[#a1a1aa] hover:text-white cursor-pointer"
-                  title="Mute Master Ambient"
-                >
-                  {isMasterMuted || masterVolume === 0 ? '🔇' : '🔊'}
-                </button>
-                <span className="text-[11px] text-[#a1a1aa] font-medium uppercase tracking-wider">Master</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={isMasterMuted ? 0 : masterVolume}
-                  onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-                  className="w-20 spotify-slider"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => applyPreset('muteAll')}
-                className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1b1922] hover:bg-rose-950/60 text-[#a1a1aa] hover:text-rose-200 border border-[#2b2636] transition-colors cursor-pointer"
-              >
-                ⏹️ Stop All
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Presets Bar */}
-          <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
-            <span className="text-[#a1a1aa] font-medium mr-1">Spooky Presets:</span>
-            <button
-              type="button"
-              onClick={() => applyPreset('spookyNight')}
-              className="px-3 py-1.5 rounded-xl bg-orange-950/40 hover:bg-[#ff7518] border border-orange-500/40 text-orange-300 hover:text-black font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-            >
-              <span>🎃</span> Spooky Night
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('rainyNight')}
-              className="px-3 py-1.5 rounded-xl bg-[#1c1924] hover:bg-[#282333] border border-[#2e2938] hover:border-orange-500/30 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <span>🌧️</span> Rainy Storm
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('forestCanopy')}
-              className="px-3 py-1.5 rounded-xl bg-[#1c1924] hover:bg-[#282333] border border-[#2e2938] hover:border-orange-500/30 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <span>🌲</span> Forest Camp
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('muteAll')}
-              className="px-3.5 py-1.5 rounded-xl bg-[#1c1924] hover:bg-rose-950/60 border border-[#2e2938] hover:border-rose-500/40 text-[#a1a1aa] hover:text-rose-200 font-bold transition-all cursor-pointer ml-auto flex items-center gap-1.5"
-            >
-              <span>⏹️</span> Stop All
-            </button>
-          </div>
-
-          {/* 7 Ambient Soundscape Channels Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 pt-2">
-            {ambientSounds.map((sound) => {
-              const state = soundStates[sound.id];
-              const isPlayingChannel = state?.isPlaying;
-              const isMutedChannel = state?.isMuted;
-              const vol = state?.volume ?? sound.defaultVolume;
-
-              return (
-                <div
-                  key={sound.id}
-                  onClick={() => toggleSound(sound.id)}
-                  className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-3.5 cursor-pointer select-none group relative overflow-hidden ${
-                    isPlayingChannel
-                      ? 'bg-gradient-to-b from-[#241005] to-[#120702] border-[#ff7518] shadow-lg shadow-orange-500/20 ring-1 ring-orange-500/40 scale-[1.01]'
-                      : 'bg-[#14121a] hover:bg-[#1a1722] border-[#25202c] hover:border-orange-500/30'
-                  }`}
-                  title={`Click to ${isPlayingChannel ? 'turn off' : 'turn on'} ${sound.name}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl transition-transform group-hover:scale-110">
-                      {sound.icon}
-                    </span>
-
-                    {/* Active Glowing Status Indicator */}
-                    {isPlayingChannel ? (
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/40">
-                        <span className="flex h-2 w-2 relative">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff7518] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff7518]"></span>
-                        </span>
-                        <span className="text-[10px] font-black text-[#ff7518] tracking-wider">
-                          ACTIVE
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] font-semibold text-[#716e7a] group-hover:text-[#a1a1aa] transition-colors">
-                        Click to play
+        {isAmbienceView && (
+          <section
+            aria-label="Ambient Soundscape Mixer"
+            className="bg-[#181818] p-5 sm:p-6 rounded-xl border border-[#242424] shadow-lg space-y-4"
+          >
+            {/* Section Header & Master Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#282828]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#1d90f5]/15 text-[#1d90f5] flex items-center justify-center text-xl font-bold">
+                  🎛️
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    Ambient Soundscape Mixer
+                    {activeCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1d90f5] text-white">
+                        {activeCount} ACTIVE
                       </span>
                     )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-bold text-white line-clamp-1">{sound.name}</h3>
-                    <p className="text-[11px] text-[#8e8b98] line-clamp-1">{sound.description}</p>
-                  </div>
-
-                  {/* Volume Slider & Mute */}
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-2 pt-2 border-t border-[#25202c]"
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSoundMute(sound.id);
-                      }}
-                      className="text-xs text-[#a1a1aa] hover:text-white cursor-pointer transition-colors"
-                      title={isMutedChannel ? 'Unmute' : 'Mute'}
-                    >
-                      {isMutedChannel ? '🔇' : '🔉'}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={isMutedChannel ? 0 : vol}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setSoundVolume(sound.id, parseFloat(e.target.value));
-                      }}
-                      className="w-full spotify-slider cursor-pointer"
-                    />
-                    <span className="text-[10px] font-mono text-[#a1a1aa] w-6 text-right">
-                      {Math.round((isMutedChannel ? 0 : vol) * 100)}%
-                    </span>
-                  </div>
+                  </h2>
+                  <p className="text-xs text-[#b3b3b3]">
+                    9 real-time procedural soundscapes: rain, wind, birds, crickets, thunder, drums, bass, cafe chatter & fireplace
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </section>
+              </div>
+
+              {/* Master Volume & Stop All */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 bg-[#121212] px-3 py-1.5 rounded-full border border-[#282828]">
+                  <button
+                    type="button"
+                    onClick={toggleMasterMute}
+                    className="text-xs text-[#b3b3b3] hover:text-white cursor-pointer"
+                    title="Mute Master Ambient"
+                  >
+                    {isMasterMuted || masterVolume === 0 ? '🔇' : '🔊'}
+                  </button>
+                  <span className="text-[11px] text-[#b3b3b3] font-medium">Master</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={isMasterMuted ? 0 : masterVolume}
+                    onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                    className="w-20 spotify-slider"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => applyPreset('muteAll')}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#242424] hover:bg-rose-900/40 text-[#b3b3b3] hover:text-rose-200 transition-colors cursor-pointer"
+                >
+                  ⏹️ Stop All
+                </button>
+              </div>
+            </div>
+
+            {/* 9 Ambient Soundscape Channels Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pt-2">
+              {ambientSounds.map((sound) => {
+                const state = soundStates[sound.id];
+                const isPlayingChannel = state?.isPlaying;
+                const isMutedChannel = state?.isMuted;
+                const vol = state?.volume ?? sound.defaultVolume;
+
+                return (
+                  <div
+                    key={sound.id}
+                    onClick={() => toggleSound(sound.id)}
+                    className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-3.5 cursor-pointer select-none group relative overflow-hidden ${
+                      isPlayingChannel
+                        ? 'bg-gradient-to-b from-[#18283d] to-[#121924] border-[#1d90f5] shadow-lg shadow-[#1d90f5]/20 ring-1 ring-[#1d90f5]/40 scale-[1.01]'
+                        : 'bg-[#181818] hover:bg-[#222222] border-[#282828] hover:border-[#3a3a3a]'
+                    }`}
+                    title={`Click to ${isPlayingChannel ? 'turn off' : 'turn on'} ${sound.name}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl transition-transform group-hover:scale-110">
+                        {sound.icon}
+                      </span>
+
+                      {/* Active Glowing Status Indicator */}
+                      {isPlayingChannel ? (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#1d90f5]/20 border border-[#1d90f5]/40">
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1d90f5] opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1d90f5]"></span>
+                          </span>
+                          <span className="text-[10px] font-extrabold text-[#1d90f5] tracking-wider">
+                            ACTIVE
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-[#666666] group-hover:text-[#b3b3b3] transition-colors">
+                          Click to play
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-white line-clamp-1">{sound.name}</h3>
+                      <p className="text-[11px] text-[#b3b3b3] line-clamp-1">{sound.description}</p>
+                    </div>
+
+                    {/* Volume Slider & Mute */}
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 pt-2 border-t border-[#282828]"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSoundMute(sound.id);
+                        }}
+                        className="text-xs text-[#b3b3b3] hover:text-white cursor-pointer transition-colors"
+                        title={isMutedChannel ? 'Unmute' : 'Mute'}
+                      >
+                        {isMutedChannel ? '🔇' : '🔉'}
+                      </button>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={isMutedChannel ? 0 : vol}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setSoundVolume(sound.id, parseFloat(e.target.value));
+                        }}
+                        className="w-full spotify-slider cursor-pointer"
+                      />
+                      <span className="text-[10px] font-mono text-[#b3b3b3] w-6 text-right">
+                        {Math.round((isMutedChannel ? 0 : vol) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Footer Info & Creator Socials */}
         <footer className="pt-8 border-t border-[#242424] flex flex-col sm:flex-row items-center justify-between text-xs text-[#b3b3b3] gap-3">

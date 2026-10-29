@@ -82,9 +82,6 @@ export class AmbientSoundEngine {
     const dest = this.getChannelGain(id);
 
     switch (id) {
-      case 'spooky':
-        this.startSpooky(ctx, dest);
-        break;
       case 'rain':
         this.startRain(ctx, dest);
         break;
@@ -125,62 +122,6 @@ export class AmbientSoundEngine {
 
   public isPlaying(id: AmbientSoundId): boolean {
     return this.activeSources.has(id);
-  }
-
-  /* --- 0. Spooky Haunted Ambience (Halloween Drone & Eerie Pad) --- */
-  private startSpooky(ctx: AudioContext, dest: GainNode) {
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const filter = ctx.createBiquadFilter();
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    const spookyGain = ctx.createGain();
-
-    osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(110, ctx.currentTime); // A2 drone
-
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(116.54, ctx.currentTime); // Minor second dissonant hum
-
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(450, ctx.currentTime);
-    filter.Q.setValueAtTime(3.5, ctx.currentTime);
-
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(0.08, ctx.currentTime); // Slow 12s ghostly swell
-    lfoGain.gain.setValueAtTime(220, ctx.currentTime);
-
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-
-    spookyGain.gain.setValueAtTime(0.45, ctx.currentTime);
-
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(spookyGain);
-    spookyGain.connect(dest);
-
-    osc1.start();
-    osc2.start();
-    lfo.start();
-
-    this.activeSources.set('spooky', {
-      stop: () => {
-        try {
-          osc1.stop();
-          osc2.stop();
-          lfo.stop();
-          osc1.disconnect();
-          osc2.disconnect();
-          lfo.disconnect();
-          lfoGain.disconnect();
-          filter.disconnect();
-          spookyGain.disconnect();
-        } catch {
-          // ignore
-        }
-      },
-    });
   }
 
   /* --- 1. Rain Synthesizer --- */

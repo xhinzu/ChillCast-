@@ -13,7 +13,6 @@ import {
   PlaybackAdapter,
   PlaybackState,
   TrackInfo,
-  DeckPlaybackState,
 } from '@/types/playback';
 import { createAdapter, LocalAudioAdapter } from '@/lib/adapters';
 
@@ -30,9 +29,7 @@ interface PlaybackContextValue {
   errorMessage: string | null;
   isSpatial8D: boolean;
   isMuffled: boolean;
-  deckPlayback: DeckPlaybackState | null;
 
-  setDeckPlayback: (state: DeckPlaybackState | null) => void;
   switchAdapter: (type: AdapterType) => Promise<PlaybackAdapter>;
   play: () => Promise<void>;
   pause: () => void;
@@ -66,7 +63,6 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const [isSpatial8D, setIsSpatial8D] = useState<boolean>(false);
   const [isMuffled, setIsMuffled] = useState<boolean>(false);
-  const [deckPlayback, setDeckPlayback] = useState<DeckPlaybackState | null>(null);
 
   const playCustomTrackListRef = useRef<((tracks: TrackInfo[], startIndex?: number) => Promise<void>) | null>(null);
 
@@ -386,8 +382,6 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         errorMessage,
         isSpatial8D,
         isMuffled,
-        deckPlayback,
-        setDeckPlayback,
         switchAdapter,
         play,
         pause,

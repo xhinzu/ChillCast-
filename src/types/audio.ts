@@ -1,14 +1,13 @@
 export type AmbientSoundId =
-  | 'spooky'
   | 'rain'
-  | 'thunder'
   | 'wind'
-  | 'drums'
-  | 'fireplace'
   | 'birds'
   | 'crickets'
+  | 'thunder'
+  | 'drums'
   | 'bass'
-  | 'chatter';
+  | 'chatter'
+  | 'fireplace';
 
 export interface AmbientSoundConfig {
   id: AmbientSoundId;
@@ -16,7 +15,6 @@ export interface AmbientSoundConfig {
   icon: string;
   description: string;
   defaultVolume: number;
-  youtubeId?: string;
 }
 
 export interface AmbientSoundState {

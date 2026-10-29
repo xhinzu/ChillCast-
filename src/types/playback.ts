@@ -70,13 +70,3 @@ export interface PlaybackAdapter {
 
   cleanup(): void;
 }
-
-export interface DeckPlaybackState {
-  deck: 'Deck A' | 'Deck B';
-  track: TrackInfo;
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  volume: number;
-  pitch?: number;
-}
