@@ -97,55 +97,55 @@ export default function SongSelectorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-xl bg-[#0f0e13] border border-orange-500/40 rounded-2xl shadow-2xl shadow-orange-950/60 flex flex-col max-h-[85vh] overflow-hidden">
+      <div className="w-full max-w-xl bg-[#141414] border border-[#282828] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
         {/* Modal Header */}
-        <div className="p-5 border-b border-[#25202c] flex items-center justify-between shrink-0 bg-gradient-to-r from-orange-950/40 via-purple-950/30 to-[#0f0e13]">
+        <div className="p-5 border-b border-[#242424] flex items-center justify-between shrink-0 bg-[#181818]">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{isDeckA ? '🎃' : '💀'}</span>
+            <span className="text-2xl">💿</span>
             <div>
               <div className="flex items-center gap-2">
                 <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                     isDeckA
-                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40'
-                      : 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                      ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/40'
+                      : 'bg-[#a855f7]/20 text-[#c084fc] border border-[#a855f7]/40'
                   }`}
                 >
                   {deckName}
                 </span>
-                <h3 className="text-base font-extrabold text-white">Load Spooky Track</h3>
+                <h3 className="text-base font-bold text-white">Load Track</h3>
               </div>
-              <p className="text-xs text-[#a1a1aa] mt-0.5">
-                Select any trending track or custom playlist song to spin
+              <p className="text-xs text-[#b3b3b3] mt-0.5">
+                Select any trending track or custom playlist song to mix
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#1b1922] hover:bg-[#282533] text-[#a1a1aa] hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#2b2636]"
+            className="w-8 h-8 rounded-full bg-[#202020] hover:bg-[#2c2c2c] text-[#b3b3b3] hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#333333]"
           >
             ✕
           </button>
         </div>
 
         {/* Search Input */}
-        <div className="p-4 border-b border-[#221e2a] bg-[#14121a] shrink-0">
+        <div className="p-4 border-b border-[#242424] bg-[#161616] shrink-0">
           <div className="relative flex items-center">
-            <span className="absolute left-3.5 text-[#ff7518] text-sm">🔍</span>
+            <span className="absolute left-3.5 text-[#b3b3b3] text-sm">🔍</span>
             <input
               type="text"
               placeholder="Search by track title or artist..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-9 rounded-xl bg-[#1c1924] border border-[#2e2938] focus:border-[#ff7518] text-white text-xs outline-none transition-all placeholder-[#716e7a]"
+              className="w-full h-10 pl-10 pr-9 rounded-xl bg-[#202020] border border-[#2e2e2e] focus:border-[#1d90f5] text-white text-xs outline-none transition-all placeholder-[#777777]"
               autoFocus
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 text-xs text-[#716e7a] hover:text-white"
+                className="absolute right-3 text-xs text-[#777777] hover:text-white"
               >
                 ✕
               </button>
@@ -159,39 +159,39 @@ export default function SongSelectorModal({
               onClick={() => setActiveTab('all')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'all'
-                  ? 'bg-[#ff7518] text-black shadow-md shadow-orange-500/30'
-                  : 'bg-[#1b1922] text-[#a1a1aa] hover:text-white border border-[#2a2636]'
+                  ? 'bg-[#1d90f5] text-white shadow-md'
+                  : 'bg-[#202020] text-[#b3b3b3] hover:text-white border border-[#2e2e2e]'
               }`}
             >
-              🔥 All Trending ({allAvailableSongs.length})
+              All Trending ({allAvailableSongs.length})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('viral')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'viral'
-                  ? 'bg-[#ff7518] text-black shadow-md shadow-orange-500/30'
-                  : 'bg-[#1b1922] text-[#a1a1aa] hover:text-white border border-[#2a2636]'
+                  ? 'bg-[#1d90f5] text-white shadow-md'
+                  : 'bg-[#202020] text-[#b3b3b3] hover:text-white border border-[#2e2e2e]'
               }`}
             >
-              📱 Top Viral
+              Top Viral
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('playlists')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'playlists'
-                  ? 'bg-[#ff7518] text-black shadow-md shadow-orange-500/30'
-                  : 'bg-[#1b1922] text-[#a1a1aa] hover:text-white border border-[#2a2636]'
+                  ? 'bg-[#1d90f5] text-white shadow-md'
+                  : 'bg-[#202020] text-[#b3b3b3] hover:text-white border border-[#2e2e2e]'
               }`}
             >
-              💀 Your Playlists ({savedPlaylists.length})
+              Your Playlists ({savedPlaylists.length})
             </button>
           </div>
         </div>
 
         {/* Songs List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1 divide-y divide-[#1e1b26]/50">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 divide-y divide-[#222222]">
           {filteredSongs.length > 0 ? (
             filteredSongs.map((song) => (
               <div
@@ -200,10 +200,10 @@ export default function SongSelectorModal({
                   onSelectSong(song);
                   onClose();
                 }}
-                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#1a1722] cursor-pointer group transition-all border border-transparent hover:border-orange-500/30"
+                className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#202020] cursor-pointer group transition-all border border-transparent hover:border-[#333333]"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1 pr-3">
-                  <div className="w-11 h-11 rounded-lg overflow-hidden relative bg-[#1c1924] shrink-0 border border-[#2b2636] group-hover:border-[#ff7518] transition-colors">
+                  <div className="w-11 h-11 rounded-lg overflow-hidden relative bg-black shrink-0 border border-[#282828] group-hover:border-[#1d90f5] transition-colors">
                     {song.artworkUrl ? (
                       <Image
                         src={song.artworkUrl}
@@ -213,13 +213,13 @@ export default function SongSelectorModal({
                         unoptimized
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg">
-                        🎃
+                      <div className="w-full h-full flex items-center justify-center text-lg text-[#666666]">
+                        🎵
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-white truncate group-hover:text-[#ff7518] transition-colors">
+                    <p className="text-xs font-bold text-white truncate group-hover:text-[#1d90f5] transition-colors">
                       {song.title}
                     </p>
                     <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
@@ -231,7 +231,7 @@ export default function SongSelectorModal({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    className="px-3 py-1.5 rounded-lg bg-orange-950/40 border border-orange-500/40 text-orange-400 group-hover:bg-[#ff7518] group-hover:text-black font-extrabold text-[11px] transition-all"
+                    className="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-[#1d90f5] text-[#b3b3b3] hover:text-white font-bold text-[11px] transition-all"
                   >
                     Load into {deckName}
                   </button>
@@ -239,20 +239,20 @@ export default function SongSelectorModal({
               </div>
             ))
           ) : (
-            <div className="py-12 text-center text-[#716e7a] text-xs">
-              <span className="text-3xl block mb-2">🦇</span>
-              No spooky tracks found matching &quot;{searchQuery}&quot;.
+            <div className="py-12 text-center text-[#777777] text-xs">
+              <span className="text-3xl block mb-2">🔍</span>
+              No tracks found matching &quot;{searchQuery}&quot;.
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 bg-[#0c0b0f] border-t border-[#221e2a] flex items-center justify-between text-[11px] text-[#716e7a] shrink-0">
-          <span>🎃 Ready to mix on {deckName}</span>
+        <div className="p-3 bg-[#181818] border-t border-[#242424] flex items-center justify-between text-[11px] text-[#888888] shrink-0">
+          <span>Ready to mix on {deckName}</span>
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-semibold text-[#a1a1aa] hover:text-white cursor-pointer"
+            className="text-xs font-semibold text-[#b3b3b3] hover:text-white cursor-pointer"
           >
             Cancel
           </button>

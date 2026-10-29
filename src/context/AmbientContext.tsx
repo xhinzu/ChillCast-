@@ -56,9 +56,9 @@ export const AMBIENT_SOUNDS: AmbientSoundConfig[] = [
   },
   {
     id: 'chatter',
-    name: 'Cafe Chatter',
-    icon: '☕',
-    description: 'Cozy coffee shop murmur & clink',
+    name: 'People Speaking',
+    icon: '🗣️',
+    description: 'Gentle cafe chatter & murmur',
     defaultVolume: 0.4,
   },
   {
@@ -67,6 +67,13 @@ export const AMBIENT_SOUNDS: AmbientSoundConfig[] = [
     icon: '🔥',
     description: 'Warm hearth crackling embers',
     defaultVolume: 0.45,
+  },
+  {
+    id: 'waves',
+    name: 'Ocean Waves',
+    icon: '🌊',
+    description: 'Rolling coastal tidal surf',
+    defaultVolume: 0.5,
   },
 ];
 

@@ -345,7 +345,8 @@ export default function SpotifyMainContent({
   const isSearchActive = activeView === 'search' && searchQuery.trim().length > 0;
   const isPlaylistsView = activeView === 'playlists';
   const isAmbienceView = activeView === 'ambience' || activeView === 'mixer';
-  const isHomeView = !isSearchActive && !isPlaylistView && !isPlaylistsView && !isAmbienceView;
+  const isVinylView = activeView === 'vinyl';
+  const isHomeView = !isSearchActive && !isPlaylistView && !isPlaylistsView && !isAmbienceView && !isVinylView;
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
 
   // Track which curated playlist is currently playing
@@ -460,16 +461,13 @@ export default function SpotifyMainContent({
     }
   };
 
-  // Active genre filter for Trending Songs
-  const [trendingGenreFilter, setTrendingGenreFilter] = useState<string>('All');
-
   // Play Trending list starting at index
-  const handlePlayTrending = (startIndex = 0, songsToPlay = ALL_GENRE_TRENDING_SONGS) => {
-    const trackInfos: TrackInfo[] = songsToPlay.map((s) => ({
+  const handlePlayTrending = (startIndex = 0) => {
+    const trackInfos: TrackInfo[] = ALL_GENRE_TRENDING_SONGS.map((s) => ({
       id: s.id,
       title: s.title,
       artist: s.artist,
-      album: 'Trending Hits (All Genres)',
+      album: 'Trending Hits',
       duration: parseDurationSeconds(s.duration),
       source: 'youtube',
       sourceUrl: `https://www.youtube.com/watch?v=${s.id}`,
@@ -479,9 +477,9 @@ export default function SpotifyMainContent({
   };
 
   return (
-    <main className={`flex-1 h-full overflow-y-auto bg-[#09080c] rounded-xl relative pb-12 select-none border border-[#1f1b26] ${extraBottomPadding}`}>
-      {/* Top Ambient Deep Halloween Pumpkin Accent Banner */}
-      <div className="absolute top-0 inset-x-0 h-80 bg-gradient-to-b from-[#2e0e03] via-[#140602] to-transparent pointer-events-none opacity-90" />
+    <main className={`flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none ${extraBottomPadding}`}>
+      {/* Top Ambient Accent Banner */}
+      <div className="absolute top-0 inset-x-0 h-80 bg-gradient-to-b from-[#18283d] via-[#101721] to-transparent pointer-events-none opacity-60" />
 
       {/* Main Content Container */}
       <div className="relative z-10 px-4 sm:px-8 py-6 space-y-8">
@@ -494,8 +492,8 @@ export default function SpotifyMainContent({
 
         {/* Action Notification Toast */}
         {addedToast && (
-          <div className="fixed top-16 right-8 z-50 px-4 py-2.5 rounded-xl bg-[#ff7518] text-black font-extrabold text-xs shadow-2xl shadow-orange-500/40 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-orange-400">
-            <span>🎃</span>
+          <div className="fixed top-16 right-8 z-50 px-4 py-2.5 rounded-xl bg-[#1d90f5] text-white font-bold text-xs shadow-2xl shadow-[#1d90f5]/40 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-[#1d90f5]/60">
+            <span>✓</span>
             <span className="truncate max-w-sm">{addedToast}</span>
           </div>
         )}
@@ -949,24 +947,19 @@ export default function SpotifyMainContent({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* VIEW 3: HOME VIEW (Personalized Discovery & Dual Vinyl Mixer) */}
+        {/* VIEW 3: HOME VIEW (Personalized Discovery & Trending Songs)   */}
         {/* ------------------------------------------------------------- */}
         {isHomeView && (
           <section aria-label="Home Music Discovery" className="space-y-8">
             {/* Header Greeting */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-orange-950/30 via-purple-950/20 to-transparent p-5 rounded-2xl border border-orange-500/20">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#18283d]/40 via-[#121924]/20 to-transparent p-5 rounded-2xl border border-[#242424]">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-                  <span>{greeting}</span> <span className="text-2xl animate-bounce" style={{ animationDuration: '3s' }}>🎃</span>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                  {greeting}
                 </h1>
-                <p className="text-xs sm:text-sm text-[#a1a1aa] mt-1">
-                  Welcome to <strong className="text-white">Chillify 🎃</strong> — your haunted lo-fi soundscape sanctuary. 🕸️ Trick or Treat!
+                <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
+                  Welcome to <strong className="text-white">Chillify</strong> — your personal ambient lo-fi music sanctuary.
                 </p>
-              </div>
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-orange-950/80 via-purple-950/60 to-orange-950/80 border border-orange-500/50 text-orange-400 text-xs font-black uppercase tracking-wider shadow-lg shadow-orange-950/50 shrink-0">
-                <span>🦇</span>
-                <span className="text-white drop-shadow-[0_0_8px_rgba(255,117,24,0.8)]">TRICK OR TREAT</span>
-                <span>🎃</span>
               </div>
             </div>
 
@@ -975,16 +968,16 @@ export default function SpotifyMainContent({
             {/* ========================================================= */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
-                  <span className="text-orange-400">💀</span> Your Playlists
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-950/60 text-orange-400 border border-orange-500/30">
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  Your Playlists
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#181818] text-[#b3b3b3] border border-[#282828]">
                     {savedPlaylists.length}
                   </span>
                 </h2>
                 <button
                   type="button"
                   onClick={() => setActiveView('playlists')}
-                  className="text-xs text-[#a1a1aa] hover:text-[#ff7518] font-bold transition-colors cursor-pointer"
+                  className="text-xs text-[#b3b3b3] hover:text-[#1d90f5] font-semibold transition-colors cursor-pointer"
                 >
                   View Library →
                 </button>
@@ -1009,16 +1002,16 @@ export default function SpotifyMainContent({
                       }}
                       className={`group relative p-3 rounded-2xl border transition-all duration-300 cursor-pointer select-none flex flex-col justify-between overflow-hidden shadow-md ${
                         isCurrentPlaylistPlaying
-                          ? 'bg-gradient-to-b from-[#251006] to-[#120703] border-[#ff7518] ring-1 ring-[#ff7518]/60 scale-[1.02]'
-                          : 'bg-[#111015] hover:bg-[#1a1722] border-[#25212e] hover:border-orange-500/40 hover:scale-[1.02]'
+                          ? 'bg-gradient-to-b from-[#18283d] to-[#111924] border-[#1d90f5] ring-1 ring-[#1d90f5]/50 scale-[1.02]'
+                          : 'bg-[#181818] hover:bg-[#222222] border-[#262626] hover:border-[#383838] hover:scale-[1.02]'
                       }`}
                       title={`Open "${pl.title}"`}
                     >
                       {/* Top Artwork / Icon & Play Overlay */}
                       <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2.5 flex items-center justify-center bg-black/60 shadow-inner">
                         {isLiked ? (
-                          <div className="w-full h-full bg-gradient-to-br from-[#ff7518] via-[#e65100] to-[#9c27b0] flex items-center justify-center text-3xl shadow-md">
-                            🎃
+                          <div className="w-full h-full bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca] flex items-center justify-center text-3xl shadow-md">
+                            💙
                           </div>
                         ) : pl.tracks && pl.tracks.length > 0 && pl.tracks[0].thumbnail ? (
                           <Image
@@ -1029,7 +1022,7 @@ export default function SpotifyMainContent({
                             unoptimized
                           />
                         ) : (
-                          <div className="w-full h-full bg-[#17151e] flex items-center justify-center text-2xl">
+                          <div className="w-full h-full bg-[#242424] flex items-center justify-center text-2xl">
                             {pl.icon || '🎵'}
                           </div>
                         )}
@@ -1046,8 +1039,8 @@ export default function SpotifyMainContent({
                           }}
                           className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-xl transition-all duration-200 cursor-pointer ${
                             isCurrentPlaylistPlaying
-                              ? 'bg-[#ff7518] text-black opacity-100 scale-100 shadow-orange-500/50'
-                              : 'bg-white text-black hover:bg-[#ff7518] hover:text-black opacity-0 group-hover:opacity-100 group-hover:scale-105'
+                              ? 'bg-[#1d90f5] text-white opacity-100 scale-100 shadow-[#1d90f5]/50'
+                              : 'bg-white text-black hover:bg-[#1d90f5] hover:text-white opacity-0 group-hover:opacity-100 group-hover:scale-105'
                           }`}
                           title="Play Playlist"
                         >
@@ -1063,7 +1056,7 @@ export default function SpotifyMainContent({
                       <div className="min-w-0">
                         <h3
                           className={`text-xs font-bold truncate transition-colors ${
-                            isCurrentPlaylistPlaying ? 'text-[#ff7518]' : 'text-white group-hover:text-[#ff7518]'
+                            isCurrentPlaylistPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
                           }`}
                         >
                           {pl.title}
@@ -1079,14 +1072,14 @@ export default function SpotifyMainContent({
                 {/* Inline "+ Create Playlist" Card */}
                 <div
                   onClick={() => setShowCreateInline(true)}
-                  className="group relative p-3 rounded-2xl border border-dashed border-[#2f293a] hover:border-[#ff7518] bg-[#0d0c11] hover:bg-[#181421] transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center text-center space-y-2 min-h-[140px]"
+                  className="group relative p-3 rounded-2xl border border-dashed border-[#2e2e2e] hover:border-[#1d90f5] bg-[#181818] hover:bg-[#202020] transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center text-center space-y-2 min-h-[140px]"
                   title="Create a new playlist"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#1b1822] group-hover:bg-[#ff7518] text-[#a1a1aa] group-hover:text-black flex items-center justify-center text-xl transition-colors font-black">
+                  <div className="w-10 h-10 rounded-full bg-[#242424] group-hover:bg-[#1d90f5] text-[#b3b3b3] group-hover:text-white flex items-center justify-center text-xl transition-colors font-bold">
                     ＋
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white group-hover:text-[#ff7518] transition-colors">
+                    <p className="text-xs font-bold text-white group-hover:text-[#1d90f5] transition-colors">
                       New Playlist
                     </p>
                     <p className="text-[10px] text-[#8e8b98]">Create custom mix</p>
@@ -1096,181 +1089,118 @@ export default function SpotifyMainContent({
             </div>
 
             {/* ========================================================= */}
-            {/* SECTION B: TRENDING SONGS + DUAL VINYL MUSIC MIXER        */}
+            {/* SECTION B: TRENDING SONGS (Minimal, Clean)                */}
             {/* ========================================================= */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              {/* Left Column: All-Genre Viral Trending Songs */}
-              <div className="xl:col-span-6 space-y-3">
-                <div className="bg-[#0d0c11] p-4 sm:p-5 rounded-2xl border border-orange-500/25 shadow-xl space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#24202d]">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">🔥</span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-sm sm:text-base font-black text-white tracking-tight">
-                            TRENDING SONGS
-                          </h2>
-                          <span className="px-2 py-0.5 rounded-full bg-orange-950/60 border border-orange-500/40 text-orange-400 text-[10px] font-black uppercase">
-                            ALL GENRES
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[#8e8b98]">
-                          Latest viral hits dominating YouTube, Instagram & TikTok
-                        </p>
-                      </div>
-                    </div>
+            <div className="space-y-3">
+              <div className="bg-[#181818] p-4 sm:p-5 rounded-2xl border border-[#242424] shadow-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#282828]">
+                  <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                    Trending Songs
+                  </h2>
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const filtered = ALL_GENRE_TRENDING_SONGS.filter((s) => {
-                          if (trendingGenreFilter === 'All') return true;
-                          if (trendingGenreFilter === 'Pop') return s.genre.includes('Pop') || s.genre.includes('Soul');
-                          if (trendingGenreFilter === 'Hip-Hop') return s.genre.includes('Hip-Hop') || s.genre.includes('Trap') || s.genre.includes('Rap');
-                          if (trendingGenreFilter === 'Lo-Fi') return s.genre.includes('Lo-Fi') || s.genre.includes('Indie') || s.genre.includes('Rock');
-                          if (trendingGenreFilter === 'Global') return s.genre.includes('Malayalam') || s.genre.includes('Punjabi') || s.genre.includes('Tamil') || s.genre.includes('Desi') || s.genre.includes('Latin');
-                          return true;
-                        });
-                        handlePlayTrending(0, filtered);
-                      }}
-                      className="px-4 py-1.5 rounded-full text-xs font-black bg-[#ff7518] hover:bg-[#ff8c00] text-black shadow-md shadow-orange-500/30 transition-all hover:scale-105 active:scale-95 cursor-pointer self-start sm:self-auto flex items-center gap-1.5 shrink-0"
-                    >
-                      <span>▶</span> Play All
-                    </button>
-                  </div>
+                {/* Minimal Song Rows (Song & Artist, Duration, Like Button) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                  {ALL_GENRE_TRENDING_SONGS.map((song, idx) => {
+                    const isThisPlaying = isPlaying && currentTrack?.id === song.id;
+                    const liked = isTrackLiked(song.id);
 
-                  {/* Quick Genre Filter Buttons */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-                    {[
-                      { id: 'All', label: '🔥 All Genres' },
-                      { id: 'Pop', label: '✨ Viral Pop' },
-                      { id: 'Hip-Hop', label: '💀 Hip-Hop / Rap' },
-                      { id: 'Lo-Fi', label: '🌙 Lo-Fi & Indie' },
-                      { id: 'Global', label: '⚡ Global Beats' },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setTrendingGenreFilter(tab.id)}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all shrink-0 cursor-pointer ${
-                          trendingGenreFilter === tab.id
-                            ? 'bg-[#ff7518] text-black shadow-md shadow-orange-500/30'
-                            : 'bg-[#17151e] text-[#a1a1aa] hover:text-white border border-[#272332]'
+                    return (
+                      <div
+                        key={song.id}
+                        onClick={() => handlePlayTrending(idx)}
+                        className={`flex items-center justify-between gap-3 p-2.5 rounded-xl transition-all cursor-pointer group border ${
+                          isThisPlaying
+                            ? 'bg-[#18283d] border-[#1d90f5] text-white shadow-md'
+                            : 'border-transparent hover:border-[#333333] hover:bg-[#202020]'
                         }`}
                       >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Compact Song Rows */}
-                  <div className="space-y-1 max-h-[580px] overflow-y-auto pr-1">
-                    {ALL_GENRE_TRENDING_SONGS.filter((s) => {
-                      if (trendingGenreFilter === 'All') return true;
-                      if (trendingGenreFilter === 'Pop') return s.genre.includes('Pop') || s.genre.includes('Soul');
-                      if (trendingGenreFilter === 'Hip-Hop') return s.genre.includes('Hip-Hop') || s.genre.includes('Trap') || s.genre.includes('Rap');
-                      if (trendingGenreFilter === 'Lo-Fi') return s.genre.includes('Lo-Fi') || s.genre.includes('Indie') || s.genre.includes('Rock');
-                      if (trendingGenreFilter === 'Global') return s.genre.includes('Malayalam') || s.genre.includes('Punjabi') || s.genre.includes('Tamil') || s.genre.includes('Desi') || s.genre.includes('Latin');
-                      return true;
-                    }).map((song, idx, arr) => {
-                      const isThisPlaying = isPlaying && currentTrack?.id === song.id;
-                      const liked = isTrackLiked(song.id);
-
-                      return (
-                        <div
-                          key={song.id}
-                          onClick={() => handlePlayTrending(idx, arr)}
-                          className={`flex items-center justify-between gap-3 p-2.5 rounded-xl transition-all cursor-pointer group border ${
-                            isThisPlaying
-                              ? 'bg-[#211107] border-orange-500 text-white shadow-md'
-                              : 'border-transparent hover:border-orange-500/30 hover:bg-[#16141c]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            {/* Track Artwork / Hover Play */}
-                            <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-black shrink-0 border border-[#272332] group-hover:border-[#ff7518] transition-colors">
-                              <Image
-                                src={song.thumbnail}
-                                alt={song.title}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                              <div
-                                className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
-                                  isThisPlaying ? 'opacity-100 bg-[#ff7518]/30' : 'opacity-0 group-hover:opacity-100'
-                                }`}
-                              >
-                                {isThisPlaying ? (
-                                  <div className="flex items-end gap-0.5 h-3">
-                                    <span className="w-0.5 bg-[#ff7518] rounded-full animate-bounce h-2" />
-                                    <span className="w-0.5 bg-[#ff7518] rounded-full animate-bounce h-3 delay-75" />
-                                    <span className="w-0.5 bg-[#ff7518] rounded-full animate-bounce h-1.5 delay-150" />
-                                  </div>
-                                ) : (
-                                  <span className="text-white text-xs font-black">▶</span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Title, Artist & Genre Badge */}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p
-                                  className={`text-xs font-extrabold truncate transition-colors ${
-                                    isThisPlaying ? 'text-[#ff7518]' : 'text-white group-hover:text-[#ff7518]'
-                                  }`}
-                                >
-                                  {song.title}
-                                </p>
-                                {song.badge && (
-                                  <span className="hidden sm:inline-block px-1.5 py-0.2 rounded text-[9px] font-black bg-orange-950/60 border border-orange-500/30 text-orange-400 shrink-0">
-                                    {song.badge}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[11px] text-[#8e8b98] truncate">{song.artist}</p>
-                                <span className="text-[9px] text-[#6b6775]">•</span>
-                                <span className="text-[10px] text-purple-400 font-bold truncate">
-                                  {song.genre}
-                                </span>
-                              </div>
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {/* Track Artwork / Play state */}
+                          <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-black shrink-0 border border-[#282828] group-hover:border-[#1d90f5] transition-colors">
+                            <Image
+                              src={song.thumbnail}
+                              alt={song.title}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            <div
+                              className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
+                                isThisPlaying ? 'opacity-100 bg-[#1d90f5]/30' : 'opacity-0 group-hover:opacity-100'
+                              }`}
+                            >
+                              {isThisPlaying ? (
+                                <div className="flex items-end gap-0.5 h-3">
+                                  <span className="w-0.5 bg-[#1d90f5] rounded-full animate-bounce h-2" />
+                                  <span className="w-0.5 bg-[#1d90f5] rounded-full animate-bounce h-3 delay-75" />
+                                  <span className="w-0.5 bg-[#1d90f5] rounded-full animate-bounce h-1.5 delay-150" />
+                                </div>
+                              ) : (
+                                <span className="text-white text-xs font-bold">▶</span>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2.5 shrink-0">
-                            <span className="text-[10px] font-mono text-[#8e8b98] hidden sm:inline">
-                              {song.duration}
-                            </span>
-
-                            {/* Like Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleTrackLike(song);
-                              }}
-                              className={`p-1.5 rounded-full transition-transform hover:scale-125 cursor-pointer text-sm ${
-                                liked ? 'text-[#ff7518]' : 'text-[#666666] hover:text-[#ff7518]'
+                          {/* Song Title & Artist Name Only */}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-xs font-semibold truncate transition-colors ${
+                                isThisPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
                               }`}
-                              title={liked ? 'Liked' : 'Like'}
                             >
-                              {liked ? '🎃' : '🤍'}
-                            </button>
+                              {song.title}
+                            </p>
+                            <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
+                              {song.artist}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          {/* Duration */}
+                          <span className="text-xs font-mono text-[#888888]">
+                            {song.duration}
+                          </span>
+
+                          {/* Like Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTrackLike(song);
+                            }}
+                            className={`p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer ${
+                              liked ? 'text-[#1d90f5]' : 'text-[#888888] hover:text-white'
+                            }`}
+                            title={liked ? 'Liked' : 'Like'}
+                          >
+                            {liked ? (
+                              <svg className="w-5 h-5 fill-current text-[#1d90f5]" viewBox="0 0 24 24">
+                                <path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-
-              {/* Right Column: Dual Vinyl Music Mixer */}
-              <div className="xl:col-span-6">
-                <DualVinylMixer savedPlaylists={savedPlaylists} className="h-full" />
-              </div>
             </div>
+          </section>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW: DUAL VINYL MUSIC MIXER                                  */}
+        {/* ------------------------------------------------------------- */}
+        {isVinylView && (
+          <section aria-label="Dual Vinyl Music Mixer" className="space-y-4">
+            <DualVinylMixer savedPlaylists={savedPlaylists} className="h-full" />
           </section>
         )}
 
@@ -1298,7 +1228,7 @@ export default function SpotifyMainContent({
                     )}
                   </h2>
                   <p className="text-xs text-[#b3b3b3]">
-                    9 real-time procedural soundscapes: rain, wind, birds, crickets, thunder, drums, bass, cafe chatter & fireplace
+                    10 real-time procedural soundscapes: rain, wind, birds, crickets, thunder, drums, bass, people speaking, ocean waves & fireplace
                   </p>
                 </div>
               </div>
@@ -1425,7 +1355,7 @@ export default function SpotifyMainContent({
         {/* Footer Info & Creator Socials */}
         <footer className="pt-8 border-t border-[#242424] flex flex-col sm:flex-row items-center justify-between text-xs text-[#b3b3b3] gap-3">
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
-            <span className="font-black text-white flex items-center gap-1">Chillify <span>🎃</span></span>
+            <span className="font-semibold text-white">Chillify 🥰</span>
             <span className="text-[#555555]">•</span>
             <span>Creator&apos;s Socials</span>
             <div className="flex items-center gap-2 ml-1">

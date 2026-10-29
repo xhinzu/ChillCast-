@@ -109,6 +109,9 @@ export class AmbientSoundEngine {
       case 'fireplace':
         this.startFireplace(ctx, dest);
         break;
+      case 'waves':
+        this.startWaves(ctx, dest);
+        break;
     }
   }
 
@@ -860,6 +863,53 @@ export class AmbientSoundEngine {
           noise.disconnect();
           lowFilter.disconnect();
           draftGain.disconnect();
+        } catch {
+          // ignore
+        }
+      },
+    });
+  }
+
+  /* --- 10. Ocean Waves (Rolling Coastal Tidal Surf) --- */
+  private startWaves(ctx: AudioContext, dest: GainNode) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.getNoiseBuffer(ctx);
+    noise.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(350, ctx.currentTime);
+
+    // LFO for slow 8-second wave swells
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(0.12, ctx.currentTime); // ~8 sec per wave
+    lfoGain.gain.setValueAtTime(450, ctx.currentTime);
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+
+    const waveGain = ctx.createGain();
+    waveGain.gain.setValueAtTime(0.5, ctx.currentTime);
+
+    noise.connect(filter);
+    filter.connect(waveGain);
+    waveGain.connect(dest);
+
+    noise.start();
+    lfo.start();
+
+    this.activeSources.set('waves', {
+      stop: () => {
+        try {
+          noise.stop();
+          lfo.stop();
+          noise.disconnect();
+          lfo.disconnect();
+          lfoGain.disconnect();
+          filter.disconnect();
+          waveGain.disconnect();
         } catch {
           // ignore
         }

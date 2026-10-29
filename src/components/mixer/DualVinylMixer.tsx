@@ -384,7 +384,7 @@ export default function DualVinylMixer({
 
   return (
     <div
-      className={`rounded-2xl bg-gradient-to-b from-[#131018] via-[#0d0c11] to-[#07070a] border border-orange-500/30 p-4 sm:p-5 shadow-2xl shadow-orange-950/30 flex flex-col gap-4 relative overflow-hidden ${className}`}
+      className={`rounded-2xl bg-[#121212] border border-[#242424] p-4 sm:p-5 shadow-2xl flex flex-col gap-4 relative overflow-hidden ${className}`}
     >
       {/* Hidden YouTube Iframe Targets */}
       <div className="absolute -left-[9999px] -top-[9999px] pointer-events-none opacity-0">
@@ -392,26 +392,23 @@ export default function DualVinylMixer({
         <div id="mixer-yt-deck-b" />
       </div>
 
-      {/* Spooky Ambient Background Glows */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Ambient Background Glows */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header with Halloween Graffiti Tag */}
-      <div className="flex items-center justify-between border-b border-[#24202d] pb-3 z-10">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[#242424] pb-3 z-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#ff7518] flex items-center justify-center text-black font-black text-sm shadow-md shadow-orange-500/30">
-            🎃
+          <div className="w-8 h-8 rounded-lg bg-[#1d90f5] flex items-center justify-center text-white font-bold text-sm shadow-md">
+            🎛️
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-1.5">
-                DUAL VINYL MUSIC MIXER <span className="text-orange-500 font-mono text-xs">v2.0</span>
+              <h2 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+                Dual Vinyl Music Mixer
               </h2>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-orange-950/60 border border-orange-500/40 text-orange-400 text-[10px] font-black uppercase tracking-wider">
-                🦇 TRICK OR TREAT
-              </span>
             </div>
-            <p className="text-[11px] text-[#938f9d]">
+            <p className="text-[11px] text-[#b3b3b3]">
               Independent two-deck audio engine • Mix any song concurrently
             </p>
           </div>
@@ -421,10 +418,10 @@ export default function DualVinylMixer({
           <button
             type="button"
             onClick={resetCrossfader}
-            className="text-[10px] px-2.5 py-1 rounded-full bg-[#1b1822] hover:bg-[#282433] text-[#cfcbd8] hover:text-[#ff7518] border border-[#2e2a38] transition-colors cursor-pointer font-bold"
+            className="text-[10px] px-2.5 py-1 rounded-full bg-[#181818] hover:bg-[#282828] text-[#b3b3b3] hover:text-[#1d90f5] border border-[#2e2e2e] transition-colors cursor-pointer font-bold"
             title="Reset crossfader to center (50/50)"
           >
-            🕸️ Center Mix
+            Center Mix (50/50)
           </button>
         </div>
       </div>
@@ -434,19 +431,19 @@ export default function DualVinylMixer({
       {/* ------------------------------------------------------------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 z-10">
         {/* ========================================================= */}
-        {/* DECK A — LEFT TURNTABLE (PUMPKIN ORANGE)                  */}
+        {/* DECK A — LEFT TURNTABLE                                   */}
         {/* ========================================================= */}
-        <div className="flex flex-col items-center bg-[#0d0c11] border border-orange-500/25 hover:border-orange-500/50 rounded-2xl p-4 transition-all shadow-lg relative group">
+        <div className="flex flex-col items-center bg-[#181818] border border-[#282828] hover:border-[#1d90f5]/50 rounded-2xl p-4 transition-all shadow-lg relative group">
           {/* Deck Badge & Song Selection Button */}
           <div className="w-full flex items-center justify-between mb-3">
-            <span className="px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
-              <span>🎃</span> DECK A
+            <span className="px-2.5 py-0.5 rounded-full bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/40 text-[10px] font-bold tracking-wider uppercase">
+              DECK A
             </span>
 
             <button
               type="button"
               onClick={() => setSelectorDeck('Deck A')}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-950/40 hover:bg-[#ff7518] text-orange-400 hover:text-black border border-orange-500/40 text-[11px] font-black transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#242424] hover:bg-[#1d90f5] text-[#b3b3b3] hover:text-white border border-[#333333] text-[11px] font-semibold transition-all cursor-pointer shadow-sm"
             >
               <span>📂</span> {trackA ? 'Change Track' : 'Load Song'}
             </button>
@@ -457,15 +454,15 @@ export default function DualVinylMixer({
             <div
               className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full relative flex items-center justify-center vinyl-grooves transition-shadow duration-300 ${
                 isPlayingA
-                  ? 'vinyl-rotating shadow-2xl shadow-orange-500/40 ring-2 ring-orange-500/50'
-                  : 'vinyl-paused ring-1 ring-[#262230]'
+                  ? 'vinyl-rotating shadow-2xl shadow-[#1d90f5]/30 ring-2 ring-[#1d90f5]/50'
+                  : 'vinyl-paused ring-1 ring-[#282828]'
               }`}
             >
               {/* Surface Sheen Reflection */}
               <div className="absolute inset-0 rounded-full vinyl-sheen-overlay pointer-events-none" />
 
               {/* Center Vinyl Label */}
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full relative overflow-hidden bg-gradient-to-br from-[#2a1708] to-[#120a04] border-2 border-orange-500/80 flex items-center justify-center shadow-inner">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full relative overflow-hidden bg-gradient-to-br from-[#101e30] to-[#0a121c] border-2 border-[#1d90f5] flex items-center justify-center shadow-inner">
                 {trackA?.artworkUrl ? (
                   <Image
                     src={trackA.artworkUrl}
@@ -476,20 +473,20 @@ export default function DualVinylMixer({
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center p-1">
-                    <span className="text-xl">🎃</span>
-                    <span className="text-[8px] font-black text-orange-400 tracking-tighter uppercase leading-none mt-0.5">
+                    <span className="text-xl">💿</span>
+                    <span className="text-[8px] font-bold text-[#1d90f5] tracking-tighter uppercase leading-none mt-0.5">
                       DECK A
                     </span>
                   </div>
                 )}
                 {/* Center Spindle Hole */}
-                <div className="absolute w-3.5 h-3.5 rounded-full bg-black border border-orange-500/80 z-10" />
+                <div className="absolute w-3.5 h-3.5 rounded-full bg-black border border-[#1d90f5] z-10" />
               </div>
             </div>
 
             {/* Turntable Stylus / Tone Arm Indicator */}
             <div
-              className={`absolute top-0 right-2 w-1.5 h-16 bg-gradient-to-b from-[#888888] to-[#ff7518] rounded-full origin-top transition-transform duration-500 shadow-md ${
+              className={`absolute top-0 right-2 w-1.5 h-16 bg-gradient-to-b from-[#888888] to-[#1d90f5] rounded-full origin-top transition-transform duration-500 shadow-md ${
                 isPlayingA ? 'rotate-16' : '-rotate-12'
               }`}
             />
@@ -497,17 +494,17 @@ export default function DualVinylMixer({
 
           {/* Track Metadata Info */}
           <div className="w-full text-center mt-2 px-1">
-            <p className="text-xs font-black text-white truncate group-hover:text-orange-400 transition-colors">
+            <p className="text-xs font-bold text-white truncate group-hover:text-[#1d90f5] transition-colors">
               {trackA ? trackA.title : 'Ready to Mix • Deck A'}
             </p>
-            <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
+            <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
               {trackA ? trackA.artist : 'Click "Load Song" to choose track'}
             </p>
           </div>
 
           {/* Progress / Seek Slider */}
           <div className="w-full mt-3 space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-[#716e7a] font-mono">
+            <div className="flex items-center justify-between text-[10px] text-[#888888] font-mono">
               <span>{formatTime(currentTimeA)}</span>
               <span>{formatTime(durationA)}</span>
             </div>
@@ -530,7 +527,7 @@ export default function DualVinylMixer({
               type="button"
               onClick={rewindA}
               disabled={!trackA}
-              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
+              className="w-8 h-8 rounded-full bg-[#242424] hover:bg-[#333333] text-[#b3b3b3] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#333333] disabled:opacity-40"
               title="Rewind 5 seconds"
             >
               -5s
@@ -539,7 +536,7 @@ export default function DualVinylMixer({
             <button
               type="button"
               onClick={togglePlayA}
-              className="w-11 h-11 rounded-full bg-[#ff7518] hover:bg-[#ff8c00] text-black font-black flex items-center justify-center text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-orange-500/30"
+              className="w-11 h-11 rounded-full bg-[#1d90f5] hover:bg-[#3b82f6] text-white font-bold flex items-center justify-center text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-[#1d90f5]/30"
               title={isPlayingA ? 'Pause Deck A' : 'Play Deck A'}
             >
               {isLoadingA ? (
@@ -555,7 +552,7 @@ export default function DualVinylMixer({
               type="button"
               onClick={forwardA}
               disabled={!trackA}
-              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
+              className="w-8 h-8 rounded-full bg-[#242424] hover:bg-[#333333] text-[#b3b3b3] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#333333] disabled:opacity-40"
               title="Forward 5 seconds"
             >
               +5s
@@ -564,7 +561,7 @@ export default function DualVinylMixer({
 
           {/* Deck A Volume Slider */}
           <div className="w-full mt-3 flex items-center gap-2 px-1">
-            <span className="text-[10px] text-[#8e8b98] font-bold">Vol</span>
+            <span className="text-[10px] text-[#b3b3b3] font-bold">Vol</span>
             <input
               type="range"
               min={0}
@@ -575,30 +572,30 @@ export default function DualVinylMixer({
               className="flex-1 spotify-slider"
               title={`Deck A Volume: ${Math.round(volumeA * 100)}%`}
             />
-            <span className="text-[10px] text-[#8e8b98] font-mono w-7 text-right">
+            <span className="text-[10px] text-[#b3b3b3] font-mono w-7 text-right">
               {Math.round(volumeA * 100)}%
             </span>
           </div>
 
           {errorA && (
-            <p className="text-[10px] text-orange-400 mt-1 font-semibold">{errorA}</p>
+            <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errorA}</p>
           )}
         </div>
 
         {/* ========================================================= */}
-        {/* DECK B — RIGHT TURNTABLE (HAUNTED PURPLE)                 */}
+        {/* DECK B — RIGHT TURNTABLE                                  */}
         {/* ========================================================= */}
-        <div className="flex flex-col items-center bg-[#0d0c11] border border-purple-500/25 hover:border-purple-500/50 rounded-2xl p-4 transition-all shadow-lg relative group">
+        <div className="flex flex-col items-center bg-[#181818] border border-[#282828] hover:border-[#a855f7]/50 rounded-2xl p-4 transition-all shadow-lg relative group">
           {/* Deck Badge & Song Selection Button */}
           <div className="w-full flex items-center justify-between mb-3">
-            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
-              <span>💀</span> DECK B
+            <span className="px-2.5 py-0.5 rounded-full bg-[#a855f7]/20 text-[#c084fc] border border-[#a855f7]/40 text-[10px] font-bold tracking-wider uppercase">
+              DECK B
             </span>
 
             <button
               type="button"
               onClick={() => setSelectorDeck('Deck B')}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/40 hover:bg-[#a855f7] text-purple-400 hover:text-black border border-purple-500/40 text-[11px] font-black transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#242424] hover:bg-[#a855f7] text-[#b3b3b3] hover:text-white border border-[#333333] text-[11px] font-semibold transition-all cursor-pointer shadow-sm"
             >
               <span>📂</span> {trackB ? 'Change Track' : 'Load Song'}
             </button>
@@ -609,15 +606,15 @@ export default function DualVinylMixer({
             <div
               className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full relative flex items-center justify-center vinyl-grooves transition-shadow duration-300 ${
                 isPlayingB
-                  ? 'vinyl-rotating shadow-2xl shadow-purple-500/40 ring-2 ring-purple-500/50'
-                  : 'vinyl-paused ring-1 ring-[#262230]'
+                  ? 'vinyl-rotating shadow-2xl shadow-[#a855f7]/30 ring-2 ring-[#a855f7]/50'
+                  : 'vinyl-paused ring-1 ring-[#282828]'
               }`}
             >
               {/* Surface Sheen Reflection */}
               <div className="absolute inset-0 rounded-full vinyl-sheen-overlay pointer-events-none" />
 
               {/* Center Vinyl Label */}
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full relative overflow-hidden bg-gradient-to-br from-[#1b0826] to-[#0a0310] border-2 border-purple-500/80 flex items-center justify-center shadow-inner">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full relative overflow-hidden bg-gradient-to-br from-[#20102b] to-[#110817] border-2 border-[#a855f7] flex items-center justify-center shadow-inner">
                 {trackB?.artworkUrl ? (
                   <Image
                     src={trackB.artworkUrl}
@@ -628,14 +625,14 @@ export default function DualVinylMixer({
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center p-1">
-                    <span className="text-xl">💀</span>
-                    <span className="text-[8px] font-black text-purple-400 tracking-tighter uppercase leading-none mt-0.5">
+                    <span className="text-xl">💿</span>
+                    <span className="text-[8px] font-bold text-[#c084fc] tracking-tighter uppercase leading-none mt-0.5">
                       DECK B
                     </span>
                   </div>
                 )}
                 {/* Center Spindle Hole */}
-                <div className="absolute w-3.5 h-3.5 rounded-full bg-black border border-purple-500/80 z-10" />
+                <div className="absolute w-3.5 h-3.5 rounded-full bg-black border border-[#a855f7] z-10" />
               </div>
             </div>
 
@@ -649,17 +646,17 @@ export default function DualVinylMixer({
 
           {/* Track Metadata Info */}
           <div className="w-full text-center mt-2 px-1">
-            <p className="text-xs font-black text-white truncate group-hover:text-purple-400 transition-colors">
+            <p className="text-xs font-bold text-white truncate group-hover:text-[#c084fc] transition-colors">
               {trackB ? trackB.title : 'Ready to Mix • Deck B'}
             </p>
-            <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
+            <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
               {trackB ? trackB.artist : 'Click "Load Song" to choose track'}
             </p>
           </div>
 
           {/* Progress / Seek Slider */}
           <div className="w-full mt-3 space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-[#716e7a] font-mono">
+            <div className="flex items-center justify-between text-[10px] text-[#888888] font-mono">
               <span>{formatTime(currentTimeB)}</span>
               <span>{formatTime(durationB)}</span>
             </div>
@@ -682,7 +679,7 @@ export default function DualVinylMixer({
               type="button"
               onClick={rewindB}
               disabled={!trackB}
-              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
+              className="w-8 h-8 rounded-full bg-[#242424] hover:bg-[#333333] text-[#b3b3b3] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#333333] disabled:opacity-40"
               title="Rewind 5 seconds"
             >
               -5s
@@ -691,7 +688,7 @@ export default function DualVinylMixer({
             <button
               type="button"
               onClick={togglePlayB}
-              className="w-11 h-11 rounded-full bg-[#a855f7] hover:bg-[#b06cf7] text-black font-black flex items-center justify-center text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-purple-500/30"
+              className="w-11 h-11 rounded-full bg-[#a855f7] hover:bg-[#b56ef8] text-white font-bold flex items-center justify-center text-base transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-purple-500/30"
               title={isPlayingB ? 'Pause Deck B' : 'Play Deck B'}
             >
               {isLoadingB ? (
@@ -707,7 +704,7 @@ export default function DualVinylMixer({
               type="button"
               onClick={forwardB}
               disabled={!trackB}
-              className="w-8 h-8 rounded-full bg-[#17151e] hover:bg-[#252130] text-[#a1a1aa] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#2c2738] disabled:opacity-40"
+              className="w-8 h-8 rounded-full bg-[#242424] hover:bg-[#333333] text-[#b3b3b3] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#333333] disabled:opacity-40"
               title="Forward 5 seconds"
             >
               +5s
@@ -716,7 +713,7 @@ export default function DualVinylMixer({
 
           {/* Deck B Volume Slider */}
           <div className="w-full mt-3 flex items-center gap-2 px-1">
-            <span className="text-[10px] text-[#8e8b98] font-bold">Vol</span>
+            <span className="text-[10px] text-[#b3b3b3] font-bold">Vol</span>
             <input
               type="range"
               min={0}
@@ -727,7 +724,7 @@ export default function DualVinylMixer({
               className="flex-1 spotify-slider"
               title={`Deck B Volume: ${Math.round(volumeB * 100)}%`}
             />
-            <span className="text-[10px] text-[#8e8b98] font-mono w-7 text-right">
+            <span className="text-[10px] text-[#b3b3b3] font-mono w-7 text-right">
               {Math.round(volumeB * 100)}%
             </span>
           </div>
@@ -741,20 +738,20 @@ export default function DualVinylMixer({
       {/* ------------------------------------------------------------- */}
       {/* MASTER DJ CROSSFADER (DECK A <-> EQUAL <-> DECK B)           */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-[#0a090e] border border-[#24202c] rounded-xl p-3.5 flex flex-col gap-2 z-10 shadow-inner">
-        <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider">
-          <span className="text-orange-400 flex items-center gap-1">
-            <span>🎃</span> DECK A
+      <div className="bg-[#181818] border border-[#242424] rounded-xl p-3.5 flex flex-col gap-2 z-10 shadow-inner">
+        <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider">
+          <span className="text-[#1d90f5] flex items-center gap-1">
+            ◄ DECK A
           </span>
-          <span className="text-[#a1a1aa] text-[10px] font-mono">
+          <span className="text-[#b3b3b3] text-[10px] font-mono">
             {crossfader === 0
               ? '⚖️ EQUAL BLEND'
               : crossfader < 0
-              ? `🎃 DECK A +${Math.round(-crossfader * 100)}%`
-              : `💀 DECK B +${Math.round(crossfader * 100)}%`}
+              ? `DECK A +${Math.round(-crossfader * 100)}%`
+              : `DECK B +${Math.round(crossfader * 100)}%`}
           </span>
-          <span className="text-purple-400 flex items-center gap-1">
-            DECK B <span>💀</span>
+          <span className="text-[#c084fc] flex items-center gap-1">
+            DECK B ►
           </span>
         </div>
 
@@ -772,9 +769,9 @@ export default function DualVinylMixer({
           />
         </div>
 
-        <div className="flex items-center justify-between text-[9px] text-[#716e7a] font-mono">
+        <div className="flex items-center justify-between text-[9px] text-[#777777] font-mono">
           <span>100% DECK A</span>
-          <span className="text-[#a1a1aa]">CENTER BLEND</span>
+          <span className="text-[#b3b3b3]">CENTER BLEND</span>
           <span>100% DECK B</span>
         </div>
       </div>

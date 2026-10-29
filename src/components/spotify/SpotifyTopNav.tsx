@@ -61,8 +61,8 @@ export default function SpotifyTopNav({
           className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group"
           title="Chillify Home"
         >
-          {/* Spotify Wave Icon in Halloween Orange */}
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#ff7518] flex items-center justify-center text-black shadow-lg shadow-orange-600/30 transition-transform group-hover:scale-105 shrink-0">
+          {/* Spotify Wave Icon in Electric Blue */}
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1d90f5] flex items-center justify-center text-black shadow-md transition-transform group-hover:scale-105 shrink-0">
             <svg
               className="w-4 h-4 sm:w-5 sm:h-5 fill-current"
               viewBox="0 0 24 24"
@@ -75,7 +75,7 @@ export default function SpotifyTopNav({
             <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
               Chillify
             </span>
-            <span className="text-base sm:text-lg animate-bounce" style={{ animationDuration: '3s' }}>🎃</span>
+            <span className="text-base sm:text-lg">🥰</span>
           </div>
         </div>
 
@@ -87,7 +87,7 @@ export default function SpotifyTopNav({
               setActiveView('home');
               setSearchQuery('');
             }}
-            className="w-8 h-8 rounded-full bg-[#121114] hover:bg-[#221f28] text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#2b2633]"
+            className="w-8 h-8 rounded-full bg-[#121212] hover:bg-[#242424] text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
             title="Go to Home"
           >
             ‹
@@ -98,25 +98,18 @@ export default function SpotifyTopNav({
               setActiveView(activeView === 'home' ? 'ambience' : 'home');
               setSearchQuery('');
             }}
-            className="w-8 h-8 rounded-full bg-[#121114] hover:bg-[#221f28] text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#2b2633]"
+            className="w-8 h-8 rounded-full bg-[#121212] hover:bg-[#242424] text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
             title="Toggle View"
           >
             ›
           </button>
-        </div>
-
-        {/* Halloween Graffiti Badge */}
-        <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-orange-950/60 via-purple-950/40 to-orange-950/60 border border-orange-500/40 text-orange-400 text-[11px] font-black tracking-wider uppercase shadow-md shadow-orange-950/50">
-          <span>🦇</span>
-          <span className="text-white drop-shadow-[0_0_8px_rgba(255,117,24,0.8)]">Trick or Treat</span>
-          <span>🎃</span>
         </div>
       </div>
 
       {/* Center: Functional YouTube Music Search Bar */}
       <div className="flex-1 max-w-lg mx-2 sm:mx-4">
         <div className="relative flex items-center">
-          <span className="absolute left-3 sm:left-3.5 text-[#ff7518] text-sm pointer-events-none opacity-80">
+          <span className="absolute left-3 sm:left-3.5 text-[#b3b3b3] text-sm pointer-events-none">
             <svg
               className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current"
               viewBox="0 0 24 24"
@@ -135,15 +128,15 @@ export default function SpotifyTopNav({
                 setActiveView('search');
               }
             }}
-            placeholder="Search haunted beats, viral hits, spooky lo-fi..."
-            className="w-full h-9 sm:h-10 rounded-full bg-[#18171d] hover:bg-[#201d27] focus:bg-[#201d27] text-white placeholder-[#8d8a96] text-xs pl-8 sm:pl-10 pr-8 sm:pr-9 outline-none border border-[#2c2736] focus:border-[#ff7518] focus:ring-1 focus:ring-[#ff7518]/50 transition-all shadow-inner"
+            placeholder="Search songs, lo-fi beats..."
+            className="w-full h-9 sm:h-10 rounded-full bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#2a2a2a] text-white placeholder-[#b3b3b3] text-xs pl-8 sm:pl-10 pr-8 sm:pr-9 outline-none border border-transparent focus:border-[#1d90f5] transition-all"
           />
 
           {searchQuery && (
             <button
               type="button"
               onClick={handleClearSearch}
-              className="absolute right-2.5 sm:right-3 text-[#b3b3b3] hover:text-[#ff7518] text-xs cursor-pointer p-1"
+              className="absolute right-2.5 sm:right-3 text-[#b3b3b3] hover:text-white text-xs cursor-pointer p-1"
               title="Clear search"
             >
               ✕
@@ -206,7 +199,7 @@ export default function SpotifyTopNav({
                 <span>☕</span> Buy Me a Coffee
               </div>
               <h3 className="text-lg font-extrabold text-white tracking-tight">
-                Support Chillify 🎃
+                Support Chillify 🥰
               </h3>
               <p className="text-xs text-[#b3b3b3]">
                 Scan with <strong className="text-white font-semibold">FamPay</strong> or any UPI App to buy me a coffee!

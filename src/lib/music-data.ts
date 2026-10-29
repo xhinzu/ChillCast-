@@ -59,7 +59,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:17',
     thumbnail: 'https://img.youtube.com/vi/V9PVRfjEBTI/hqdefault.jpg',
     genre: 'Alt Pop / Indie',
-    badge: '🎃 Spooky Melancholy',
+    badge: 'Billboard Hot 100',
   },
   {
     id: '5S-XQ_9c3vg',
@@ -68,7 +68,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '4:16',
     thumbnail: 'https://img.youtube.com/vi/5S-XQ_9c3vg/hqdefault.jpg',
     genre: 'Trap / R&B',
-    badge: '🔥 YT Trending',
+    badge: 'YT Trending',
   },
   {
     id: 'T6eK-2OQtew',
@@ -77,7 +77,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '4:34',
     thumbnail: 'https://img.youtube.com/vi/T6eK-2OQtew/hqdefault.jpg',
     genre: 'West Coast Hip-Hop',
-    badge: '💀 Record Breaker',
+    badge: 'Chart Topper',
   },
   {
     id: 'GCdwKhTtNNw',
@@ -86,7 +86,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '4:00',
     thumbnail: 'https://img.youtube.com/vi/GCdwKhTtNNw/hqdefault.jpg',
     genre: 'Indie Rock / Alt',
-    badge: '🍂 Autumn Lo-Fi Hit',
+    badge: 'Autumn Chill Hit',
   },
   {
     id: '34Na4j8AVgA',
@@ -95,7 +95,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:50',
     thumbnail: 'https://img.youtube.com/vi/34Na4j8AVgA/hqdefault.jpg',
     genre: 'Synthpop / R&B',
-    badge: '⚡ 2B+ Streams',
+    badge: '2B+ Streams',
   },
   {
     id: 'tOM-nWPcR4U',
@@ -104,7 +104,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:12',
     thumbnail: 'https://img.youtube.com/vi/tOM-nWPcR4U/hqdefault.jpg',
     genre: 'Malayalam Hip-Hop / EDM',
-    badge: '📱 Reels Anthem',
+    badge: 'Reels Anthem',
   },
   {
     id: 'lkPI4Xl6i8M',
@@ -113,7 +113,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:27',
     thumbnail: 'https://img.youtube.com/vi/lkPI4Xl6i8M/hqdefault.jpg',
     genre: 'Punjabi Pop / Dance',
-    badge: '🔥 IG Trend King',
+    badge: 'Top Trend',
   },
   {
     id: 'B9synWjqBn8',
@@ -122,7 +122,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:11',
     thumbnail: 'https://img.youtube.com/vi/B9synWjqBn8/hqdefault.jpg',
     genre: 'Rage / Trap',
-    badge: '💀 Mosh Anthem',
+    badge: 'Global Hit',
   },
   {
     id: '8nL8e2C92jA',
@@ -229,7 +229,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
     subtitle: '10 songs • Liked Songs',
     type: 'custom',
     targetUrl: '',
-    icon: '🎃',
+    icon: '💙',
     tracks: ALL_GENRE_TRENDING_SONGS.slice(0, 10).map((t, idx) => ({
       id: t.id,
       title: t.title,
@@ -238,16 +238,16 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 3600000,
     })),
-    description: 'Your favorite liked tracks on Chillify 🎃',
+    description: 'Your favorite liked tracks on Chillify',
     createdAt: Date.now() - 86400000,
   },
   {
-    id: 'spooky-vibes',
-    title: 'Halloween Chills 🦇',
-    subtitle: 'Viral Beats & Spooky Night Lo-Fi',
+    id: 'chill-vibes',
+    title: 'Chill Lo-Fi Vibes',
+    subtitle: 'Relaxing Beats & Night Lo-Fi',
     type: 'custom',
     targetUrl: '',
-    icon: '💀',
+    icon: '🎧',
     tracks: [
       ALL_GENRE_TRENDING_SONGS[0], // APT.
       ALL_GENRE_TRENDING_SONGS[1], // Die With A Smile
@@ -262,16 +262,16 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 1800000,
     })),
-    description: 'Curated Halloween nighttime vibes and eerie basslines',
+    description: 'Curated nighttime chill vibes and smooth basslines',
     createdAt: Date.now() - 72000000,
   },
   {
     id: 'ig-viral-mix',
-    title: 'Reels & TikTok Hits 🔥',
-    subtitle: 'Top Trending Audio of 2026',
+    title: 'Top Viral Hits',
+    subtitle: 'Top Trending Audio',
     type: 'custom',
     targetUrl: '',
-    icon: '📱',
+    icon: '✨',
     tracks: [
       ALL_GENRE_TRENDING_SONGS[2], // Big Dawgs
       ALL_GENRE_TRENDING_SONGS[3], // Espresso
@@ -286,16 +286,16 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 2400000,
     })),
-    description: 'All viral hits currently dominating Instagram and YouTube',
+    description: 'All viral hits currently dominating music charts',
     createdAt: Date.now() - 50000000,
   },
   {
     id: 'lofi-midnight',
-    title: 'Haunted Midnight Lo-Fi 🌙',
+    title: 'Midnight Lo-Fi',
     subtitle: 'Chill late-night beats to relax/study to',
     type: 'custom',
     targetUrl: '',
-    icon: '🕸️',
+    icon: '🌙',
     tracks: [
       ALL_GENRE_TRENDING_SONGS[13], // Golden Hour
       ALL_GENRE_TRENDING_SONGS[14], // Until I Found You
@@ -309,7 +309,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
       thumbnail: t.thumbnail,
       addedAt: Date.now() - idx * 3000000,
     })),
-    description: 'Warm, acoustic, lo-fi sanctuary for spooky night owls',
+    description: 'Warm, acoustic, lo-fi sanctuary to relax and study to',
     createdAt: Date.now() - 36000000,
   },
 ];

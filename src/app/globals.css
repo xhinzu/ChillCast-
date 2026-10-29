@@ -3,16 +3,13 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --chillify-orange: #ff7518;
-  --chillify-orange-hover: #ff8c00;
-  --chillify-orange-glow: rgba(255, 117, 24, 0.45);
-  --halloween-purple: #a855f7;
-  --halloween-green: #22c55e;
-  --spotify-black: #050505;
-  --spotify-dark: #0e0e11;
-  --spotify-card: #151518;
-  --spotify-card-hover: #222127;
-  --spotify-subtext: #a1a1aa;
+  --chillify-blue: #1d90f5;
+  --chillify-blue-hover: #3b82f6;
+  --spotify-black: #000000;
+  --spotify-dark: #121212;
+  --spotify-card: #181818;
+  --spotify-card-hover: #282828;
+  --spotify-subtext: #b3b3b3;
 }
 
 body {
@@ -24,21 +21,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Chillify Halloween Card */
+/* Chillify Spotify-Style Card */
 .spotify-card {
-  background-color: #141318;
-  transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  background-color: #181818;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .spotify-card:hover {
-  background-color: #1f1d24;
+  background-color: #282828;
 }
 
-/* Neon Orange Slider */
+/* Chillify Electric Blue Range Slider */
 .spotify-slider {
   -webkit-appearance: none;
   appearance: none;
-  background: #3f3f46;
+  background: #4d4d4d;
   height: 4px;
   border-radius: 9999px;
   outline: none;
@@ -54,11 +51,11 @@ body {
 .spotify-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #ff7518;
-  box-shadow: 0 0 10px rgba(255, 117, 24, 0.8), 0 2px 4px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.15s ease, transform 0.15s ease;
   cursor: pointer;
@@ -71,12 +68,12 @@ body {
 
 /* Firefox */
 .spotify-slider::-moz-range-thumb {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   border: none;
   border-radius: 50%;
-  background: #ff7518;
-  box-shadow: 0 0 10px rgba(255, 117, 24, 0.8), 0 2px 4px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.15s ease;
   cursor: pointer;
@@ -87,7 +84,7 @@ body {
   opacity: 1;
 }
 
-/* Custom Halloween Orange Scrollbars */
+/* Custom Chillify Blue Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -98,12 +95,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 117, 24, 0.65);
+  background: rgba(29, 144, 245, 0.6);
 }
 
 /* Vinyl Record Rotations & Styling */
@@ -127,9 +124,9 @@ body {
 /* Realistic Vinyl Grooves */
 .vinyl-grooves {
   background:
-    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.92) 37%, transparent 38%),
-    repeating-radial-gradient(circle at center, #0d0c0e 0px, #0d0c0e 2px, #1a171d 3px, #0d0c0e 4px);
-  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.95), inset 0 0 0 2px rgba(255, 117, 24, 0.12);
+    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.88) 37%, transparent 38%),
+    repeating-radial-gradient(circle at center, #101010 0px, #101010 2px, #1c1c1c 3px, #101010 4px);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.9), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
 }
 
 /* Vinyl Surface Sheen */
@@ -137,9 +134,9 @@ body {
   background: linear-gradient(
     135deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.04) 44%,
-    rgba(255, 165, 0, 0.12) 50%,
-    rgba(255, 255, 255, 0.04) 56%,
+    rgba(255, 255, 255, 0.05) 44%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.05) 56%,
     transparent 100%
   );
 }
@@ -148,57 +145,32 @@ body {
 .crossfader-slider {
   -webkit-appearance: none;
   appearance: none;
-  background: #1c1920;
+  background: #242424;
   height: 8px;
   border-radius: 9999px;
   outline: none;
   cursor: pointer;
-  border: 1px solid #332d3b;
+  border: 1px solid #333333;
 }
 
 .crossfader-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 24px;
-  height: 30px;
+  width: 22px;
+  height: 28px;
   border-radius: 4px;
-  background: linear-gradient(180deg, #2b2633, #15121b);
-  border: 2px solid #ff7518;
-  box-shadow: 0 0 12px rgba(255, 117, 24, 0.6), 0 2px 8px rgba(0, 0, 0, 0.8);
+  background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
+  border: 2px solid #1d90f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
   cursor: pointer;
 }
 
 .crossfader-slider::-moz-range-thumb {
-  width: 24px;
-  height: 30px;
+  width: 22px;
+  height: 28px;
   border-radius: 4px;
-  background: linear-gradient(180deg, #2b2633, #15121b);
-  border: 2px solid #ff7518;
-  box-shadow: 0 0 12px rgba(255, 117, 24, 0.6), 0 2px 8px rgba(0, 0, 0, 0.8);
+  background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
+  border: 2px solid #1d90f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
   cursor: pointer;
-}
-
-/* Graffiti & Spooky Styling */
-.graffiti-tag {
-  font-family: var(--font-geist-mono), monospace;
-  letter-spacing: -0.05em;
-  text-transform: uppercase;
-  font-weight: 900;
-  text-shadow: 0 0 10px rgba(255, 117, 24, 0.8), 2px 2px 0px #000;
-}
-
-.spooky-border {
-  border-color: rgba(255, 117, 24, 0.25);
-}
-
-.spooky-border:hover {
-  border-color: rgba(255, 117, 24, 0.55);
-}
-
-.glow-orange {
-  box-shadow: 0 0 15px rgba(255, 117, 24, 0.35);
-}
-
-.glow-purple {
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
 }
