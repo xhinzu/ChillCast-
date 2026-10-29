@@ -5,6 +5,11 @@ import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import AddSourceModal, { SavedPlaylistItem } from './AddSourceModal';
 import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
+import {
+  HeartIcon,
+  PlaylistCoverIcon,
+  FolderIcon,
+} from '@/components/common/MinimalIcons';
 
 interface SpotifySidebarProps {
   activeView: string;
@@ -109,8 +114,8 @@ export default function SpotifySidebar({
   return (
     <>
       <aside className="hidden md:flex w-64 lg:w-72 xl:w-80 h-full flex-col gap-2 shrink-0 select-none pb-2">
-        {/* Top Navigation Block */}
-        <nav className="bg-[#121212] rounded-lg p-3 sm:p-4 flex flex-col gap-1 shrink-0">
+        {/* Top Navigation Block (Black & Grey Theme) */}
+        <nav className="bg-[#121212] border border-[#202020] rounded-xl p-3 sm:p-3.5 flex flex-col gap-1 shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -119,8 +124,8 @@ export default function SpotifySidebar({
             }}
             className={`flex items-center gap-4 px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
               activeView === 'home'
-                ? 'text-white bg-[#282828]'
-                : 'text-[#b3b3b3] hover:text-white hover:bg-[#1a1a1a]'
+                ? 'text-white bg-[#222222] border border-[#333333]'
+                : 'text-[#888888] hover:text-white hover:bg-[#1a1a1a]'
             }`}
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -137,8 +142,8 @@ export default function SpotifySidebar({
             }}
             className={`flex items-center justify-between px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
               activeView === 'ambience' || activeView === 'mixer'
-                ? 'text-white bg-[#282828]'
-                : 'text-[#b3b3b3] hover:text-white hover:bg-[#1a1a1a]'
+                ? 'text-white bg-[#222222] border border-[#333333]'
+                : 'text-[#888888] hover:text-white hover:bg-[#1a1a1a]'
             }`}
           >
             <div className="flex items-center gap-4">
@@ -148,7 +153,7 @@ export default function SpotifySidebar({
               <span>Ambience</span>
             </div>
             {activeCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-[#1d90f5] shadow-sm shadow-[#1d90f5]" />
+              <span className="w-2 h-2 rounded-full bg-white shadow-sm" />
             )}
           </button>
 
@@ -160,8 +165,8 @@ export default function SpotifySidebar({
             }}
             className={`flex items-center gap-4 px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
               activeView === 'vinyl'
-                ? 'text-white bg-[#282828]'
-                : 'text-[#b3b3b3] hover:text-white hover:bg-[#1a1a1a]'
+                ? 'text-white bg-[#222222] border border-[#333333]'
+                : 'text-[#888888] hover:text-white hover:bg-[#1a1a1a]'
             }`}
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -172,9 +177,9 @@ export default function SpotifySidebar({
         </nav>
 
         {/* "Your Library" Block */}
-        <section className="bg-[#121212] rounded-lg p-3 sm:p-4 flex-1 flex flex-col overflow-hidden">
+        <section className="bg-[#121212] border border-[#202020] rounded-xl p-3 sm:p-4 flex-1 flex flex-col overflow-hidden">
           {/* Library Header with + Button */}
-          <div className="flex items-center justify-between text-[#b3b3b3] mb-3">
+          <div className="flex items-center justify-between text-[#888888] mb-3">
             <div className="flex items-center gap-2.5 font-bold text-sm hover:text-white transition-colors">
               <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                 <path d="M14.5 2.134a1 1 0 0 1 1 0l6 3.464a1 1 0 0 1 .5.866V18a1 1 0 0 1-.5.866l-6 3.464a1 1 0 0 1-1 0l-6-3.464a1 1 0 0 1-.5-.866V6.464a1 1 0 0 1 .5-.866l6-3.464zM4.75 5a.75.75 0 0 0-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75V5.75A.75.75 0 0 0 6.25 5h-1.5z" />
@@ -182,29 +187,29 @@ export default function SpotifySidebar({
               <span>Playlists</span>
             </div>
 
-            {/* "+" Button opens the "What method are you choosing?" modal */}
+            {/* "+" Button */}
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="w-8 h-8 rounded-full hover:bg-[#282828] text-white flex items-center justify-center text-xl transition-colors cursor-pointer hover:scale-105"
+              className="w-8 h-8 rounded-full bg-[#1c1c1c] hover:bg-[#282828] text-white flex items-center justify-center text-lg transition-colors cursor-pointer border border-[#2a2a2a]"
               title="Add YouTube, Spotify, or Local playlist"
             >
               +
             </button>
           </div>
 
-          {/* Scrollable Saved Playlists List */}
+          {/* Playlists List */}
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             {savedPlaylists.length === 0 ? (
-              <div className="p-4 rounded-lg bg-[#181818] border border-dashed border-[#2e2e2e] text-center my-4 space-y-2">
+              <div className="p-4 bg-[#181818] rounded-lg text-center space-y-2 border border-[#242424]">
                 <p className="text-xs font-semibold text-white">Your library is empty</p>
-                <p className="text-[11px] text-[#b3b3b3]">
+                <p className="text-[11px] text-[#888888]">
                   Like any song or click the <strong className="text-white">+</strong> button above to create playlists.
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="mt-2 px-3 py-1.5 bg-[#1d90f5] hover:bg-[#3b82f6] text-white text-xs font-bold rounded-full transition-colors cursor-pointer"
+                  className="mt-2 px-3 py-1.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-full transition-colors cursor-pointer"
                 >
                   + Add Playlist
                 </button>
@@ -228,36 +233,38 @@ export default function SpotifySidebar({
                     <div
                       key={item.id}
                       onClick={() => handleSelectPlaylist(item)}
-                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer group transition-colors ${
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer group transition-colors ${
                         isActive
-                          ? 'bg-[#1f2d3d] border border-[#1d90f5]/40 text-white'
-                          : 'hover:bg-[#1f1f1f]'
+                          ? 'bg-[#222222] border border-[#383838] text-white'
+                          : 'hover:bg-[#1a1a1a] border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isLikedPlaylist ? (
-                          <div className="w-10 h-10 rounded bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca] flex items-center justify-center text-white text-sm shrink-0 shadow-md">
-                            💙
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2a2a2a] to-[#161616] border border-[#3a3a3a] flex items-center justify-center text-white shrink-0 shadow-md">
+                            <HeartIcon filled className="w-5 h-5 text-zinc-200" />
                           </div>
                         ) : (
                           <div
-                            className={`w-10 h-10 rounded flex items-center justify-center text-lg shrink-0 shadow ${
-                              isActive ? 'bg-[#1d90f5]/20 text-[#1d90f5]' : 'bg-[#242424]'
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow border ${
+                              isActive
+                                ? 'bg-[#2a2a2a] border-[#444444] text-white'
+                                : 'bg-[#1e1e1e] border-[#2a2a2a] text-zinc-400'
                             }`}
                           >
-                            {item.icon}
+                            <PlaylistCoverIcon iconKey={item.icon} className="w-5 h-5" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <p
                             className={`text-xs font-semibold truncate transition-colors ${
-                              isActive ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                              isActive ? 'text-white' : 'text-zinc-200 group-hover:text-white'
                             }`}
                           >
                             {item.title}
                           </p>
-                          <p className="text-[10px] text-[#b3b3b3] truncate">
-                            {isLikedPlaylist ? `📌 ${displaySubtitle}` : displaySubtitle}
+                          <p className="text-[10px] text-[#888888] truncate mt-0.5">
+                            {displaySubtitle}
                           </p>
                         </div>
                       </div>
@@ -266,7 +273,7 @@ export default function SpotifySidebar({
                         <button
                           type="button"
                           onClick={(e) => handleRemovePlaylist(item.id, e)}
-                          className="opacity-0 group-hover:opacity-100 text-[#777] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
+                          className="opacity-0 group-hover:opacity-100 text-[#666666] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
                           title="Remove playlist"
                         >
                           ✕
@@ -279,7 +286,7 @@ export default function SpotifySidebar({
           </div>
 
           {/* Upload Local Audio Button (Always available at bottom) */}
-          <div className="pt-2 border-t border-[#242424] shrink-0">
+          <div className="pt-2 border-t border-[#202020] shrink-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -289,23 +296,23 @@ export default function SpotifySidebar({
             />
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-3 p-2 rounded-md hover:bg-[#1f1f1f] cursor-pointer group transition-colors"
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#1a1a1a] cursor-pointer group transition-colors"
             >
-              <div className="w-10 h-10 rounded bg-[#242424] flex items-center justify-center text-lg shrink-0 shadow">
-                📁
+              <div className="w-10 h-10 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center text-zinc-400 shrink-0 shadow">
+                <FolderIcon className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate group-hover:text-[#1d90f5] transition-colors">
+                <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
                   Upload Custom Audio
                 </p>
-                <p className="text-[10px] text-[#b3b3b3] truncate">Local File • .mp3, .wav, .flac</p>
+                <p className="text-[10px] text-[#888888] truncate">Local File • .mp3, .wav, .flac</p>
               </div>
             </div>
           </div>
         </section>
       </aside>
 
-      {/* "What method are you choosing?" Modal */}
+      {/* Add Playlist Modal */}
       <AddSourceModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

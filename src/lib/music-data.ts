@@ -23,7 +23,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '2:53',
     thumbnail: 'https://img.youtube.com/vi/ekr2nIex040/hqdefault.jpg',
     genre: 'Viral Pop / Punk',
-    badge: '🔥 #1 Global YT & IG',
+    badge: '#1 Global YT & IG',
   },
   {
     id: 'kPa7bsKwL-c',
@@ -32,7 +32,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '4:11',
     thumbnail: 'https://img.youtube.com/vi/kPa7bsKwL-c/hqdefault.jpg',
     genre: 'Pop / Soul',
-    badge: '📱 IG Viral',
+    badge: 'IG Viral',
   },
   {
     id: 'hOHKltAiKXQ',
@@ -41,7 +41,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:54',
     thumbnail: 'https://img.youtube.com/vi/hOHKltAiKXQ/hqdefault.jpg',
     genre: 'Hip-Hop / Rap',
-    badge: '⚡ Global Sensation',
+    badge: 'Global Sensation',
   },
   {
     id: 'eVli-tstM5E',
@@ -50,7 +50,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '2:55',
     thumbnail: 'https://img.youtube.com/vi/eVli-tstM5E/hqdefault.jpg',
     genre: 'Nu-Disco / Pop',
-    badge: '✨ Billboard Hot 100',
+    badge: 'Billboard Hot 100',
   },
   {
     id: 'V9PVRfjEBTI',
@@ -131,7 +131,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:42',
     thumbnail: 'https://img.youtube.com/vi/8nL8e2C92jA/hqdefault.jpg',
     genre: 'Reggaeton / Latin',
-    badge: '⚡ Global Top 10',
+    badge: 'Global Top 10',
   },
   {
     id: 'PEM0Vs8jf1w',
@@ -140,7 +140,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:29',
     thumbnail: 'https://img.youtube.com/vi/PEM0Vs8jf1w/hqdefault.jpg',
     genre: 'Chamber Pop / Lo-Fi',
-    badge: '✨ Aesthetic Viral',
+    badge: 'Aesthetic Viral',
   },
   {
     id: 'GxldQ9GyXfY',
@@ -149,7 +149,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '2:57',
     thumbnail: 'https://img.youtube.com/vi/GxldQ9GyXfY/hqdefault.jpg',
     genre: 'Doo-Wop / Retro Pop',
-    badge: '🍂 Vintage Classic',
+    badge: 'Vintage Classic',
   },
   {
     id: 'a3Ue-LN5B9U',
@@ -158,7 +158,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:40',
     thumbnail: 'https://img.youtube.com/vi/a3Ue-LN5B9U/hqdefault.jpg',
     genre: 'Tamil Indie Pop',
-    badge: '📱 Reels Viral',
+    badge: 'Reels Viral',
   },
   {
     id: 'VNs_cCtdbPc',
@@ -167,7 +167,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:19',
     thumbnail: 'https://img.youtube.com/vi/VNs_cCtdbPc/hqdefault.jpg',
     genre: 'Desi Hip-Hop',
-    badge: '🔥 Chart Buster',
+    badge: 'Chart Buster',
   },
   {
     id: 'EPyl1LgNfQ8',
@@ -176,7 +176,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:41',
     thumbnail: 'https://img.youtube.com/vi/EPyl1LgNfQ8/hqdefault.jpg',
     genre: 'Acoustic Soul / Lo-Fi',
-    badge: '🌙 Pure Night Chills',
+    badge: 'Pure Night Chills',
   },
   {
     id: 'syFZfO_wfMQ',
@@ -185,7 +185,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:46',
     thumbnail: 'https://img.youtube.com/vi/syFZfO_wfMQ/hqdefault.jpg',
     genre: 'Pop Ballad / Nostalgia',
-    badge: '✨ Timeless Viral',
+    badge: 'Timeless Viral',
   },
   {
     id: '4NRXx6U8ABQ',
@@ -194,7 +194,7 @@ export const ALL_GENRE_TRENDING_SONGS: TrendingSong[] = [
     duration: '3:20',
     thumbnail: 'https://img.youtube.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
     genre: 'Synthwave / Retro',
-    badge: '⚡ All-Time Top 1',
+    badge: 'All-Time Top 1',
   },
 ];
 
@@ -229,7 +229,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
     subtitle: '10 songs • Liked Songs',
     type: 'custom',
     targetUrl: '',
-    icon: '💙',
+    icon: 'heart',
     tracks: ALL_GENRE_TRENDING_SONGS.slice(0, 10).map((t, idx) => ({
       id: t.id,
       title: t.title,
@@ -247,7 +247,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
     subtitle: 'Relaxing Beats & Night Lo-Fi',
     type: 'custom',
     targetUrl: '',
-    icon: '🎧',
+    icon: 'headphones',
     tracks: [
       ALL_GENRE_TRENDING_SONGS[0], // APT.
       ALL_GENRE_TRENDING_SONGS[1], // Die With A Smile
@@ -271,7 +271,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
     subtitle: 'Top Trending Audio',
     type: 'custom',
     targetUrl: '',
-    icon: '✨',
+    icon: 'sparkles',
     tracks: [
       ALL_GENRE_TRENDING_SONGS[2], // Big Dawgs
       ALL_GENRE_TRENDING_SONGS[3], // Espresso
@@ -295,7 +295,7 @@ export const DEFAULT_STARTER_PLAYLISTS: SavedPlaylistItem[] = [
     subtitle: 'Chill late-night beats to relax/study to',
     type: 'custom',
     targetUrl: '',
-    icon: '🌙',
+    icon: 'moon',
     tracks: [
       ALL_GENRE_TRENDING_SONGS[13], // Golden Hour
       ALL_GENRE_TRENDING_SONGS[14], // Until I Found You

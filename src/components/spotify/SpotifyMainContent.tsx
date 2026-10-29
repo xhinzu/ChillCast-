@@ -15,6 +15,21 @@ import {
   TrendingSong,
   trendingSongToTrackInfo,
 } from '@/lib/music-data';
+import {
+  HeartIcon,
+  PlayIcon,
+  PauseIcon,
+  StopIcon,
+  SearchIcon,
+  TrashIcon,
+  MixerSlidersIcon,
+  MusicNoteIcon,
+  VolumeHighIcon,
+  VolumeLowIcon,
+  VolumeMuteIcon,
+  AmbientSoundIcon,
+  PlaylistCoverIcon,
+} from '@/components/common/MinimalIcons';
 
 interface SpotifyMainContentProps {
   activeView: string;
@@ -276,7 +291,7 @@ export default function SpotifyMainContent({
       subtitle: '1 song • Custom Playlist',
       type: 'custom',
       targetUrl: '',
-      icon: '🎵',
+      icon: 'headphones',
       tracks: [trackItem],
       description: 'Custom created playlist',
       createdAt: Date.now(),
@@ -327,7 +342,7 @@ export default function SpotifyMainContent({
       title: t.title,
       artist: t.artist,
       album: playlist.title,
-      duration: parseDurationSeconds(t.duration),
+      duration: parseDurationSeconds(t.duration || '0:00'),
       source: 'youtube',
       sourceUrl: `https://www.youtube.com/watch?v=${t.id}`,
       artworkUrl: t.thumbnail,
@@ -414,7 +429,7 @@ export default function SpotifyMainContent({
           subtitle: '0 songs • Liked Songs',
           type: 'custom',
           targetUrl: '',
-          icon: '💙',
+          icon: 'heart',
           tracks: [],
           description: 'Your favorite liked tracks on Chillify',
           createdAt: Date.now(),
@@ -439,7 +454,7 @@ export default function SpotifyMainContent({
           addedAt: Date.now(),
         };
         newTracks = [newTrack, ...prevTracks];
-        setAddedToast(`Added "${track.title}" to Liked Songs 💙`);
+        setAddedToast(`Added "${track.title}" to Liked Songs`);
       }
 
       setTimeout(() => setAddedToast(null), 2500);
@@ -477,22 +492,22 @@ export default function SpotifyMainContent({
   };
 
   return (
-    <main className={`flex-1 h-full overflow-y-auto bg-[#121212] rounded-lg relative pb-12 select-none ${extraBottomPadding}`}>
+    <main className={`flex-1 h-full overflow-y-auto bg-[#101010] rounded-lg relative pb-12 select-none ${extraBottomPadding}`}>
       {/* Top Ambient Accent Banner */}
-      <div className="absolute top-0 inset-x-0 h-80 bg-gradient-to-b from-[#18283d] via-[#101721] to-transparent pointer-events-none opacity-60" />
+      <div className="absolute top-0 inset-x-0 h-80 bg-gradient-to-b from-[#1c1c1c] via-[#121212] to-transparent pointer-events-none opacity-60" />
 
       {/* Main Content Container */}
       <div className="relative z-10 px-4 sm:px-8 py-6 space-y-8">
         {/* Error Notification Toast */}
         {errorMessage && (
-          <div className="px-4 py-2.5 rounded-lg bg-rose-900/40 border border-rose-600/40 text-rose-200 text-xs flex items-center justify-between shadow-lg">
-            <span>⚠️ {errorMessage}</span>
+          <div className="px-4 py-2.5 rounded-lg bg-[#222222] border border-rose-600/40 text-rose-200 text-xs flex items-center justify-between shadow-lg">
+            <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Action Notification Toast */}
         {addedToast && (
-          <div className="fixed top-16 right-8 z-50 px-4 py-2.5 rounded-xl bg-[#1d90f5] text-white font-bold text-xs shadow-2xl shadow-[#1d90f5]/40 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-[#1d90f5]/60">
+          <div className="fixed top-16 right-8 z-50 px-4 py-2.5 rounded-xl bg-white text-black font-bold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200 border border-zinc-200">
             <span>✓</span>
             <span className="truncate max-w-sm">{addedToast}</span>
           </div>
@@ -517,10 +532,11 @@ export default function SpotifyMainContent({
                 <button
                   type="button"
                   onClick={() => handleDeletePlaylist(currentPlaylist.id)}
-                  className="text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-800/40 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-800/40 transition-colors cursor-pointer"
                   title="Delete Playlist"
                 >
-                  🗑️ Delete Playlist
+                  <TrashIcon className="w-3.5 h-3.5" />
+                  <span>Delete Playlist</span>
                 </button>
               ) : (
                 <button
@@ -543,37 +559,29 @@ export default function SpotifyMainContent({
 
             {/* Playlist Header Banner */}
             <div
-              className={`flex flex-col sm:flex-row items-center sm:items-end gap-6 p-6 sm:p-8 rounded-2xl border shadow-2xl ${
-                currentPlaylist.id === 'liked-songs'
-                  ? 'bg-gradient-to-b from-[#19325c] to-[#121c2b] border-[#2f5ba0]'
-                  : 'bg-gradient-to-b from-[#183457] to-[#121c2b] border-[#233d5e]'
-              }`}
+              className="flex flex-col sm:flex-row items-center sm:items-end gap-6 p-6 sm:p-8 rounded-2xl border border-[#2a2a2a] bg-gradient-to-b from-[#1e1e1e] to-[#121212] shadow-2xl"
             >
               {/* Artwork Tile */}
               <div
-                className={`w-36 h-36 sm:w-44 sm:h-44 rounded-xl flex items-center justify-center text-5xl sm:text-6xl shadow-2xl shrink-0 ${
-                  currentPlaylist.id === 'liked-songs'
-                    ? 'bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca]'
-                    : 'bg-gradient-to-br from-[#1d90f5] to-[#09488a]'
-                }`}
+                className="w-36 h-36 sm:w-44 sm:h-44 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#262626] to-[#141414] border border-[#333333] shadow-2xl shrink-0"
               >
-                {currentPlaylist.icon || '🎵'}
+                <PlaylistCoverIcon iconKey={currentPlaylist.icon} className="w-16 h-16 sm:w-20 sm:h-20 text-zinc-300" />
               </div>
 
               {/* Header Info */}
               <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-2 min-w-0">
-                <span className="text-[11px] font-extrabold tracking-widest text-[#1d90f5] uppercase">
+                <span className="text-[11px] font-extrabold tracking-widest text-[#888888] uppercase">
                   {currentPlaylist.id === 'liked-songs' ? 'FAVORITES' : 'CUSTOM PLAYLIST'}
                 </span>
                 <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight break-words">
                   {currentPlaylist.title}
                 </h1>
                 {currentPlaylist.description && (
-                  <p className="text-xs sm:text-sm text-[#b3b3b3]">
+                  <p className="text-xs sm:text-sm text-[#888888]">
                     {currentPlaylist.description}
                   </p>
                 )}
-                <div className="flex items-center gap-2 text-xs text-[#a7a7a7] mt-1 font-medium">
+                <div className="flex items-center gap-2 text-xs text-[#888888] mt-1 font-medium">
                   <span className="text-white font-bold">Chillify</span>
                   <span>•</span>
                   <span>{currentPlaylist.tracks?.length || 0} songs</span>
@@ -591,31 +599,30 @@ export default function SpotifyMainContent({
                 onClick={() => handlePlayCustomPlaylist(currentPlaylist, 0)}
                 className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all ${
                   currentPlaylist.tracks && currentPlaylist.tracks.length > 0
-                    ? 'bg-[#1d90f5] hover:scale-105 text-white hover:bg-[#2fa0ff] cursor-pointer'
-                    : 'bg-[#2a2a2a] text-[#666666] cursor-not-allowed opacity-60'
+                    ? 'bg-white hover:bg-zinc-200 text-black hover:scale-105 cursor-pointer shadow-white/10'
+                    : 'bg-[#222222] text-[#666666] cursor-not-allowed opacity-60'
                 }`}
                 title="Play Entire Playlist"
               >
-                <svg className="w-7 h-7 fill-current ml-1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
+                <PlayIcon className="w-7 h-7 fill-current ml-1" />
               </button>
-              <span className="text-xs text-[#b3b3b3] font-medium">
+              <span className="text-xs text-[#888888] font-medium">
                 {currentPlaylist.tracks && currentPlaylist.tracks.length > 0
                   ? 'Click to start continuous playback'
                   : 'Add songs below to start playing'}
               </span>
             </div>
 
-            {/* In-Playlist Quick Search (Add music to it right here!) */}
-            <div className="p-4 sm:p-5 rounded-xl bg-[#181818] border border-[#262626] space-y-3">
+            {/* In-Playlist Quick Search */}
+            <div className="p-4 sm:p-5 rounded-xl bg-[#161616] border border-[#262626] space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>🔍</span> Add Songs to &ldquo;{currentPlaylist.title}&rdquo;
+                  <SearchIcon className="w-4 h-4 text-zinc-400" />
+                  <span>Add Songs to &ldquo;{currentPlaylist.title}&rdquo;</span>
                 </h3>
                 {isInlineSearching && (
-                  <div className="flex items-center gap-2 text-xs text-[#1d90f5]">
-                    <div className="w-3.5 h-3.5 border-2 border-[#1d90f5] border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center gap-2 text-xs text-zinc-400">
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     <span>Searching...</span>
                   </div>
                 )}
@@ -673,7 +680,7 @@ export default function SpotifyMainContent({
                           className={`text-xs px-3 py-1 rounded-full font-semibold transition-colors shrink-0 ${
                             alreadyInPlaylist
                               ? 'bg-[#2a2a2a] text-[#666666] cursor-not-allowed'
-                              : 'bg-[#1d90f5] hover:bg-[#2fa0ff] text-white cursor-pointer'
+                              : 'bg-white hover:bg-zinc-200 text-black cursor-pointer'
                           }`}
                         >
                           {alreadyInPlaylist ? 'Added' : '＋ Add'}
@@ -687,17 +694,17 @@ export default function SpotifyMainContent({
 
             {/* Playlist Tracks List */}
             {(!currentPlaylist.tracks || currentPlaylist.tracks.length === 0) ? (
-              <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-3">
-                <span className="text-4xl">🎵</span>
+              <div className="p-12 text-center bg-[#161616] rounded-xl border border-[#242424] text-[#888888] space-y-3 flex flex-col items-center justify-center">
+                <MusicNoteIcon className="w-12 h-12 text-zinc-600" />
                 <h3 className="text-base font-bold text-white">This playlist is empty</h3>
-                <p className="text-xs max-w-md mx-auto">
+                <p className="text-xs max-w-md mx-auto text-[#888888]">
                   Search for songs using the search bar above or use the main YouTube search at the top to add tracks to your playlist.
                 </p>
               </div>
             ) : (
-              <div className="bg-[#181818] rounded-xl border border-[#242424] overflow-hidden">
+              <div className="bg-[#161616] rounded-xl border border-[#242424] overflow-hidden">
                 {/* Table Header */}
-                <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-[#282828] text-[11px] font-bold text-[#b3b3b3] uppercase tracking-wider">
+                <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-[#282828] text-[11px] font-bold text-[#888888] uppercase tracking-wider">
                   <span className="col-span-1 text-center">#</span>
                   <span className="col-span-6 sm:col-span-7">Title</span>
                   <span className="col-span-3 sm:col-span-2 text-right">Time</span>
@@ -713,34 +720,42 @@ export default function SpotifyMainContent({
                       className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-[#202020] cursor-pointer group transition-colors select-none"
                     >
                       {/* # / Hover Play */}
-                      <div className="col-span-1 flex items-center justify-center text-xs text-[#b3b3b3]">
+                      <div className="col-span-1 flex items-center justify-center text-xs text-[#888888]">
                         <span className="group-hover:hidden">{idx + 1}</span>
-                        <span className="hidden group-hover:inline text-[#1d90f5] font-bold">▶</span>
+                        <span className="hidden group-hover:inline text-white font-bold">
+                          <PlayIcon className="w-3 h-3 fill-current inline" />
+                        </span>
                       </div>
 
                       {/* Title & Artist */}
                       <div className="col-span-6 sm:col-span-7 flex items-center gap-3 min-w-0">
                         <div className="relative w-10 h-10 rounded overflow-hidden bg-zinc-900 shrink-0">
-                          <Image
-                            src={track.thumbnail}
-                            alt={track.title}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
+                          {track.thumbnail ? (
+                            <Image
+                              src={track.thumbnail}
+                              alt={track.title}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                              <MusicNoteIcon className="w-4 h-4 text-zinc-500" />
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-[#1d90f5] transition-colors">
+                          <p className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-zinc-200 transition-colors">
                             {track.title}
                           </p>
-                          <p className="text-[11px] text-[#b3b3b3] truncate">
+                          <p className="text-[11px] text-[#888888] truncate">
                             {track.artist}
                           </p>
                         </div>
                       </div>
 
                       {/* Duration */}
-                      <div className="col-span-3 sm:col-span-2 text-right text-xs font-mono text-[#b3b3b3]">
+                      <div className="col-span-3 sm:col-span-2 text-right text-xs font-mono text-[#888888]">
                         {track.duration}
                       </div>
 
@@ -792,7 +807,9 @@ export default function SpotifyMainContent({
             {searchResults.length === 0 && !isSearching ? (
               searchError ? (
                 <div className="p-8 text-center bg-[#181818] rounded-xl border border-rose-900/30 text-[#b3b3b3] space-y-3">
-                  <span className="text-3xl">⚠️</span>
+                  <svg className="w-8 h-8 text-rose-400 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
                   <p className="text-sm font-semibold text-white">{searchError}</p>
                   <button
                     type="button"
@@ -812,14 +829,14 @@ export default function SpotifyMainContent({
                         .catch(() => setSearchError('Network error connecting to search.'))
                         .finally(() => setIsSearching(false));
                     }}
-                    className="px-4 py-2 rounded-full bg-[#1d90f5] hover:bg-[#2fa0ff] text-white text-xs font-semibold cursor-pointer transition-colors shadow"
+                    className="px-4 py-2 rounded-full bg-white hover:bg-neutral-200 text-black text-xs font-semibold cursor-pointer transition-colors shadow"
                   >
                     Retry Search
                   </button>
                 </div>
               ) : (
                 <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-2">
-                  <span className="text-3xl">🔍</span>
+                  <SearchIcon className="w-8 h-8 text-[#666666] mx-auto" />
                   <p className="text-sm font-semibold text-white">No songs found</p>
                   <p className="text-xs">Try searching for song titles, artists, or &ldquo;lofi beats&rdquo;.</p>
                 </div>
@@ -900,7 +917,7 @@ export default function SpotifyMainContent({
 
             {savedPlaylists.length === 0 ? (
               <div className="p-12 text-center bg-[#181818] rounded-xl border border-[#242424] text-[#b3b3b3] space-y-2">
-                <span className="text-4xl">🎵</span>
+                <MusicNoteIcon className="w-10 h-10 mx-auto text-[#666666]" />
                 <p className="text-sm font-semibold text-white">No playlists yet</p>
                 <p className="text-xs">Search for songs and add them to a playlist.</p>
               </div>
@@ -915,19 +932,13 @@ export default function SpotifyMainContent({
                       onClick={() => setActiveView(`playlist:${pl.id}`)}
                       className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-[#1d90f5]/15 border border-[#1d90f5]/40'
-                          : 'bg-[#181818] border border-[#242424] hover:bg-[#222222]'
+                          ? 'bg-[#222222] border border-white/30 text-white'
+                          : 'bg-[#181818] border border-[#242424] hover:bg-[#202020]'
                       }`}
                     >
                       {/* Icon */}
-                      <div
-                        className={`w-14 h-14 shrink-0 rounded-lg flex items-center justify-center text-2xl shadow-md ${
-                          pl.id === 'liked-songs'
-                            ? 'bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca]'
-                            : 'bg-gradient-to-br from-[#1d90f5] to-[#09488a]'
-                        }`}
-                      >
-                        {pl.icon || '🎵'}
+                      <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden flex items-center justify-center bg-[#202020] border border-[#2c2c2c] shadow-md">
+                        <PlaylistCoverIcon icon={pl.icon} isLiked={pl.id === 'liked-songs'} size="md" />
                       </div>
                       {/* Info */}
                       <div className="min-w-0 flex-1">
@@ -952,7 +963,7 @@ export default function SpotifyMainContent({
         {isHomeView && (
           <section aria-label="Home Music Discovery" className="space-y-8">
             {/* Header Greeting */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#18283d]/40 via-[#121924]/20 to-transparent p-5 rounded-2xl border border-[#242424]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#222222]/60 via-[#181818]/40 to-transparent p-5 rounded-2xl border border-[#282828]">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                   {greeting}
@@ -977,7 +988,7 @@ export default function SpotifyMainContent({
                 <button
                   type="button"
                   onClick={() => setActiveView('playlists')}
-                  className="text-xs text-[#b3b3b3] hover:text-[#1d90f5] font-semibold transition-colors cursor-pointer"
+                  className="text-xs text-[#b3b3b3] hover:text-white font-semibold transition-colors cursor-pointer"
                 >
                   View Library →
                 </button>
@@ -1002,16 +1013,16 @@ export default function SpotifyMainContent({
                       }}
                       className={`group relative p-3 rounded-2xl border transition-all duration-300 cursor-pointer select-none flex flex-col justify-between overflow-hidden shadow-md ${
                         isCurrentPlaylistPlaying
-                          ? 'bg-gradient-to-b from-[#18283d] to-[#111924] border-[#1d90f5] ring-1 ring-[#1d90f5]/50 scale-[1.02]'
-                          : 'bg-[#181818] hover:bg-[#222222] border-[#262626] hover:border-[#383838] hover:scale-[1.02]'
+                          ? 'bg-[#222222] border-white/40 ring-1 ring-white/20 scale-[1.02]'
+                          : 'bg-[#181818] hover:bg-[#202020] border-[#262626] hover:border-[#383838] hover:scale-[1.02]'
                       }`}
                       title={`Open "${pl.title}"`}
                     >
                       {/* Top Artwork / Icon & Play Overlay */}
                       <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2.5 flex items-center justify-center bg-black/60 shadow-inner">
                         {isLiked ? (
-                          <div className="w-full h-full bg-gradient-to-br from-[#1d90f5] via-[#2f66ff] to-[#7928ca] flex items-center justify-center text-3xl shadow-md">
-                            💙
+                          <div className="w-full h-full bg-gradient-to-br from-[#282828] to-[#141414] border border-[#333333] flex items-center justify-center shadow-md">
+                            <HeartIcon className="w-8 h-8 text-white fill-white" />
                           </div>
                         ) : pl.tracks && pl.tracks.length > 0 && pl.tracks[0].thumbnail ? (
                           <Image
@@ -1022,8 +1033,8 @@ export default function SpotifyMainContent({
                             unoptimized
                           />
                         ) : (
-                          <div className="w-full h-full bg-[#242424] flex items-center justify-center text-2xl">
-                            {pl.icon || '🎵'}
+                          <div className="w-full h-full bg-[#202020] border border-[#2a2a2a] flex items-center justify-center">
+                            <PlaylistCoverIcon icon={pl.icon} isLiked={false} size="sm" />
                           </div>
                         )}
 
@@ -1039,15 +1050,15 @@ export default function SpotifyMainContent({
                           }}
                           className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-xl transition-all duration-200 cursor-pointer ${
                             isCurrentPlaylistPlaying
-                              ? 'bg-[#1d90f5] text-white opacity-100 scale-100 shadow-[#1d90f5]/50'
-                              : 'bg-white text-black hover:bg-[#1d90f5] hover:text-white opacity-0 group-hover:opacity-100 group-hover:scale-105'
+                              ? 'bg-white text-black opacity-100 scale-100 shadow-white/20'
+                              : 'bg-white text-black hover:bg-neutral-200 opacity-0 group-hover:opacity-100 group-hover:scale-105'
                           }`}
                           title="Play Playlist"
                         >
                           {isCurrentPlaylistPlaying ? (
-                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                            <PauseIcon className="w-3.5 h-3.5 text-black" />
                           ) : (
-                            <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                            <PlayIcon className="w-3.5 h-3.5 text-black ml-0.5" />
                           )}
                         </div>
                       </div>
@@ -1056,7 +1067,7 @@ export default function SpotifyMainContent({
                       <div className="min-w-0">
                         <h3
                           className={`text-xs font-bold truncate transition-colors ${
-                            isCurrentPlaylistPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                            isCurrentPlaylistPlaying ? 'text-white' : 'text-white group-hover:text-white'
                           }`}
                         >
                           {pl.title}
@@ -1072,14 +1083,14 @@ export default function SpotifyMainContent({
                 {/* Inline "+ Create Playlist" Card */}
                 <div
                   onClick={() => setShowCreateInline(true)}
-                  className="group relative p-3 rounded-2xl border border-dashed border-[#2e2e2e] hover:border-[#1d90f5] bg-[#181818] hover:bg-[#202020] transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center text-center space-y-2 min-h-[140px]"
+                  className="group relative p-3 rounded-2xl border border-dashed border-[#2e2e2e] hover:border-white/50 bg-[#181818] hover:bg-[#202020] transition-all duration-200 cursor-pointer select-none flex flex-col items-center justify-center text-center space-y-2 min-h-[140px]"
                   title="Create a new playlist"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#242424] group-hover:bg-[#1d90f5] text-[#b3b3b3] group-hover:text-white flex items-center justify-center text-xl transition-colors font-bold">
+                  <div className="w-10 h-10 rounded-full bg-[#242424] group-hover:bg-white text-[#b3b3b3] group-hover:text-black flex items-center justify-center text-xl transition-colors font-bold">
                     ＋
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white group-hover:text-[#1d90f5] transition-colors">
+                    <p className="text-xs font-bold text-white group-hover:text-white transition-colors">
                       New Playlist
                     </p>
                     <p className="text-[10px] text-[#8e8b98]">Create custom mix</p>
@@ -1099,8 +1110,8 @@ export default function SpotifyMainContent({
                   </h2>
                 </div>
 
-                {/* Minimal Song Rows (Song & Artist, Duration, Like Button) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                {/* Minimal Single-Row Song List (Song & Artist on left, Duration and Like at the very horizontal end) */}
+                <div className="flex flex-col gap-1.5 w-full">
                   {ALL_GENRE_TRENDING_SONGS.map((song, idx) => {
                     const isThisPlaying = isPlaying && currentTrack?.id === song.id;
                     const liked = isTrackLiked(song.id);
@@ -1109,15 +1120,16 @@ export default function SpotifyMainContent({
                       <div
                         key={song.id}
                         onClick={() => handlePlayTrending(idx)}
-                        className={`flex items-center justify-between gap-3 p-2.5 rounded-xl transition-all cursor-pointer group border ${
+                        className={`flex items-center justify-between gap-4 px-3 py-2.5 rounded-xl transition-all cursor-pointer group border w-full ${
                           isThisPlaying
-                            ? 'bg-[#18283d] border-[#1d90f5] text-white shadow-md'
-                            : 'border-transparent hover:border-[#333333] hover:bg-[#202020]'
+                            ? 'bg-[#222222] border-white/30 text-white shadow-md'
+                            : 'border-transparent hover:border-[#2c2c2c] hover:bg-[#1f1f1f]'
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Left: Thumbnail & Title/Artist */}
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
                           {/* Track Artwork / Play state */}
-                          <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-black shrink-0 border border-[#282828] group-hover:border-[#1d90f5] transition-colors">
+                          <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-black shrink-0 border border-[#282828] group-hover:border-[#444444] transition-colors">
                             <Image
                               src={song.thumbnail}
                               alt={song.title}
@@ -1127,17 +1139,17 @@ export default function SpotifyMainContent({
                             />
                             <div
                               className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity ${
-                                isThisPlaying ? 'opacity-100 bg-[#1d90f5]/30' : 'opacity-0 group-hover:opacity-100'
+                                isThisPlaying ? 'opacity-100 bg-black/50' : 'opacity-0 group-hover:opacity-100'
                               }`}
                             >
                               {isThisPlaying ? (
                                 <div className="flex items-end gap-0.5 h-3">
-                                  <span className="w-0.5 bg-[#1d90f5] rounded-full animate-bounce h-2" />
-                                  <span className="w-0.5 bg-[#1d90f5] rounded-full animate-bounce h-3 delay-75" />
-                                  <span className="w-0.5 bg-[#1d90f5] rounded-full animate-bounce h-1.5 delay-150" />
+                                  <span className="w-0.5 bg-white rounded-full animate-bounce h-2" />
+                                  <span className="w-0.5 bg-white rounded-full animate-bounce h-3 delay-75" />
+                                  <span className="w-0.5 bg-white rounded-full animate-bounce h-1.5 delay-150" />
                                 </div>
                               ) : (
-                                <span className="text-white text-xs font-bold">▶</span>
+                                <PlayIcon className="w-3.5 h-3.5 text-white" />
                               )}
                             </div>
                           </div>
@@ -1145,45 +1157,34 @@ export default function SpotifyMainContent({
                           {/* Song Title & Artist Name Only */}
                           <div className="min-w-0 flex-1">
                             <p
-                              className={`text-xs font-semibold truncate transition-colors ${
-                                isThisPlaying ? 'text-[#1d90f5]' : 'text-white group-hover:text-[#1d90f5]'
+                              className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
+                                isThisPlaying ? 'text-white' : 'text-white group-hover:text-white'
                               }`}
                             >
                               {song.title}
                             </p>
-                            <p className="text-[11px] text-[#b3b3b3] truncate mt-0.5">
+                            <p className="text-[11px] text-[#a1a1aa] truncate mt-0.5">
                               {song.artist}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0">
-                          {/* Duration */}
+                        {/* Far Right: Duration and Like button at the very horizontal end */}
+                        <div className="flex items-center gap-4 shrink-0 ml-auto">
                           <span className="text-xs font-mono text-[#888888]">
                             {song.duration}
                           </span>
 
-                          {/* Like Button */}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleToggleTrackLike(song);
                             }}
-                            className={`p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer ${
-                              liked ? 'text-[#1d90f5]' : 'text-[#888888] hover:text-white'
-                            }`}
-                            title={liked ? 'Liked' : 'Like'}
+                            className="p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer text-[#888888] hover:text-white"
+                            title={liked ? 'Unlike' : 'Like'}
                           >
-                            {liked ? (
-                              <svg className="w-5 h-5 fill-current text-[#1d90f5]" viewBox="0 0 24 24">
-                                <path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                              </svg>
-                            ) : (
-                              <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                              </svg>
-                            )}
+                            <HeartIcon className="w-4 h-4" filled={liked} />
                           </button>
                         </div>
                       </div>
@@ -1215,14 +1216,14 @@ export default function SpotifyMainContent({
             {/* Section Header & Master Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#282828]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#1d90f5]/15 text-[#1d90f5] flex items-center justify-center text-xl font-bold">
-                  🎛️
+                <div className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center">
+                  <MixerSlidersIcon className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     Ambient Soundscape Mixer
                     {activeCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#1d90f5] text-white">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black">
                         {activeCount} ACTIVE
                       </span>
                     )}
@@ -1242,7 +1243,11 @@ export default function SpotifyMainContent({
                     className="text-xs text-[#b3b3b3] hover:text-white cursor-pointer"
                     title="Mute Master Ambient"
                   >
-                    {isMasterMuted || masterVolume === 0 ? '🔇' : '🔊'}
+                    {isMasterMuted || masterVolume === 0 ? (
+                      <VolumeMuteIcon className="w-4 h-4 text-[#888888]" />
+                    ) : (
+                      <VolumeHighIcon className="w-4 h-4 text-[#b3b3b3]" />
+                    )}
                   </button>
                   <span className="text-[11px] text-[#b3b3b3] font-medium">Master</span>
                   <input
@@ -1259,14 +1264,15 @@ export default function SpotifyMainContent({
                 <button
                   type="button"
                   onClick={() => applyPreset('muteAll')}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#242424] hover:bg-rose-900/40 text-[#b3b3b3] hover:text-rose-200 transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#242424] hover:bg-neutral-800 text-[#b3b3b3] hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  ⏹️ Stop All
+                  <StopIcon className="w-3.5 h-3.5 text-[#b3b3b3]" />
+                  <span>Stop All</span>
                 </button>
               </div>
             </div>
 
-            {/* 9 Ambient Soundscape Channels Grid */}
+            {/* 10 Ambient Soundscape Channels Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pt-2">
               {ambientSounds.map((sound) => {
                 const state = soundStates[sound.id];
@@ -1280,24 +1286,22 @@ export default function SpotifyMainContent({
                     onClick={() => toggleSound(sound.id)}
                     className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between gap-3.5 cursor-pointer select-none group relative overflow-hidden ${
                       isPlayingChannel
-                        ? 'bg-gradient-to-b from-[#18283d] to-[#121924] border-[#1d90f5] shadow-lg shadow-[#1d90f5]/20 ring-1 ring-[#1d90f5]/40 scale-[1.01]'
-                        : 'bg-[#181818] hover:bg-[#222222] border-[#282828] hover:border-[#3a3a3a]'
+                        ? 'bg-[#222222] border-white/40 shadow-lg ring-1 ring-white/20 scale-[1.01]'
+                        : 'bg-[#181818] hover:bg-[#202020] border-[#282828] hover:border-[#383838]'
                     }`}
                     title={`Click to ${isPlayingChannel ? 'turn off' : 'turn on'} ${sound.name}`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl transition-transform group-hover:scale-110">
-                        {sound.icon}
-                      </span>
+                      <AmbientSoundIcon soundId={sound.id} className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
 
                       {/* Active Glowing Status Indicator */}
                       {isPlayingChannel ? (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#1d90f5]/20 border border-[#1d90f5]/40">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/20">
                           <span className="flex h-2 w-2 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1d90f5] opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1d90f5]"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                           </span>
-                          <span className="text-[10px] font-extrabold text-[#1d90f5] tracking-wider">
+                          <span className="text-[10px] font-extrabold text-white tracking-wider">
                             ACTIVE
                           </span>
                         </div>
@@ -1327,7 +1331,11 @@ export default function SpotifyMainContent({
                         className="text-xs text-[#b3b3b3] hover:text-white cursor-pointer transition-colors"
                         title={isMutedChannel ? 'Unmute' : 'Mute'}
                       >
-                        {isMutedChannel ? '🔇' : '🔉'}
+                        {isMutedChannel ? (
+                          <VolumeMuteIcon className="w-3.5 h-3.5 text-[#666666]" />
+                        ) : (
+                          <VolumeLowIcon className="w-3.5 h-3.5 text-[#b3b3b3]" />
+                        )}
                       </button>
                       <input
                         type="range"
@@ -1355,7 +1363,7 @@ export default function SpotifyMainContent({
         {/* Footer Info & Creator Socials */}
         <footer className="pt-8 border-t border-[#242424] flex flex-col sm:flex-row items-center justify-between text-xs text-[#b3b3b3] gap-3">
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
-            <span className="font-semibold text-white">Chillify 🥰</span>
+            <span className="font-semibold text-white">Chillify</span>
             <span className="text-[#555555]">•</span>
             <span>Creator&apos;s Socials</span>
             <div className="flex items-center gap-2 ml-1">
@@ -1449,17 +1457,17 @@ export default function SpotifyMainContent({
                       className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-colors ${
                         alreadyHasTrack
                           ? 'bg-[#141414] border-[#222222] opacity-60 cursor-not-allowed'
-                          : 'bg-[#202020] hover:bg-[#262626] border-[#2a2a2a] hover:border-[#1d90f5] cursor-pointer'
+                          : 'bg-[#202020] hover:bg-[#262626] border-[#2a2a2a] hover:border-white/30 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xl">{pl.icon || '🎵'}</span>
+                        <PlaylistCoverIcon icon={pl.icon} isLiked={pl.id === 'liked-songs'} size="sm" />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white truncate">{pl.title}</p>
                           <p className="text-[10px] text-[#b3b3b3]">{pl.tracks?.length || 0} songs</p>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold text-[#1d90f5]">
+                      <span className="text-xs font-semibold text-white">
                         {alreadyHasTrack ? 'Added' : '＋ Add'}
                       </span>
                     </button>
@@ -1473,7 +1481,7 @@ export default function SpotifyMainContent({
               <button
                 type="button"
                 onClick={() => setShowCreateInline(true)}
-                className="w-full py-2 px-3 rounded-xl bg-[#222222] hover:bg-[#2a2a2a] text-[#1d90f5] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="w-full py-2 px-3 rounded-xl bg-[#222222] hover:bg-[#2a2a2a] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <span>＋</span> Create New Playlist
               </button>
@@ -1484,14 +1492,14 @@ export default function SpotifyMainContent({
                   placeholder="Enter playlist name..."
                   value={newPlaylistName}
                   onChange={(e) => setNewPlaylistName(e.target.value)}
-                  className="w-full bg-[#121212] text-white text-xs px-3.5 py-2.5 rounded-lg border border-[#333333] focus:border-[#1d90f5] outline-none"
+                  className="w-full bg-[#121212] text-white text-xs px-3.5 py-2.5 rounded-lg border border-[#333333] focus:border-white/40 outline-none"
                   autoFocus
                 />
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleCreateAndAdd(playlistTargetVideo)}
-                    className="flex-1 py-2 rounded-lg bg-[#1d90f5] hover:bg-[#2fa0ff] text-white text-xs font-bold transition-colors cursor-pointer"
+                    className="flex-1 py-2 rounded-lg bg-white hover:bg-neutral-200 text-black text-xs font-bold transition-colors cursor-pointer"
                   >
                     Create & Add
                   </button>

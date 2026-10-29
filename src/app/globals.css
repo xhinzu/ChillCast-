@@ -3,13 +3,17 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
-  --chillify-blue: #1d90f5;
-  --chillify-blue-hover: #3b82f6;
+  --chillify-accent: #ffffff;
+  --chillify-accent-dim: #9ca3af;
+  --chillify-grey-bg: #161616;
+  --chillify-card: #181818;
+  --chillify-card-hover: #242424;
+  --chillify-border: #2a2a2a;
   --spotify-black: #000000;
-  --spotify-dark: #121212;
+  --spotify-dark: #101010;
   --spotify-card: #181818;
-  --spotify-card-hover: #282828;
-  --spotify-subtext: #b3b3b3;
+  --spotify-card-hover: #242424;
+  --spotify-subtext: #8e8e93;
 }
 
 body {
@@ -21,21 +25,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Chillify Spotify-Style Card */
+/* Chillify Spotify-Style Card (Black & Grey) */
 .spotify-card {
-  background-color: #181818;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  background-color: #161616;
+  border: 1px solid #222222;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .spotify-card:hover {
-  background-color: #282828;
+  background-color: #202020;
+  border-color: #333333;
 }
 
-/* Chillify Electric Blue Range Slider */
+/* Chillify Minimal Grey Range Slider */
 .spotify-slider {
   -webkit-appearance: none;
   appearance: none;
-  background: #4d4d4d;
+  background: #2e2e2e;
   height: 4px;
   border-radius: 9999px;
   outline: none;
@@ -44,7 +50,8 @@ body {
 }
 
 .spotify-slider:hover {
-  height: 6px;
+  height: 5px;
+  background: #3e3e3e;
 }
 
 /* WebKit (Chrome, Safari, Edge) */
@@ -55,7 +62,7 @@ body {
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
   opacity: 0;
   transition: opacity 0.15s ease, transform 0.15s ease;
   cursor: pointer;
@@ -73,7 +80,7 @@ body {
   border: none;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
   opacity: 0;
   transition: opacity 0.15s ease;
   cursor: pointer;
@@ -84,10 +91,10 @@ body {
   opacity: 1;
 }
 
-/* Custom Chillify Blue Scrollbars */
+/* Custom Minimalist Scrollbars (Black & Grey) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -95,12 +102,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(29, 144, 245, 0.6);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 /* Vinyl Record Rotations & Styling */
@@ -121,12 +128,12 @@ body {
   animation-play-state: paused !important;
 }
 
-/* Realistic Vinyl Grooves */
+/* Realistic Vinyl Grooves - Deep Black & Slate */
 .vinyl-grooves {
   background:
-    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.88) 37%, transparent 38%),
-    repeating-radial-gradient(circle at center, #101010 0px, #101010 2px, #1c1c1c 3px, #101010 4px);
-  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.9), inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+    radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.92) 37%, transparent 38%),
+    repeating-radial-gradient(circle at center, #0e0e0e 0px, #0e0e0e 2px, #1a1a1a 3px, #0e0e0e 4px);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 /* Vinyl Surface Sheen */
@@ -134,43 +141,43 @@ body {
   background: linear-gradient(
     135deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.05) 44%,
-    rgba(255, 255, 255, 0.14) 50%,
-    rgba(255, 255, 255, 0.05) 56%,
+    rgba(255, 255, 255, 0.04) 44%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.04) 56%,
     transparent 100%
   );
 }
 
-/* Custom Crossfader Slider Track */
+/* Custom Crossfader Slider Track (Minimal Graphite & Silver) */
 .crossfader-slider {
   -webkit-appearance: none;
   appearance: none;
-  background: #242424;
-  height: 8px;
+  background: #1f1f1f;
+  height: 7px;
   border-radius: 9999px;
   outline: none;
   cursor: pointer;
-  border: 1px solid #333333;
+  border: 1px solid #2e2e2e;
 }
 
 .crossfader-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 22px;
-  height: 28px;
+  width: 20px;
+  height: 26px;
   border-radius: 4px;
-  background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
-  border: 2px solid #1d90f5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, #3d3d3d, #1e1e1e);
+  border: 1.5px solid #888888;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
   cursor: pointer;
 }
 
 .crossfader-slider::-moz-range-thumb {
-  width: 22px;
-  height: 28px;
+  width: 20px;
+  height: 26px;
   border-radius: 4px;
-  background: linear-gradient(180deg, #3a3a3a, #1a1a1a);
-  border: 2px solid #1d90f5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, #3d3d3d, #1e1e1e);
+  border: 1.5px solid #888888;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
   cursor: pointer;
 }

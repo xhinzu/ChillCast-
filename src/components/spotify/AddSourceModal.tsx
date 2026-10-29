@@ -1,27 +1,32 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { AdapterType } from '@/types/playback';
+import React, { useState, useRef } from 'react';
+import {
+  MusicNoteIcon,
+  PlayIcon,
+  HeadphonesIcon,
+  FolderIcon,
+} from '@/components/common/MinimalIcons';
 
 export interface CustomPlaylistTrack {
   id: string;
   title: string;
   artist: string;
-  duration: string;
-  thumbnail: string;
-  addedAt?: number;
+  duration?: string;
+  thumbnail?: string;
+  addedAt: number;
 }
 
 export interface SavedPlaylistItem {
   id: string;
   title: string;
   subtitle: string;
-  type: AdapterType | 'custom';
+  type: 'youtube' | 'spotify' | 'custom';
   targetUrl: string;
-  icon: string;
+  icon?: string;
   tracks?: CustomPlaylistTrack[];
   description?: string;
-  createdAt?: number;
+  createdAt: number;
 }
 
 interface AddSourceModalProps {
@@ -37,10 +42,10 @@ export default function AddSourceModal({
   onSavePlaylist,
   onUploadLocalFile,
 }: AddSourceModalProps) {
-  const [selectedMethod, setSelectedMethod] = useState<'custom' | 'youtube' | 'spotify' | 'local' | null>(null);
-  const [playlistTitle, setPlaylistTitle] = useState<string>('');
-  const [playlistDescription, setPlaylistDescription] = useState<string>('');
-  const [urlInput, setUrlInput] = useState<string>('');
+  const [selectedMethod, setSelectedMethod] = useState<'youtube' | 'spotify' | 'custom' | null>(null);
+  const [playlistTitle, setPlaylistTitle] = useState('');
+  const [playlistDescription, setPlaylistDescription] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
@@ -64,7 +69,7 @@ export default function AddSourceModal({
         subtitle: '0 songs • Custom Playlist',
         type: 'custom',
         targetUrl: '',
-        icon: '🎵',
+        icon: 'music',
         tracks: [],
         description: playlistDescription.trim() || 'Custom playlist on Chillify',
         createdAt: Date.now(),
@@ -85,7 +90,7 @@ export default function AddSourceModal({
       subtitle: selectedMethod === 'youtube' ? 'Playlist • YouTube' : 'Playlist • Spotify',
       type: selectedMethod === 'youtube' ? 'youtube' : 'spotify',
       targetUrl: urlInput.trim(),
-      icon: selectedMethod === 'youtube' ? '▶️' : '🎧',
+      icon: selectedMethod === 'youtube' ? 'youtube' : 'headphones',
       createdAt: Date.now(),
     };
 
@@ -102,52 +107,47 @@ export default function AddSourceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 select-none animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-[#181818] border border-[#282828] rounded-2xl shadow-2xl p-6 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-[#161616] border border-[#2a2a2a] rounded-2xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-150">
         {/* Close Button */}
         <button
           type="button"
           onClick={handleResetAndClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#242424] hover:bg-[#2e2e2e] text-[#b3b3b3] hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#222222] hover:bg-[#2c2c2c] text-[#888888] hover:text-white flex items-center justify-center transition-colors text-sm cursor-pointer border border-[#333333]"
         >
           ✕
         </button>
 
         {/* Modal Header */}
         <div className="mb-5">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#1d90f5]">
-            Add to Your Library
-          </span>
-          <h2 className="text-xl font-extrabold text-white mt-1">
-            What method are you choosing?
-          </h2>
-          <p className="text-xs text-[#b3b3b3] mt-0.5">
+          <h2 className="text-lg font-bold text-white tracking-tight">Add to Library</h2>
+          <p className="text-xs text-[#888888] mt-1">
             Select how you want to add music into your Chillify library.
           </p>
         </div>
 
-        {/* Method 4-Option Picker */}
+        {/* Method Picker Options */}
         {!selectedMethod ? (
           <div className="space-y-2.5">
-            {/* Option 1: Custom Playlist (NEW!) */}
+            {/* Option 1: Custom Playlist */}
             <button
               type="button"
               onClick={() => setSelectedMethod('custom')}
-              className="w-full p-3.5 rounded-xl bg-gradient-to-r from-[#18283d] to-[#121924] hover:from-[#1f3757] hover:to-[#172338] border border-[#1d90f5]/40 hover:border-[#1d90f5] flex items-center gap-3.5 text-left transition-all cursor-pointer group shadow-sm shadow-[#1d90f5]/20"
+              className="w-full p-3.5 rounded-xl bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] hover:border-[#444444] flex items-center gap-3.5 text-left transition-all cursor-pointer group shadow-sm"
             >
-              <div className="w-11 h-11 rounded-xl bg-[#1d90f5]/20 text-[#1d90f5] flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform">
-                🎵
+              <div className="w-11 h-11 rounded-xl bg-[#2a2a2a] border border-[#383838] text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <MusicNoteIcon className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white group-hover:text-[#1d90f5] transition-colors">
+                  <h3 className="text-sm font-bold text-white group-hover:text-zinc-200 transition-colors">
                     Custom Playlist
                   </h3>
-                  <span className="px-1.5 py-0.5 rounded bg-[#1d90f5] text-black font-extrabold text-[9px] uppercase tracking-wide">
+                  <span className="px-1.5 py-0.5 rounded bg-white text-black font-extrabold text-[9px] uppercase tracking-wide">
                     New
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 mt-0.5">
+                <p className="text-xs text-[#888888] mt-0.5">
                   Name your playlist now, add songs to it later
                 </p>
               </div>
@@ -157,16 +157,16 @@ export default function AddSourceModal({
             <button
               type="button"
               onClick={() => setSelectedMethod('youtube')}
-              className="w-full p-3.5 rounded-xl bg-[#242424] hover:bg-[#2c2c2c] border border-transparent hover:border-[#1d90f5]/50 flex items-center gap-3.5 text-left transition-all cursor-pointer group"
+              className="w-full p-3.5 rounded-xl bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] hover:border-[#444444] flex items-center gap-3.5 text-left transition-all cursor-pointer group"
             >
-              <div className="w-11 h-11 rounded-xl bg-red-600/20 text-red-500 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform">
-                ▶️
+              <div className="w-11 h-11 rounded-xl bg-[#2a2a2a] border border-[#383838] text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <PlayIcon className="w-5 h-5 text-white ml-0.5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white group-hover:text-[#1d90f5] transition-colors">
+                <h3 className="text-sm font-bold text-white group-hover:text-zinc-200 transition-colors">
                   YouTube Playlist or Track
                 </h3>
-                <p className="text-xs text-[#b3b3b3] mt-0.5">
+                <p className="text-xs text-[#888888] mt-0.5">
                   Paste any YouTube video or playlist link
                 </p>
               </div>
@@ -176,16 +176,16 @@ export default function AddSourceModal({
             <button
               type="button"
               onClick={() => setSelectedMethod('spotify')}
-              className="w-full p-3.5 rounded-xl bg-[#242424] hover:bg-[#2c2c2c] border border-transparent hover:border-[#1d90f5]/50 flex items-center gap-3.5 text-left transition-all cursor-pointer group"
+              className="w-full p-3.5 rounded-xl bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] hover:border-[#444444] flex items-center gap-3.5 text-left transition-all cursor-pointer group"
             >
-              <div className="w-11 h-11 rounded-xl bg-[#1d90f5]/20 text-[#1d90f5] flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform">
-                🎧
+              <div className="w-11 h-11 rounded-xl bg-[#2a2a2a] border border-[#383838] text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <HeadphonesIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white group-hover:text-[#1d90f5] transition-colors">
+                <h3 className="text-sm font-bold text-white group-hover:text-zinc-200 transition-colors">
                   Spotify Playlist
                 </h3>
-                <p className="text-xs text-[#b3b3b3] mt-0.5">
+                <p className="text-xs text-[#888888] mt-0.5">
                   Paste a Spotify playlist URL to resolve tracks
                 </p>
               </div>
@@ -202,16 +202,16 @@ export default function AddSourceModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full p-3.5 rounded-xl bg-[#242424] hover:bg-[#2c2c2c] border border-transparent hover:border-[#1d90f5]/50 flex items-center gap-3.5 text-left transition-all cursor-pointer group"
+              className="w-full p-3.5 rounded-xl bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] hover:border-[#444444] flex items-center gap-3.5 text-left transition-all cursor-pointer group"
             >
-              <div className="w-11 h-11 rounded-xl bg-zinc-700/50 text-zinc-300 flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition-transform">
-                📁
+              <div className="w-11 h-11 rounded-xl bg-[#2a2a2a] border border-[#383838] text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <FolderIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white group-hover:text-[#1d90f5] transition-colors">
+                <h3 className="text-sm font-bold text-white group-hover:text-zinc-200 transition-colors">
                   Upload Custom Audio
                 </h3>
-                <p className="text-xs text-[#b3b3b3] mt-0.5">
+                <p className="text-xs text-[#888888] mt-0.5">
                   Play .mp3, .wav, or .flac directly from your device
                 </p>
               </div>
@@ -223,14 +223,14 @@ export default function AddSourceModal({
             <button
               type="button"
               onClick={() => setSelectedMethod(null)}
-              className="text-xs text-[#1d90f5] hover:underline flex items-center gap-1 cursor-pointer mb-2"
+              className="text-xs text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer mb-2"
             >
               ← Choose a different method
             </button>
 
             <div>
-              <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
-                Playlist Name <span className="text-[#1d90f5]">*</span>
+              <label className="block text-xs font-semibold text-[#888888] mb-1.5">
+                Playlist Name <span className="text-white">*</span>
               </label>
               <input
                 type="text"
@@ -239,12 +239,12 @@ export default function AddSourceModal({
                 value={playlistTitle}
                 onChange={(e) => setPlaylistTitle(e.target.value)}
                 placeholder="e.g. My Chill Mix, Study Vibez, Late Night..."
-                className="w-full bg-[#242424] border border-[#333] focus:border-[#1d90f5] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
+                className="w-full bg-[#202020] border border-[#333] focus:border-[#666] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+              <label className="block text-xs font-semibold text-[#888888] mb-1.5">
                 Description (Optional)
               </label>
               <input
@@ -252,12 +252,11 @@ export default function AddSourceModal({
                 value={playlistDescription}
                 onChange={(e) => setPlaylistDescription(e.target.value)}
                 placeholder="Give your playlist a vibe or notes..."
-                className="w-full bg-[#242424] border border-[#333] focus:border-[#1d90f5] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
+                className="w-full bg-[#202020] border border-[#333] focus:border-[#666] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
               />
             </div>
 
-            <div className="p-3 rounded-xl bg-[#202020] border border-[#2d2d2d] text-xs text-[#b3b3b3] flex items-start gap-2">
-              <span className="text-base">💡</span>
+            <div className="p-3 rounded-xl bg-[#202020] border border-[#2d2d2d] text-xs text-[#888888]">
               <p>
                 After creating this playlist, you can search any song on Chillify and click <strong className="text-white">+ Add to Playlist</strong> to build your collection!
               </p>
@@ -267,16 +266,15 @@ export default function AddSourceModal({
               <button
                 type="button"
                 onClick={handleResetAndClose}
-                className="px-4 py-2 rounded-full bg-[#242424] hover:bg-[#2c2c2c] text-xs font-semibold text-white transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-full bg-[#242424] hover:bg-[#2c2c2c] text-xs font-semibold text-[#888888] hover:text-white transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-full bg-[#1d90f5] hover:bg-[#3b82f6] text-xs font-bold text-white transition-colors shadow-md cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2 rounded-full bg-white hover:bg-zinc-200 text-xs font-bold text-black transition-colors shadow-md cursor-pointer"
               >
-                <span>Create Playlist</span>
-                <span>✨</span>
+                Create Playlist
               </button>
             </div>
           </form>
@@ -286,13 +284,13 @@ export default function AddSourceModal({
             <button
               type="button"
               onClick={() => setSelectedMethod(null)}
-              className="text-xs text-[#1d90f5] hover:underline flex items-center gap-1 cursor-pointer mb-2"
+              className="text-xs text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer mb-2"
             >
               ← Choose a different method
             </button>
 
             <div>
-              <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+              <label className="block text-xs font-semibold text-[#888888] mb-1.5">
                 Playlist / Track Name
               </label>
               <input
@@ -304,12 +302,12 @@ export default function AddSourceModal({
                     ? 'e.g. My Chill YouTube Mix'
                     : 'e.g. My Favorite Spotify Tracks'
                 }
-                className="w-full bg-[#242424] border border-[#333] focus:border-[#1d90f5] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
+                className="w-full bg-[#202020] border border-[#333] focus:border-[#666] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#b3b3b3] mb-1.5">
+              <label className="block text-xs font-semibold text-[#888888] mb-1.5">
                 {selectedMethod === 'youtube'
                   ? 'YouTube URL (Video or Playlist)'
                   : 'Spotify Playlist URL'}
@@ -324,7 +322,7 @@ export default function AddSourceModal({
                     ? 'https://youtube.com/playlist?list=... or video link'
                     : 'https://open.spotify.com/playlist/...'
                 }
-                className="w-full bg-[#242424] border border-[#333] focus:border-[#1d90f5] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
+                className="w-full bg-[#202020] border border-[#333] focus:border-[#666] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#777] outline-none transition-colors"
               />
             </div>
 
@@ -332,13 +330,13 @@ export default function AddSourceModal({
               <button
                 type="button"
                 onClick={handleResetAndClose}
-                className="px-4 py-2 rounded-full bg-[#242424] hover:bg-[#2c2c2c] text-xs font-semibold text-white transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-full bg-[#242424] hover:bg-[#2c2c2c] text-xs font-semibold text-[#888888] hover:text-white transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-full bg-[#1d90f5] hover:bg-[#3b82f6] text-xs font-bold text-white transition-colors shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-full bg-white hover:bg-zinc-200 text-xs font-bold text-black transition-colors shadow-md cursor-pointer"
               >
                 Save to Library
               </button>

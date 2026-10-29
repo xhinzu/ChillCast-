@@ -8,6 +8,11 @@ import {
   ALL_GENRE_TRENDING_SONGS,
   trendingSongToTrackInfo,
 } from '@/lib/music-data';
+import {
+  VinylRecordIcon,
+  SearchIcon,
+  MusicNoteIcon,
+} from '@/components/common/MinimalIcons';
 
 interface SongSelectorModalProps {
   isOpen: boolean;
@@ -93,29 +98,23 @@ export default function SongSelectorModal({
 
   if (!isOpen) return null;
 
-  const isDeckA = deckName === 'Deck A';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-xl bg-[#141414] border border-[#282828] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
         {/* Modal Header */}
         <div className="p-5 border-b border-[#242424] flex items-center justify-between shrink-0 bg-[#181818]">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">💿</span>
+            <div className="w-10 h-10 rounded-xl bg-[#222222] border border-[#333333] flex items-center justify-center text-zinc-300">
+              <VinylRecordIcon className="w-6 h-6" />
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                    isDeckA
-                      ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/40'
-                      : 'bg-[#a855f7]/20 text-[#c084fc] border border-[#a855f7]/40'
-                  }`}
-                >
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-[#222222] text-zinc-200 border border-[#383838]">
                   {deckName}
                 </span>
                 <h3 className="text-base font-bold text-white">Load Track</h3>
               </div>
-              <p className="text-xs text-[#b3b3b3] mt-0.5">
+              <p className="text-xs text-[#888888] mt-0.5">
                 Select any trending track or custom playlist song to mix
               </p>
             </div>
@@ -123,7 +122,7 @@ export default function SongSelectorModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#202020] hover:bg-[#2c2c2c] text-[#b3b3b3] hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#333333]"
+            className="w-8 h-8 rounded-full bg-[#202020] hover:bg-[#2c2c2c] text-[#888888] hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer border border-[#333333]"
           >
             ✕
           </button>
@@ -132,13 +131,15 @@ export default function SongSelectorModal({
         {/* Search Input */}
         <div className="p-4 border-b border-[#242424] bg-[#161616] shrink-0">
           <div className="relative flex items-center">
-            <span className="absolute left-3.5 text-[#b3b3b3] text-sm">🔍</span>
+            <span className="absolute left-3.5 text-[#888888]">
+              <SearchIcon className="w-4 h-4" />
+            </span>
             <input
               type="text"
               placeholder="Search by track title or artist..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-9 rounded-xl bg-[#202020] border border-[#2e2e2e] focus:border-[#1d90f5] text-white text-xs outline-none transition-all placeholder-[#777777]"
+              className="w-full h-10 pl-10 pr-9 rounded-xl bg-[#202020] border border-[#2e2e2e] focus:border-[#666666] text-white text-xs outline-none transition-all placeholder-[#777777]"
               autoFocus
             />
             {searchQuery && (
@@ -159,8 +160,8 @@ export default function SongSelectorModal({
               onClick={() => setActiveTab('all')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'all'
-                  ? 'bg-[#1d90f5] text-white shadow-md'
-                  : 'bg-[#202020] text-[#b3b3b3] hover:text-white border border-[#2e2e2e]'
+                  ? 'bg-white text-black shadow-md'
+                  : 'bg-[#202020] text-[#888888] hover:text-white border border-[#2e2e2e]'
               }`}
             >
               All Trending ({allAvailableSongs.length})
@@ -170,8 +171,8 @@ export default function SongSelectorModal({
               onClick={() => setActiveTab('viral')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'viral'
-                  ? 'bg-[#1d90f5] text-white shadow-md'
-                  : 'bg-[#202020] text-[#b3b3b3] hover:text-white border border-[#2e2e2e]'
+                  ? 'bg-white text-black shadow-md'
+                  : 'bg-[#202020] text-[#888888] hover:text-white border border-[#2e2e2e]'
               }`}
             >
               Top Viral
@@ -181,8 +182,8 @@ export default function SongSelectorModal({
               onClick={() => setActiveTab('playlists')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 cursor-pointer ${
                 activeTab === 'playlists'
-                  ? 'bg-[#1d90f5] text-white shadow-md'
-                  : 'bg-[#202020] text-[#b3b3b3] hover:text-white border border-[#2e2e2e]'
+                  ? 'bg-white text-black shadow-md'
+                  : 'bg-[#202020] text-[#888888] hover:text-white border border-[#2e2e2e]'
               }`}
             >
               Your Playlists ({savedPlaylists.length})
@@ -203,7 +204,7 @@ export default function SongSelectorModal({
                 className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#202020] cursor-pointer group transition-all border border-transparent hover:border-[#333333]"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1 pr-3">
-                  <div className="w-11 h-11 rounded-lg overflow-hidden relative bg-black shrink-0 border border-[#282828] group-hover:border-[#1d90f5] transition-colors">
+                  <div className="w-11 h-11 rounded-lg overflow-hidden relative bg-black shrink-0 border border-[#282828] group-hover:border-[#555555] transition-colors">
                     {song.artworkUrl ? (
                       <Image
                         src={song.artworkUrl}
@@ -213,16 +214,16 @@ export default function SongSelectorModal({
                         unoptimized
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg text-[#666666]">
-                        🎵
+                      <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                        <MusicNoteIcon className="w-5 h-5" />
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-white truncate group-hover:text-[#1d90f5] transition-colors">
+                    <p className="text-xs font-bold text-white truncate group-hover:text-zinc-200 transition-colors">
                       {song.title}
                     </p>
-                    <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
+                    <p className="text-[11px] text-[#888888] truncate mt-0.5">
                       {song.artist}
                     </p>
                   </div>
@@ -231,7 +232,7 @@ export default function SongSelectorModal({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    className="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-[#1d90f5] text-[#b3b3b3] hover:text-white font-bold text-[11px] transition-all"
+                    className="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-white hover:text-black text-[#a1a1aa] font-bold text-[11px] transition-all border border-[#333333]"
                   >
                     Load into {deckName}
                   </button>
@@ -239,9 +240,9 @@ export default function SongSelectorModal({
               </div>
             ))
           ) : (
-            <div className="py-12 text-center text-[#777777] text-xs">
-              <span className="text-3xl block mb-2">🔍</span>
-              No tracks found matching &quot;{searchQuery}&quot;.
+            <div className="py-12 text-center text-[#777777] text-xs flex flex-col items-center justify-center gap-2">
+              <SearchIcon className="w-8 h-8 text-[#555555]" />
+              <p>No tracks found matching &quot;{searchQuery}&quot;.</p>
             </div>
           )}
         </div>
@@ -252,7 +253,7 @@ export default function SongSelectorModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-semibold text-[#b3b3b3] hover:text-white cursor-pointer"
+            className="text-xs font-semibold text-[#888888] hover:text-white cursor-pointer"
           >
             Cancel
           </button>

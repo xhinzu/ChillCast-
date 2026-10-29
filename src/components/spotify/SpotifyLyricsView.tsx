@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
 import { findActiveLyricIndex, LyricLine, parseLrc } from '@/lib/lrc-parser';
+import { MusicNoteIcon } from '@/components/common/MinimalIcons';
 
 interface LyricsData {
   syncedLyrics: string | null;
@@ -148,12 +149,12 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
       >
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3 text-[#b3b3b3]">
-            <div className="w-8 h-8 border-2 border-[#1d90f5] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
             <p className="text-sm font-medium">Finding synchronized lyrics...</p>
           </div>
         ) : lyricsData?.instrumental ? (
           <div className="flex flex-col items-center justify-center h-64 text-center text-[#b3b3b3] gap-2">
-            <span className="text-4xl">🎵</span>
+            <MusicNoteIcon className="w-10 h-10 text-zinc-400 mx-auto" />
             <p className="text-lg font-bold text-white">Instrumental Track</p>
             <p className="text-xs text-zinc-400">Sit back and enjoy the chill ambient music.</p>
           </div>
@@ -187,7 +188,9 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-center text-[#b3b3b3] gap-2">
-            <span className="text-3xl">🎤</span>
+            <svg className="w-9 h-9 text-zinc-400 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15a3 3 0 003-3V6a3 3 0 00-3-3 3 3 0 00-3 3v6a3 3 0 003 3z" />
+            </svg>
             <p className="text-base font-semibold text-white">No lyrics available for this track</p>
             <p className="text-xs text-zinc-400">
               Try searching a song on YouTube or Spotify!

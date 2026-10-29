@@ -5,6 +5,11 @@ import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
+import {
+  HeartIcon,
+  MusicNoteIcon,
+  HeadphonesIcon,
+} from '@/components/common/MinimalIcons';
 
 interface SpotifyBottomPlayerProps {
   showVideo: boolean;
@@ -135,7 +140,7 @@ export default function SpotifyBottomPlayer({
           subtitle: '0 songs • Liked Songs',
           type: 'custom',
           targetUrl: '',
-          icon: '💙',
+          icon: 'heart',
           tracks: [],
           description: 'Your favorite liked tracks on Chillify',
           createdAt: Date.now(),
@@ -219,8 +224,8 @@ export default function SpotifyBottomPlayer({
                 unoptimized
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-lg text-zinc-500">
-                🎵
+              <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-zinc-500">
+                <MusicNoteIcon className="w-5 h-5" />
               </div>
             )}
           </div>
@@ -230,7 +235,7 @@ export default function SpotifyBottomPlayer({
             <p className="text-[13px] font-bold text-white truncate leading-tight">
               {currentTrack?.title || 'Playing Track'}
             </p>
-            <p className="text-[11px] text-[#b3b3b3] truncate leading-tight mt-0.5">
+            <p className="text-[11px] text-[#888888] truncate leading-tight mt-0.5">
               {currentTrack?.artist || 'Unknown Artist'}
             </p>
           </div>
@@ -239,16 +244,10 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={handleToggleLike}
-            className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3]'}`}
+            className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-white' : 'text-[#888888]'}`}
             title={isLiked ? 'Unlike' : 'Like'}
           >
-            <svg className="w-[20px] h-[20px] fill-current" viewBox="0 0 24 24">
-              {isLiked ? (
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-              ) : (
-                <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" />
-              )}
-            </svg>
+            <HeartIcon filled={isLiked} className="w-5 h-5" />
           </button>
 
           {/* Play / Pause */}
@@ -299,8 +298,8 @@ export default function SpotifyBottomPlayer({
               unoptimized
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-xl text-zinc-500">
-              🎵
+            <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-zinc-500">
+              <MusicNoteIcon className="w-6 h-6" />
             </div>
           )}
         </div>
@@ -314,7 +313,7 @@ export default function SpotifyBottomPlayer({
             {currentTrack?.title || 'Chillify • Ready'}
           </p>
           <p
-            className="text-[11px] text-[#b3b3b3] truncate hover:underline hover:text-white cursor-pointer transition-colors"
+            className="text-[11px] text-[#888888] truncate hover:underline hover:text-white cursor-pointer transition-colors"
             title={currentTrack?.artist || 'Ready'}
           >
             {currentTrack?.artist || 'Select a playlist or track'}
@@ -326,17 +325,11 @@ export default function SpotifyBottomPlayer({
           type="button"
           onClick={handleToggleLike}
           className={`p-1 transition-colors cursor-pointer ${
-            isLiked ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
+            isLiked ? 'text-white' : 'text-[#888888] hover:text-white'
           }`}
           title={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
         >
-          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            {isLiked ? (
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            ) : (
-              <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" />
-            )}
-          </svg>
+          <HeartIcon filled={isLiked} className="w-5 h-5" />
         </button>
 
         {/* ＋ Add currently playing track to a Custom Playlist */}
@@ -345,7 +338,7 @@ export default function SpotifyBottomPlayer({
             <button
               type="button"
               onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
-              className="p-1 text-[#b3b3b3] hover:text-[#1d90f5] transition-colors cursor-pointer text-sm font-bold"
+              className="p-1 text-[#888888] hover:text-white transition-colors cursor-pointer text-sm font-bold"
               title="Add current track to Custom Playlist"
             >
               ＋
@@ -379,7 +372,7 @@ export default function SpotifyBottomPlayer({
                       onClick={() => handleAddCurrentTrackToPlaylist(pl.id)}
                       className="w-full text-left text-xs text-white hover:bg-[#282828] px-2.5 py-1.5 rounded-lg truncate cursor-pointer flex items-center gap-2"
                     >
-                      <span>🎵</span>
+                      <MusicNoteIcon className="w-3.5 h-3.5 text-zinc-400" />
                       <span className="truncate flex-1">{pl.title}</span>
                     </button>
                   ))
@@ -394,12 +387,16 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={() => setShowVideo(!showVideo)}
-            className={`p-1 text-xs transition-colors cursor-pointer ${
-              showVideo ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
+            className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer ${
+              showVideo
+                ? 'bg-white text-black border-white'
+                : 'bg-[#181818] border-[#2e2e2e] text-[#888888] hover:text-white'
             }`}
             title={showVideo ? 'Hide Video Screen' : 'Show Video Screen'}
           >
-            📺
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z" />
+            </svg>
           </button>
         )}
       </div>
@@ -413,7 +410,7 @@ export default function SpotifyBottomPlayer({
             type="button"
             onClick={() => setIsShuffle(!isShuffle)}
             className={`transition-colors cursor-pointer hidden sm:block ${
-              isShuffle ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
+              isShuffle ? 'text-white font-bold' : 'text-[#888888] hover:text-white'
             }`}
             title="Enable Shuffle"
           >
@@ -438,10 +435,10 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={() => seek(Math.max(0, currentTime - 5))}
-            className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer text-xs hidden sm:block"
+            className="text-[#888888] hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold hidden sm:block px-1"
             title="Rewind 5s"
           >
-            ⏪
+            -5s
           </button>
 
           {/* Play / Pause - Authentic Circular Button */}
@@ -466,10 +463,10 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={() => seek(Math.min(duration, currentTime + 5))}
-            className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer text-xs hidden sm:block"
+            className="text-[#888888] hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold hidden sm:block px-1"
             title="Forward 5s"
           >
-            ⏩
+            +5s
           </button>
 
           {/* Next Track */}
@@ -528,14 +525,14 @@ export default function SpotifyBottomPlayer({
 
       {/* 3. Right: 8D Spatial & Muffled Effects, Mixer shortcut, Volume */}
       <div className="flex items-center justify-end gap-2.5 w-1/3 min-w-[200px] sm:min-w-[260px]">
-        {/* 🎧 8D Spatial Audio Toggle */}
+        {/* 8D Spatial Audio Toggle */}
         <button
           type="button"
           onClick={toggleSpatial8D}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
             isSpatial8D
-              ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/60 shadow-sm shadow-[#1d90f5]/30 ring-1 ring-[#1d90f5]/40'
-              : 'text-[#b3b3b3] hover:text-white hover:bg-white/10 border border-transparent'
+              ? 'bg-white/15 text-white border border-white/30 shadow-sm ring-1 ring-white/20'
+              : 'text-[#888888] hover:text-white hover:bg-white/10 border border-transparent'
           }`}
           title={
             isSpatial8D
@@ -543,21 +540,21 @@ export default function SpotifyBottomPlayer({
               : 'Turn ON 8D Spatial Audio (Song orbits in 360° around headset)'
           }
         >
-          <span className="text-xs">🎧</span>
+          <HeadphonesIcon className="w-3.5 h-3.5 text-zinc-300" />
           <span className="hidden sm:inline text-[11px]">8D</span>
           {isSpatial8D && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           )}
         </button>
 
-        {/* 🚪 Muffled Effect Toggle */}
+        {/* Muffled Effect Toggle */}
         <button
           type="button"
           onClick={toggleMuffled}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
             isMuffled
-              ? 'bg-[#1d90f5]/20 text-[#1d90f5] border border-[#1d90f5]/60 shadow-sm shadow-[#1d90f5]/30 ring-1 ring-[#1d90f5]/40'
-              : 'text-[#b3b3b3] hover:text-white hover:bg-white/10 border border-transparent'
+              ? 'bg-white/15 text-white border border-white/30 shadow-sm ring-1 ring-white/20'
+              : 'text-[#888888] hover:text-white hover:bg-white/10 border border-transparent'
           }`}
           title={
             isMuffled
@@ -565,10 +562,9 @@ export default function SpotifyBottomPlayer({
               : 'Turn ON Muffled Effect (Lo-fi filter from behind a closed door)'
           }
         >
-          <span className="text-xs">🚪</span>
           <span className="hidden sm:inline text-[11px]">Muffled</span>
           {isMuffled && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#1d90f5] animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           )}
         </button>
 

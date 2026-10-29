@@ -77,6 +77,7 @@ function ChillifyShell() {
         {showNowPlaying && (
           <div className="hidden xl:flex px-2 py-2 h-full shrink-0">
             <SpotifyNowPlayingPanel
+              isOpen={showNowPlaying}
               onClose={() => setShowNowPlaying(false)}
             />
           </div>
