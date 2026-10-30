@@ -4,11 +4,9 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { SavedPlaylistItem } from '@/components/spotify/AddSourceModal';
-import { ALL_GENRE_TRENDING_SONGS, trendingSongToTrackInfo } from '@/lib/music-data';
 import {
   MusicNoteIcon,
   HeartIcon,
-  PlayIcon,
 } from '@/components/common/MinimalIcons';
 
 interface SpotifyNowPlayingPanelProps {
@@ -34,7 +32,6 @@ export default function SpotifyNowPlayingPanel({
     duration,
     isSpatial8D,
     isMuffled,
-    playCustomTrackList,
   } = usePlayback();
 
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -122,8 +119,6 @@ export default function SpotifyNowPlayingPanel({
       // ignore
     }
   };
-
-  const recommendations = ALL_GENRE_TRENDING_SONGS.filter((s) => s.id !== currentTrack?.id).slice(0, 4);
 
   if (!isOpen) return null;
 
@@ -247,49 +242,6 @@ export default function SpotifyNowPlayingPanel({
                     width: duration > 0 ? `${Math.min(100, (currentTime / duration) * 100)}%` : '0%',
                   }}
                 />
-              </div>
-            </div>
-
-            {/* Recommended Next Songs */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold text-white flex items-center justify-between">
-                <span>Recommended Next</span>
-                <span className="text-[10px] text-[#888888] font-normal">Click to play</span>
-              </h4>
-
-              <div className="space-y-1.5">
-                {recommendations.map((song) => (
-                  <div
-                    key={song.id}
-                    onClick={() => {
-                      const track = trendingSongToTrackInfo(song);
-                      playCustomTrackList([track], 0);
-                    }}
-                    className="flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-[#1a1a1a] border border-transparent hover:border-[#282828] cursor-pointer group transition-all"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="relative w-9 h-9 rounded-md overflow-hidden bg-black shrink-0 border border-[#242424]">
-                        <Image
-                          src={song.thumbnail}
-                          alt={song.title}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-white truncate group-hover:text-zinc-200 transition-colors">
-                          {song.title}
-                        </p>
-                        <p className="text-[10px] text-[#888888] truncate">{song.artist}</p>
-                      </div>
-                    </div>
-
-                    <span className="text-zinc-500 shrink-0 group-hover:text-white">
-                      <PlayIcon className="w-3 h-3" />
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           </>

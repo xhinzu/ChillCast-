@@ -174,6 +174,24 @@ export default function SpotifySidebar({
             </svg>
             <span>Dual Vinyl</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView('lyrics');
+              setSearchQuery?.('');
+            }}
+            className={`flex items-center gap-4 px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              activeView === 'lyrics'
+                ? 'text-white bg-[#222222] border border-[#333333]'
+                : 'text-[#888888] hover:text-white hover:bg-[#1a1a1a]'
+            }`}
+          >
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+            </svg>
+            <span>Lyrics</span>
+          </button>
         </nav>
 
         {/* "Your Library" Block */}
@@ -243,6 +261,16 @@ export default function SpotifySidebar({
                         {isLikedPlaylist ? (
                           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2a2a2a] to-[#161616] border border-[#3a3a3a] flex items-center justify-center text-white shrink-0 shadow-md">
                             <HeartIcon filled className="w-5 h-5 text-zinc-200" />
+                          </div>
+                        ) : item.coverUrl ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow border border-[#2a2a2a] relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.coverUrl} alt={item.title} className="w-full h-full object-cover" />
+                          </div>
+                        ) : item.tracks && item.tracks.length > 0 && item.tracks[0].thumbnail ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow border border-[#2a2a2a] relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.tracks[0].thumbnail} alt={item.title} className="w-full h-full object-cover" />
                           </div>
                         ) : (
                           <div
