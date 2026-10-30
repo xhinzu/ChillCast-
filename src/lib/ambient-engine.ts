@@ -6,11 +6,14 @@ export class AmbientSoundEngine {
   private channelGains: Map<AmbientSoundId, GainNode> = new Map();
   private activeSources: Map<AmbientSoundId, { stop: () => void }> = new Map();
   private noiseBuffer: AudioBuffer | null = null;
-  private initialized = false;
+  private audioBuffers: Map<string, AudioBuffer> = new Map();
+  private loadingBuffers: Map<string, Promise<AudioBuffer | null>> = new Map();
 
   private initContext(): AudioContext {
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AudioCtx();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(0.8, this.ctx.currentTime);
@@ -22,7 +25,7 @@ export class AmbientSoundEngine {
     return this.ctx;
   }
 
-  // Create a 5-second seamless pink noise buffer for realistic rain/wind
+  // Create a 5-second seamless pink noise buffer for procedural synthesizers (crickets, speech)
   private getNoiseBuffer(ctx: AudioContext): AudioBuffer {
     if (this.noiseBuffer) return this.noiseBuffer;
 
@@ -31,15 +34,21 @@ export class AmbientSoundEngine {
 
     for (let channel = 0; channel < 2; channel++) {
       const data = buffer.getChannelData(channel);
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      let b0 = 0,
+        b1 = 0,
+        b2 = 0,
+        b3 = 0,
+        b4 = 0,
+        b5 = 0,
+        b6 = 0;
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + white * 0.0555179;
         b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
+        b2 = 0.969 * b2 + white * 0.153852;
+        b3 = 0.8665 * b3 + white * 0.3104856;
+        b4 = 0.55 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.016898;
         data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.1;
         b6 = white * 0.115926;
       }
@@ -127,257 +136,94 @@ export class AmbientSoundEngine {
     return this.activeSources.has(id);
   }
 
-  /* --- 1. Rain Synthesizer --- */
-  private startRain(ctx: AudioContext, dest: GainNode) {
-    const noise = ctx.createBufferSource();
-    noise.buffer = this.getNoiseBuffer(ctx);
-    noise.loop = true;
+  private async loadAudioBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer | null> {
+    const cached = this.audioBuffers.get(url);
+    if (cached) return cached;
 
-    // Filter for rainy patter
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1400, ctx.currentTime);
-    filter.Q.setValueAtTime(0.7, ctx.currentTime);
+    const pending = this.loadingBuffers.get(url);
+    if (pending) return pending;
 
-    // High frequency sizzle
-    const highpass = ctx.createBiquadFilter();
-    highpass.type = 'highpass';
-    highpass.frequency.setValueAtTime(900, ctx.currentTime);
+    const loadPromise = (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const arrayBuffer = await res.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(arrayBuffer);
+        this.audioBuffers.set(url, decoded);
+        return decoded;
+      } catch (err) {
+        console.warn(`Could not load audio from ${url}:`, err);
+        return null;
+      } finally {
+        this.loadingBuffers.delete(url);
+      }
+    })();
 
-    noise.connect(filter);
-    filter.connect(highpass);
-    highpass.connect(dest);
-
-    noise.start();
-    this.activeSources.set('rain', {
-      stop: () => {
-        try {
-          noise.stop();
-          noise.disconnect();
-          filter.disconnect();
-          highpass.disconnect();
-        } catch {
-          // ignore
-        }
-      },
-    });
+    this.loadingBuffers.set(url, loadPromise);
+    return loadPromise;
   }
 
-  /* --- 2. Wind Synthesizer (with howling LFO) --- */
-  private startWind(ctx: AudioContext, dest: GainNode) {
-    const noise = ctx.createBufferSource();
-    noise.buffer = this.getNoiseBuffer(ctx);
-    noise.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(450, ctx.currentTime);
-    filter.Q.setValueAtTime(3.5, ctx.currentTime);
-
-    // LFO to modulate wind gusts
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(0.12, ctx.currentTime);
-
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.setValueAtTime(300, ctx.currentTime); // sweep range
-
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-
-    noise.connect(filter);
-    filter.connect(dest);
-
-    noise.start();
-    lfo.start();
-
-    this.activeSources.set('wind', {
-      stop: () => {
-        try {
-          noise.stop();
-          lfo.stop();
-          noise.disconnect();
-          lfo.disconnect();
-          lfoGain.disconnect();
-          filter.disconnect();
-        } catch {
-          // ignore
-        }
-      },
-    });
-  }
-
-  private birdsBuffer: AudioBuffer | null = null;
-  private isLoadingBirds = false;
-
-  private async loadBirdsBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
-    if (this.birdsBuffer) return this.birdsBuffer;
-    if (this.isLoadingBirds) return null;
-
-    this.isLoadingBirds = true;
-    try {
-      const res = await fetch('/audio/birds.mp3');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const arrayBuffer = await res.arrayBuffer();
-      const decoded = await ctx.decodeAudioData(arrayBuffer);
-      this.birdsBuffer = decoded;
-      return decoded;
-    } catch (e) {
-      console.warn('Could not load recorded birds audio, using procedural fallback:', e);
-      return null;
-    } finally {
-      this.isLoadingBirds = false;
-    }
-  }
-
-  /* --- 3. Forest Birds (Real Woodland Field Recording + Procedural Fallback) --- */
-  private async startBirds(ctx: AudioContext, dest: GainNode) {
+  private async startAudioFile(
+    id: AmbientSoundId,
+    ctx: AudioContext,
+    dest: GainNode,
+    url: string
+  ) {
     let isCancelled = false;
 
-    // Try loading and playing the high-fidelity woodland bird recording
-    const buffer = await this.loadBirdsBuffer(ctx);
-
-    if (isCancelled) return;
-
-    if (buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-
-      // Soft highpass filter to remove any low-end rumble and keep birds crisp
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(800, ctx.currentTime);
-
-      source.connect(filter);
-      filter.connect(dest);
-      source.start();
-
-      this.activeSources.set('birds', {
-        stop: () => {
-          isCancelled = true;
-          try {
-            source.stop();
-            source.disconnect();
-            filter.disconnect();
-          } catch {
-            // ignore
-          }
-        },
-      });
-      return;
-    }
-
-    // Procedural Fallback if fetch fails
-    let isRunning = true;
-    let timeoutId: number | null = null;
-
-    const playChirp = () => {
-      if (!isRunning || !ctx || ctx.state === 'closed') return;
-
-      const osc = ctx.createOscillator();
-      const chirpGain = ctx.createGain();
-
-      const baseFreq = 2200 + Math.random() * 1200;
-      const now = ctx.currentTime;
-      const chirpDuration = 0.08 + Math.random() * 0.06;
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(baseFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(
-        baseFreq * (1.3 + Math.random() * 0.4),
-        now + chirpDuration * 0.4
-      );
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + chirpDuration);
-
-      chirpGain.gain.setValueAtTime(0.001, now);
-      chirpGain.gain.linearRampToValueAtTime(0.35, now + chirpDuration * 0.2);
-      chirpGain.gain.exponentialRampToValueAtTime(0.001, now + chirpDuration);
-
-      osc.connect(chirpGain);
-      chirpGain.connect(dest);
-
-      osc.start(now);
-      osc.stop(now + chirpDuration);
-
-      const nextDelay = 1500 + Math.random() * 3500;
-      timeoutId = window.setTimeout(playChirp, nextDelay);
-    };
-
-    playChirp();
-
-    this.activeSources.set('birds', {
+    this.activeSources.set(id, {
       stop: () => {
         isCancelled = true;
-        isRunning = false;
-        if (timeoutId) clearTimeout(timeoutId);
+        this.activeSources.delete(id);
+      },
+    });
+
+    const buffer = await this.loadAudioBuffer(ctx, url);
+    if (isCancelled) return;
+
+    if (!buffer) {
+      this.activeSources.delete(id);
+      return;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    source.connect(dest);
+    source.start();
+
+    this.activeSources.set(id, {
+      stop: () => {
+        isCancelled = true;
+        try {
+          source.stop();
+          source.disconnect();
+        } catch {
+          // ignore
+        }
+        this.activeSources.delete(id);
       },
     });
   }
 
-  private cricketsBuffer: AudioBuffer | null = null;
-  private isLoadingCrickets = false;
-
-  private async loadCricketsBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
-    if (this.cricketsBuffer) return this.cricketsBuffer;
-    if (this.isLoadingCrickets) return null;
-
-    this.isLoadingCrickets = true;
-    try {
-      const res = await fetch('/audio/crickets.ogg');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const arrayBuffer = await res.arrayBuffer();
-      const decoded = await ctx.decodeAudioData(arrayBuffer);
-      this.cricketsBuffer = decoded;
-      return decoded;
-    } catch (e) {
-      console.warn('Could not load recorded crickets audio, using procedural fallback:', e);
-      return null;
-    } finally {
-      this.isLoadingCrickets = false;
-    }
+  /* --- 1. Rain (Recorded Monsoon Rain ASMR) --- */
+  private startRain(ctx: AudioContext, dest: GainNode) {
+    this.startAudioFile('rain', ctx, dest, '/audio/rain.mp3');
   }
 
-  /* --- 4. Crickets / Evening Cicadas (Real Summer Night Field Recording) --- */
-  private async startCrickets(ctx: AudioContext, dest: GainNode) {
-    let isCancelled = false;
+  /* --- 2. Wind (Recorded Chill Mountain Wind) --- */
+  private startWind(ctx: AudioContext, dest: GainNode) {
+    this.startAudioFile('wind', ctx, dest, '/audio/wind.mp3');
+  }
 
-    // Load and play the real field recording of summer crickets
-    const buffer = await this.loadCricketsBuffer(ctx);
+  /* --- 3. Forest Birds (Recorded Native Woodland Birds) --- */
+  private startBirds(ctx: AudioContext, dest: GainNode) {
+    this.startAudioFile('birds', ctx, dest, '/audio/birds.mp3');
+  }
 
-    if (isCancelled) return;
-
-    if (buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-
-      // Bandpass filter to isolate sweet night chirps and soften any harsh highs
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(4800, ctx.currentTime);
-      filter.Q.setValueAtTime(0.8, ctx.currentTime);
-
-      source.connect(filter);
-      filter.connect(dest);
-      source.start();
-
-      this.activeSources.set('crickets', {
-        stop: () => {
-          isCancelled = true;
-          try {
-            source.stop();
-            source.disconnect();
-            filter.disconnect();
-          } catch {
-            // ignore
-          }
-        },
-      });
-      return;
-    }
-
-    // Gentle organic procedural fallback (pulsed pink noise chirps instead of raw sine buzzer)
+  /* --- 4. Night Crickets (AI Generated / Procedural Synthesizer) --- */
+  private startCrickets(ctx: AudioContext, dest: GainNode) {
     const noise = ctx.createBufferSource();
     noise.buffer = this.getNoiseBuffer(ctx);
     noise.loop = true;
@@ -409,7 +255,6 @@ export class AmbientSoundEngine {
 
     this.activeSources.set('crickets', {
       stop: () => {
-        isCancelled = true;
         try {
           noise.stop();
           tremolo.stop();
@@ -421,288 +266,73 @@ export class AmbientSoundEngine {
         } catch {
           // ignore
         }
+        this.activeSources.delete('crickets');
       },
     });
   }
 
-  /* --- 5. Heavy Thunder Strikes & Rolling Thunderclaps --- */
+  /* --- 5. Distant Thunder (Recorded Rolling Thunderclaps) --- */
   private startThunder(ctx: AudioContext, dest: GainNode) {
-    let isRunning = true;
-    let timeoutId: number | null = null;
-
-    const playHeavyThunder = () => {
-      if (!isRunning || !ctx || ctx.state === 'closed') return;
-
-      const now = ctx.currentTime;
-      const isMassiveStrike = Math.random() < 0.6;
-      const strikeGain = isMassiveStrike ? 1.0 : 0.7;
-
-      // 1. Sharp Violent Lightning Crack (instant high-energy snap)
-      const crackNoise = ctx.createBufferSource();
-      crackNoise.buffer = this.getNoiseBuffer(ctx);
-      const crackFilter = ctx.createBiquadFilter();
-      crackFilter.type = 'bandpass';
-      crackFilter.frequency.setValueAtTime(2600 + Math.random() * 800, now);
-      crackFilter.Q.setValueAtTime(2.5, now);
-
-      const crackGain = ctx.createGain();
-      crackGain.gain.setValueAtTime(0.85 * strikeGain, now);
-      crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-
-      crackNoise.connect(crackFilter);
-      crackFilter.connect(crackGain);
-      crackGain.connect(dest);
-      crackNoise.start(now);
-      crackNoise.stop(now + 0.09);
-
-      // 2. Heavy Sub-Bass Explosive Blast (Booming 85Hz -> 28Hz shockwave)
-      const subOsc = ctx.createOscillator();
-      const subGain = ctx.createGain();
-      subOsc.type = 'sine';
-      subOsc.frequency.setValueAtTime(95, now);
-      subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.7);
-
-      subGain.gain.setValueAtTime(0.9 * strikeGain, now);
-      subGain.gain.exponentialRampToValueAtTime(0.12, now + 1.2);
-      subGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
-
-      subOsc.connect(subGain);
-      subGain.connect(dest);
-      subOsc.start(now);
-      subOsc.stop(now + 2.9);
-
-      // 3. Deep Rolling Thunder Aftershocks (5 - 8 seconds of cavernous rumble)
-      const rumbleNoise = ctx.createBufferSource();
-      rumbleNoise.buffer = this.getNoiseBuffer(ctx);
-      const rumbleFilter = ctx.createBiquadFilter();
-      rumbleFilter.type = 'lowpass';
-      rumbleFilter.frequency.setValueAtTime(140, now);
-      rumbleFilter.frequency.exponentialRampToValueAtTime(65, now + 3.0);
-      rumbleFilter.Q.setValueAtTime(3.0, now);
-
-      const rumbleGain = ctx.createGain();
-      const rollDuration = 5.5 + Math.random() * 2.5;
-      rumbleGain.gain.setValueAtTime(0.001, now);
-      rumbleGain.gain.linearRampToValueAtTime(0.75 * strikeGain, now + 0.15);
-      rumbleGain.gain.exponentialRampToValueAtTime(0.3, now + 1.8);
-      rumbleGain.gain.exponentialRampToValueAtTime(0.0001, now + rollDuration);
-
-      rumbleNoise.connect(rumbleFilter);
-      rumbleFilter.connect(rumbleGain);
-      rumbleGain.connect(dest);
-
-      rumbleNoise.start(now);
-      rumbleNoise.stop(now + rollDuration);
-
-      // Random delay between thunder strikes (4 to 9 seconds so it feels active and dramatic)
-      const nextDelay = 4500 + Math.random() * 5500;
-      timeoutId = window.setTimeout(playHeavyThunder, nextDelay);
-    };
-
-    // Immediate initial heavy strike within 250ms
-    timeoutId = window.setTimeout(playHeavyThunder, 250);
-
-    this.activeSources.set('thunder', {
-      stop: () => {
-        isRunning = false;
-        if (timeoutId) clearTimeout(timeoutId);
-      },
-    });
+    this.startAudioFile('thunder', ctx, dest, '/audio/thunder.mp3');
   }
 
-  /* --- 6. Lo-Fi Drums Synthesizer --- */
+  /* --- 6. Lo-Fi Drums (Recorded 100 BPM Drum Beat) --- */
   private startDrums(ctx: AudioContext, dest: GainNode) {
-    let isRunning = true;
-    let step = 0;
-    let intervalId: number | null = null;
-    const stepDuration = 0.22; // ~68 BPM lo-fi tempo
-
-    const triggerKick = (time: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.setValueAtTime(140, time);
-      osc.frequency.exponentialRampToValueAtTime(45, time + 0.12);
-      gain.gain.setValueAtTime(0.7, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
-      osc.connect(gain);
-      gain.connect(dest);
-      osc.start(time);
-      osc.stop(time + 0.26);
-    };
-
-    const triggerSnare = (time: number) => {
-      const noise = ctx.createBufferSource();
-      noise.buffer = this.getNoiseBuffer(ctx);
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1800, time);
-      filter.Q.setValueAtTime(1.2, time);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.45, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
-
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(dest);
-      noise.start(time);
-      noise.stop(time + 0.19);
-    };
-
-    const triggerHat = (time: number) => {
-      const noise = ctx.createBufferSource();
-      noise.buffer = this.getNoiseBuffer(ctx);
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(7000, time);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.18, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(dest);
-      noise.start(time);
-      noise.stop(time + 0.06);
-    };
-
-    const tick = () => {
-      if (!isRunning || !ctx || ctx.state === 'closed') return;
-      const now = ctx.currentTime;
-
-      triggerHat(now);
-      if (step === 0 || step === 4) {
-        triggerKick(now);
-      } else if (step === 2 || step === 6) {
-        triggerSnare(now);
-      }
-
-      step = (step + 1) % 8;
-    };
-
-    tick();
-    intervalId = window.setInterval(tick, stepDuration * 1000);
-
-    this.activeSources.set('drums', {
-      stop: () => {
-        isRunning = false;
-        if (intervalId) clearInterval(intervalId);
-      },
-    });
+    this.startAudioFile('drums', ctx, dest, '/audio/drums.mp3');
   }
 
-  /* --- 7. Lo-Fi Sub Bass Synthesizer --- */
+  /* --- 7. Lo-Fi Sub Bass (AI Generated / Procedural Synthesizer) --- */
   private startBass(ctx: AudioContext, dest: GainNode) {
     let isRunning = true;
     let stepIndex = 0;
     let intervalId: number | null = null;
     const notes = [55, 55, 49, 43.65, 43.65, 49, 55, 65.4]; // A1, G1, F1, C2
 
-    const osc = ctx.createOscillator();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(notes[0], ctx.currentTime);
-
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(140, ctx.currentTime);
-    filter.Q.setValueAtTime(1.5, ctx.currentTime);
-
-    gain.gain.setValueAtTime(0.55, ctx.currentTime);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(dest);
-    osc.start();
-
-    const changeNote = () => {
+    const playBassNote = () => {
       if (!isRunning || !ctx || ctx.state === 'closed') return;
       const now = ctx.currentTime;
-      stepIndex = (stepIndex + 1) % notes.length;
-      osc.frequency.setTargetAtTime(notes[stepIndex], now, 0.08);
+      const freq = notes[stepIndex % notes.length];
+      stepIndex++;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(140, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.55, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+
+      osc.start(now);
+      osc.stop(now + 0.9);
     };
 
-    intervalId = window.setInterval(changeNote, 1800);
+    playBassNote();
+    intervalId = window.setInterval(playBassNote, 900);
 
     this.activeSources.set('bass', {
       stop: () => {
         isRunning = false;
         if (intervalId) clearInterval(intervalId);
-        try {
-          osc.stop();
-          osc.disconnect();
-          filter.disconnect();
-          gain.disconnect();
-        } catch {
-          // ignore
-        }
+        this.activeSources.delete('bass');
       },
     });
   }
 
-  private chatterBuffer: AudioBuffer | null = null;
-  private isLoadingChatter = false;
+  /* --- 8. People Speaking / Cafe Chatter (AI Generated / Procedural Synthesizer) --- */
+  private startChatter(ctx: AudioContext, dest: GainNode) {
+    let isRunning = true;
+    let timeoutId: number | null = null;
 
-  private async loadChatterBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
-    if (this.chatterBuffer) return this.chatterBuffer;
-    if (this.isLoadingChatter) return null;
-
-    this.isLoadingChatter = true;
-    try {
-      const res = await fetch('/audio/chatter.webm');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const arrayBuffer = await res.arrayBuffer();
-      const decoded = await ctx.decodeAudioData(arrayBuffer);
-      this.chatterBuffer = decoded;
-      return decoded;
-    } catch (e) {
-      console.warn('Could not load recorded cafe chatter audio, using fallback:', e);
-      return null;
-    } finally {
-      this.isLoadingChatter = false;
-    }
-  }
-
-  /* --- 8. Cafe Chatter (Real People Talking & Coffee Shop Ambience) --- */
-  private async startChatter(ctx: AudioContext, dest: GainNode) {
-    let isCancelled = false;
-
-    // 1. First try playing the actual real people talking recording from YouTube
-    const buffer = await this.loadChatterBuffer(ctx);
-    if (isCancelled) return;
-
-    if (buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-
-      // Gentle warm room filter to sit sweetly in ambient background
-      const warmFilter = ctx.createBiquadFilter();
-      warmFilter.type = 'lowpass';
-      warmFilter.frequency.setValueAtTime(4500, ctx.currentTime);
-
-      source.connect(warmFilter);
-      warmFilter.connect(dest);
-      source.start();
-
-      this.activeSources.set('chatter', {
-        stop: () => {
-          isCancelled = true;
-          try {
-            source.stop();
-            source.disconnect();
-            warmFilter.disconnect();
-          } catch {
-            // ignore
-          }
-        },
-      });
-      return;
-    }
-
-    // 2. Procedural Fallback if audio buffer fetch fails
     const noise = ctx.createBufferSource();
     noise.buffer = this.getNoiseBuffer(ctx);
     noise.loop = true;
@@ -725,7 +355,7 @@ export class AmbientSoundEngine {
     f3.frequency.setValueAtTime(2600, ctx.currentTime);
     f3.Q.setValueAtTime(4.0, ctx.currentTime);
 
-    // Syllabic envelope modulation (mimics 4 syllables per second human speech)
+    // Syllabic envelope modulation (mimics 3.6 syllables per second human speech)
     const syllabicLfo = ctx.createOscillator();
     syllabicLfo.type = 'sine';
     syllabicLfo.frequency.setValueAtTime(3.6, ctx.currentTime);
@@ -758,9 +388,6 @@ export class AmbientSoundEngine {
     syllabicLfo.start();
 
     // Occasional gentle cafe cup / saucer clink
-    let isRunning = true;
-    let timeoutId: number | null = null;
-
     const playClatter = () => {
       if (!isRunning || !ctx || ctx.state === 'closed') return;
       const osc = ctx.createOscillator();
@@ -783,7 +410,6 @@ export class AmbientSoundEngine {
 
     this.activeSources.set('chatter', {
       stop: () => {
-        isCancelled = true;
         isRunning = false;
         if (timeoutId) clearTimeout(timeoutId);
         try {
@@ -791,132 +417,29 @@ export class AmbientSoundEngine {
           syllabicLfo.stop();
           noise.disconnect();
           syllabicLfo.disconnect();
+          lfoGain.disconnect();
+          speechGain.disconnect();
           f1.disconnect();
           f2.disconnect();
           f3.disconnect();
-          speechGain.disconnect();
           warmRoomFilter.disconnect();
         } catch {
           // ignore
         }
+        this.activeSources.delete('chatter');
       },
     });
   }
 
-  /* --- 9. Fireplace (Warm Hearth & Crackling Embers) --- */
+  /* --- 9. Fireplace (Recorded Fireplace Crackling Embers) --- */
   private startFireplace(ctx: AudioContext, dest: GainNode) {
-    const noise = ctx.createBufferSource();
-    noise.buffer = this.getNoiseBuffer(ctx);
-    noise.loop = true;
-
-    // Warm deep hearth draft
-    const lowFilter = ctx.createBiquadFilter();
-    lowFilter.type = 'lowpass';
-    lowFilter.frequency.setValueAtTime(160, ctx.currentTime);
-
-    const draftGain = ctx.createGain();
-    draftGain.gain.setValueAtTime(0.35, ctx.currentTime);
-
-    noise.connect(lowFilter);
-    lowFilter.connect(draftGain);
-    draftGain.connect(dest);
-    noise.start();
-
-    // Random crackle and popping embers
-    let isRunning = true;
-    let timeoutId: number | null = null;
-
-    const playCrackle = () => {
-      if (!isRunning || !ctx || ctx.state === 'closed') return;
-      const clickSource = ctx.createBufferSource();
-      clickSource.buffer = this.getNoiseBuffer(ctx);
-
-      const highFilter = ctx.createBiquadFilter();
-      highFilter.type = 'highpass';
-      highFilter.frequency.setValueAtTime(2200 + Math.random() * 2000, ctx.currentTime);
-
-      const crackleGain = ctx.createGain();
-      const now = ctx.currentTime;
-      const duration = 0.008 + Math.random() * 0.02;
-
-      crackleGain.gain.setValueAtTime(0.3 + Math.random() * 0.4, now);
-      crackleGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-      clickSource.connect(highFilter);
-      highFilter.connect(crackleGain);
-      crackleGain.connect(dest);
-
-      clickSource.start(now);
-      clickSource.stop(now + duration + 0.01);
-
-      timeoutId = window.setTimeout(playCrackle, 50 + Math.random() * 250);
-    };
-
-    playCrackle();
-
-    this.activeSources.set('fireplace', {
-      stop: () => {
-        isRunning = false;
-        if (timeoutId) clearTimeout(timeoutId);
-        try {
-          noise.stop();
-          noise.disconnect();
-          lowFilter.disconnect();
-          draftGain.disconnect();
-        } catch {
-          // ignore
-        }
-      },
-    });
+    this.startAudioFile('fireplace', ctx, dest, '/audio/fireplace.mp3');
   }
 
-  /* --- 10. Ocean Waves (Rolling Coastal Tidal Surf) --- */
+  /* --- 10. Ocean Waves (Recorded Coastal Waves) --- */
   private startWaves(ctx: AudioContext, dest: GainNode) {
-    const noise = ctx.createBufferSource();
-    noise.buffer = this.getNoiseBuffer(ctx);
-    noise.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(350, ctx.currentTime);
-
-    // LFO for slow 8-second wave swells
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(0.12, ctx.currentTime); // ~8 sec per wave
-    lfoGain.gain.setValueAtTime(450, ctx.currentTime);
-
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-
-    const waveGain = ctx.createGain();
-    waveGain.gain.setValueAtTime(0.5, ctx.currentTime);
-
-    noise.connect(filter);
-    filter.connect(waveGain);
-    waveGain.connect(dest);
-
-    noise.start();
-    lfo.start();
-
-    this.activeSources.set('waves', {
-      stop: () => {
-        try {
-          noise.stop();
-          lfo.stop();
-          noise.disconnect();
-          lfo.disconnect();
-          lfoGain.disconnect();
-          filter.disconnect();
-          waveGain.disconnect();
-        } catch {
-          // ignore
-        }
-      },
-    });
+    this.startAudioFile('waves', ctx, dest, '/audio/waves.mp3');
   }
-
 
   public stopAll() {
     this.activeSources.forEach((source) => source.stop());
@@ -931,5 +454,7 @@ export class AmbientSoundEngine {
     this.ctx = null;
     this.masterGain = null;
     this.channelGains.clear();
+    this.audioBuffers.clear();
+    this.loadingBuffers.clear();
   }
 }
