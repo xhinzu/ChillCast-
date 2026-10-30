@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     searchUrl.searchParams.set('part', 'snippet');
     searchUrl.searchParams.set('q', searchQuery);
     searchUrl.searchParams.set('type', 'video');
+    searchUrl.searchParams.set('videoEmbeddable', 'true');
     searchUrl.searchParams.set('maxResults', '1');
     searchUrl.searchParams.set('key', apiKey);
 

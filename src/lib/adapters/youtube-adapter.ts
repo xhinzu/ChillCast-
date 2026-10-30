@@ -17,10 +17,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private isApiReady = false;
   private pendingTarget: { type: 'playlist' | 'video'; id: string } | null = null;
 
-  // Stream proxy audio element for Web Audio DSP
+  // Stream proxy audio element for Web Audio DSP & embed fallback
   private streamAudio: HTMLAudioElement | null = null;
   private streamAudioVideoId: string | null = null;
   private isStreamingActive = false;
+  private isDirectStreamFallback = false;
 
   // Web Audio DSP Chain for 8D Spatial & Muffled effects
   private audioCtx: AudioContext | null = null;
@@ -234,6 +235,14 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
     });
 
+    this.streamAudio.addEventListener('ended', () => {
+      if (this.isDirectStreamFallback) {
+        this.emitState('ended');
+        this.stopPositionTimer();
+        this.nextTrack();
+      }
+    });
+
     this.initDsp();
   }
 
@@ -365,7 +374,26 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
           onStateChange: (e) => {
             this.handleStateChange(e.data);
           },
-          onError: (e) => {
+          onError: async (e) => {
+            // Error 101 / 150 = Embedded playback forbidden by video owner
+            // Error 100 = Video removed or not found
+            if (e.data === 101 || e.data === 150 || e.data === 100) {
+              const targetVideoId =
+                this.currentVideoId ||
+                this.pendingTarget?.id ||
+                (this.currentTrack?.id ? this.currentTrack.id : null);
+
+              if (targetVideoId) {
+                console.warn(
+                  `[YouTubeAdapter] YouTube embed error ${e.data} for ${targetVideoId}. Recovering with direct audio stream...`
+                );
+                const recovered = await this.recoverWithDirectStream(targetVideoId);
+                if (recovered) {
+                  return; // Successfully bypassed YouTube iframe restriction!
+                }
+              }
+            }
+
             let msg = 'YouTube playback error';
             if (e.data === 2) msg = 'Invalid YouTube video or playlist parameters';
             if (e.data === 5) msg = 'HTML5 player error on YouTube';
@@ -466,26 +494,38 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private startPositionTimer() {
     this.stopPositionTimer();
     this.positionInterval = window.setInterval(() => {
-      if (this.player && this.state === 'playing') {
-        try {
-          const current = this.player.getCurrentTime();
+      if (this.state === 'playing') {
+        if (this.isDirectStreamFallback && this.streamAudio) {
+          const current = this.streamAudio.currentTime || 0;
           this.emitPosition(current);
-
-          // Drift synchronization between YouTube iframe and Web Audio stream
-          if (this.isStreamingActive && this.streamAudio && !this.streamAudio.paused) {
-            const diff = Math.abs(this.streamAudio.currentTime - current);
-            if (diff > 0.8) {
-              this.streamAudio.currentTime = current;
-            }
-          }
-
-          const dur = this.player.getDuration();
-          if (dur > 0 && Math.abs(dur - this.duration) > 0.5) {
+          const dur = this.streamAudio.duration;
+          if (dur && !isNaN(dur) && dur > 0 && Math.abs(dur - this.duration) > 0.5) {
             this.duration = dur;
-            this.updateCurrentTrackData();
           }
-        } catch {
-          // ignore
+          return;
+        }
+
+        if (this.player) {
+          try {
+            const current = this.player.getCurrentTime();
+            this.emitPosition(current);
+
+            // Drift synchronization between YouTube iframe and Web Audio stream
+            if (this.isStreamingActive && this.streamAudio && !this.streamAudio.paused) {
+              const diff = Math.abs(this.streamAudio.currentTime - current);
+              if (diff > 0.8) {
+                this.streamAudio.currentTime = current;
+              }
+            }
+
+            const dur = this.player.getDuration();
+            if (dur > 0 && Math.abs(dur - this.duration) > 0.5) {
+              this.duration = dur;
+              this.updateCurrentTrackData();
+            }
+          } catch {
+            // ignore
+          }
         }
       }
     }, 250);
@@ -498,7 +538,63 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     }
   }
 
+  private async recoverWithDirectStream(videoId: string): Promise<boolean> {
+    try {
+      this.isDirectStreamFallback = true;
+      this.isStreamingActive = true;
+      this.currentVideoId = videoId;
+      this.ensureStreamAudioInitialized();
+
+      if (this.player) {
+        try {
+          this.player.mute();
+        } catch {}
+      }
+
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+
+      if (!this.streamAudio) return false;
+
+      this.streamAudioVideoId = videoId;
+      this.streamAudio.src = `/api/youtube/stream?v=${videoId}`;
+      this.streamAudio.load();
+
+      this.emitState('buffering');
+
+      await new Promise<void>((resolve, reject) => {
+        if (!this.streamAudio) return reject(new Error('No streamAudio'));
+        const onCanPlay = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error('Audio stream fetch failed'));
+        };
+        const cleanup = () => {
+          this.streamAudio?.removeEventListener('canplay', onCanPlay);
+          this.streamAudio?.removeEventListener('error', onError);
+        };
+        this.streamAudio.addEventListener('canplay', onCanPlay, { once: true });
+        this.streamAudio.addEventListener('error', onError, { once: true });
+      });
+
+      await this.streamAudio.play();
+      this.emitState('playing');
+      this.startPositionTimer();
+      return true;
+    } catch (err) {
+      console.warn('[YouTubeAdapter] Direct stream fallback failed:', err);
+      this.isDirectStreamFallback = false;
+      this.isStreamingActive = false;
+      return false;
+    }
+  }
+
   private applyTarget(target: { type: 'playlist' | 'video'; id: string }): Promise<void> {
+    this.isDirectStreamFallback = false;
     if (!this.player) return Promise.resolve();
 
     if (target.type === 'playlist') {
@@ -583,6 +679,18 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       this.audioCtx.resume().catch(() => {});
     }
 
+    if (this.isDirectStreamFallback && this.streamAudio) {
+      try {
+        await this.streamAudio.play();
+        this.emitState('playing');
+        this.startPositionTimer();
+        return;
+      } catch (err) {
+        this.emitError((err as Error).message);
+        return;
+      }
+    }
+
     if (this.player) {
       try {
         if (this.isStreamingActive) {
@@ -604,6 +712,13 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public pause(): void {
+    if (this.isDirectStreamFallback && this.streamAudio) {
+      this.streamAudio.pause();
+      this.emitState('paused');
+      this.stopPositionTimer();
+      return;
+    }
+
     if (this.player) {
       try {
         this.player.pauseVideo();
@@ -617,6 +732,12 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public seek(seconds: number): void {
+    if (this.isDirectStreamFallback && this.streamAudio) {
+      this.streamAudio.currentTime = seconds;
+      this.emitPosition(seconds);
+      return;
+    }
+
     if (this.player) {
       try {
         this.player.seekTo(seconds, true);
