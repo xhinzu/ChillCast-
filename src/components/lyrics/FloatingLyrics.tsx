@@ -25,8 +25,12 @@ export default function FloatingLyrics({ activeView, onNavigateToLyrics }: Float
         setSettings(customEvent.detail);
       }
     };
+    window.addEventListener('myujiku_lyrics_settings_updated', handleSettingsUpdated);
     window.addEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
-    return () => window.removeEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('myujiku_lyrics_settings_updated', handleSettingsUpdated);
+      window.removeEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
+    };
   }, []);
 
   // Fetch lyrics when track changes

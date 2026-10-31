@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { CoffeeIcon } from '@/components/common/MinimalIcons';
+import InspectModal from '@/components/common/InspectModal';
+import DevOverlay from '@/components/common/DevOverlay';
 
 interface SpotifyTopNavProps {
   activeView: string;
@@ -23,6 +25,41 @@ export default function SpotifyTopNav({
   setSearchViewMode,
 }: SpotifyTopNavProps) {
   const { playbackState } = usePlayback();
+  const [tapCount, setTapCount] = useState(0);
+  const [tapToast, setTapToast] = useState<string | null>(null);
+  const [isInspectOpen, setIsInspectOpen] = useState(false);
+  const lastTapRef = useRef<number>(0);
+  const brandRef = useRef<HTMLDivElement | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleBrandClick = () => {
+    // Normal single click action
+    setActiveView('home');
+    setSearchQuery('');
+
+    // Easter egg multi-tap detection within ~1.5s
+    const now = Date.now();
+    let nextTaps = 1;
+    if (now - lastTapRef.current < 1500) {
+      nextTaps = tapCount + 1;
+    }
+    lastTapRef.current = now;
+    setTapCount(nextTaps);
+
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+
+    if (nextTaps >= 3 && nextTaps < 7) {
+      const remaining = 7 - nextTaps;
+      setTapToast(`${remaining} more ${remaining === 1 ? 'tap' : 'taps'} to open About`);
+      toastTimeoutRef.current = setTimeout(() => setTapToast(null), 2000);
+    } else if (nextTaps >= 7) {
+      setTapCount(0);
+      setTapToast(null);
+      setIsInspectOpen(true);
+    } else {
+      setTapToast(null);
+    }
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -59,12 +96,10 @@ export default function SpotifyTopNav({
       {/* Left: Brand & Navigation arrows */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <div
-          onClick={() => {
-            setActiveView('home');
-            setSearchQuery('');
-          }}
+          ref={brandRef}
+          onClick={handleBrandClick}
           className="flex items-center gap-2 cursor-pointer group"
-          title="MyuJiku Home"
+          title="MyuJiku Home (Multi-tap to inspect)"
         >
           {/* MyuJiku Mascot Logo */}
           <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
@@ -301,6 +336,25 @@ export default function SpotifyTopNav({
           </div>
         </div>
       )}
+
+      {tapToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-16 left-4 sm:left-6 z-50 bg-[#161616] border border-red-500/50 text-white text-xs px-3.5 py-2 rounded-xl shadow-2xl animate-fade-in pointer-events-none select-none font-semibold flex items-center gap-2"
+        >
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+          <span>{tapToast}</span>
+        </div>
+      )}
+
+      <InspectModal
+        isOpen={isInspectOpen}
+        onClose={() => setIsInspectOpen(false)}
+        triggerRef={brandRef}
+      />
+
+      <DevOverlay />
     </header>
   );
 }

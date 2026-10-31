@@ -113,6 +113,102 @@ export function generateConstellationLayout(
 }
 
 /**
+ * Continuous Constellation Layout across the entire song without per-verse resets.
+ * Generates unbounded world coordinates with collision avoidance against recent nodes.
+ */
+export function generateContinuousConstellationLayout(
+  allWords: { word: LyricWord; lineIndex: number; wordIndex: number }[],
+  seedVal: number | string,
+  scale = 1.0
+): GraphLayout {
+  const rand = createSeededRandom(seedVal);
+  const nodes: LayoutNode[] = [];
+  const edges: LayoutEdge[] = [];
+
+  let curX = 500;
+  let curY = 300;
+
+  for (let i = 0; i < allWords.length; i++) {
+    const item = allWords[i];
+    const { width, height } = estimateWordSize(item.word.text);
+    const scaledWidth = width * scale;
+    const scaledHeight = height * scale;
+
+    if (i === 0) {
+      nodes.push({
+        index: i,
+        word: item.word,
+        x: curX,
+        y: curY,
+        width: scaledWidth,
+        height: scaledHeight,
+      });
+      continue;
+    }
+
+    // Try multiple candidate angles and distances to avoid collision with recent nodes
+    let bestX = curX;
+    let bestY = curY;
+    let placed = false;
+    let attempts = 0;
+
+    // Minimum distance ~140px, max ~260px scaled
+    const minDist = 140 * scale;
+    const maxDist = 260 * scale;
+
+    while (!placed && attempts < 40) {
+      attempts++;
+      const angle = rand() * Math.PI * 2;
+      const dist = seededRange(rand, minDist, maxDist);
+      const candX = curX + Math.cos(angle) * dist;
+      const candY = curY + Math.sin(angle) * dist;
+
+      // Check collision against the last 10 placed nodes
+      const recentNodes = nodes.slice(Math.max(0, nodes.length - 10));
+      if (!checkCollision(candX, candY, scaledWidth, scaledHeight, recentNodes, 25 * scale)) {
+        bestX = candX;
+        bestY = candY;
+        placed = true;
+      }
+    }
+
+    // If crowded, push further along a gentle angle
+    if (!placed) {
+      const angle = (i * 1.37) % (Math.PI * 2);
+      bestX = curX + Math.cos(angle) * maxDist * 1.2;
+      bestY = curY + Math.sin(angle) * maxDist * 1.2;
+    }
+
+    curX = bestX;
+    curY = bestY;
+
+    nodes.push({
+      index: i,
+      word: item.word,
+      x: curX,
+      y: curY,
+      width: scaledWidth,
+      height: scaledHeight,
+    });
+
+    // Connecting edge from previous star
+    const prev = nodes[i - 1];
+    const dx = curX - prev.x;
+    const dy = curY - prev.y;
+    const dist = Math.hypot(dx, dy);
+
+    edges.push({
+      fromIndex: i - 1,
+      toIndex: i,
+      pathD: `M ${prev.x.toFixed(1)} ${prev.y.toFixed(1)} L ${curX.toFixed(1)} ${curY.toFixed(1)}`,
+      length: dist,
+    });
+  }
+
+  return { nodes, edges };
+}
+
+/**
  * 2. Branches Layout:
  * Git-graph / tree layout: A main trunk with branches smoothly curving off.
  */

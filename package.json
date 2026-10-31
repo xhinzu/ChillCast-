@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npx tsx src/lib/lyrics/__tests__/runAll.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.40.0",

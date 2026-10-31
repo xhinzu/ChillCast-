@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { usePlayback } from '@/context/PlaybackContext';
+import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 
 interface ClassicStageProps {
   lines: SyncedLyricLine[];
@@ -12,6 +13,8 @@ interface ClassicStageProps {
   onLineClick?: (line: SyncedLyricLine, index: number) => void;
   isTapToSyncActive?: boolean;
   isEstimated?: boolean;
+  showIcons?: boolean;
+  scale?: number;
 }
 
 export default function ClassicStage({
@@ -22,6 +25,8 @@ export default function ClassicStage({
   onLineClick,
   isTapToSyncActive = false,
   isEstimated = false,
+  showIcons = false,
+  scale = 1.0,
 }: ClassicStageProps) {
   const { seek } = usePlayback();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -131,22 +136,28 @@ export default function ClassicStage({
             }`}
           >
             <p
-              className={`text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight leading-relaxed transition-colors duration-200 flex flex-wrap gap-x-2 gap-y-1 justify-center sm:justify-start ${
+              className={`font-extrabold tracking-tight leading-relaxed transition-colors duration-200 flex flex-wrap gap-x-2 gap-y-1 justify-center sm:justify-start ${
                 isActiveLine
                   ? 'text-[var(--lyric,#ffffff)]'
                   : isPastLine
                   ? 'text-[var(--secondary,#888888)]'
                   : 'text-[var(--secondary,#666666)]'
               }`}
+              style={{
+                fontSize: `${1.75 * scale}rem`,
+              }}
             >
               {line.words.map((word, wIdx) => {
                 const isActiveWord = isActiveLine && wIdx === activeWordIndex;
                 const isPastWord = isActiveLine && wIdx < activeWordIndex;
 
+                const emoji =
+                  showIcons && isActiveWord && word.text ? getEmojiForLyricWord(word.text) : null;
+
                 return (
                   <span
                     key={`${lIdx}-${wIdx}-${word.text}`}
-                    className={`transition-all duration-150 inline-block rounded-md px-1 py-0.5 ${
+                    className={`transition-all duration-150 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 ${
                       isActiveWord
                         ? 'text-[var(--highlight,#ef4444)] font-black scale-105 active-glyph-glow-sm'
                         : isPastWord
@@ -156,7 +167,12 @@ export default function ClassicStage({
                         : ''
                     }`}
                   >
-                    {word.text}
+                    <span>{word.text}</span>
+                    {emoji && (
+                      <span className="text-xl animate-pop-in select-none" aria-hidden="true">
+                        {emoji}
+                      </span>
+                    )}
                   </span>
                 );
               })}

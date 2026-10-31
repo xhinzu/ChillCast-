@@ -9,6 +9,7 @@ interface CodestyleStageProps {
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  scale?: number;
 }
 
 export default function CodestyleStage({
@@ -16,6 +17,7 @@ export default function CodestyleStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  scale = 1.0,
 }: CodestyleStageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const activeLineRef = useRef<HTMLDivElement | null>(null);
@@ -41,7 +43,12 @@ export default function CodestyleStage({
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 select-none">
       {/* Editor Window Chrome */}
-      <div className="w-full max-w-3xl h-[480px] rounded-2xl bg-[#0c0c0c] border border-[#222222] shadow-2xl flex flex-col overflow-hidden font-mono text-xs sm:text-sm">
+      <div
+        className="w-full max-w-3xl h-[480px] rounded-2xl bg-[#0c0c0c] border border-[#222222] shadow-2xl flex flex-col overflow-hidden font-mono"
+        style={{
+          fontSize: `${0.875 * scale}rem`,
+        }}
+      >
         {/* Titlebar / Tab */}
         <div className="flex items-center justify-between px-4 py-2.5 bg-[#141414] border-b border-[#222222] select-none">
           <div className="flex items-center gap-2">
@@ -49,10 +56,10 @@ export default function CodestyleStage({
             <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
             <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
             <span className="ml-3 text-[11px] text-zinc-400 font-medium flex items-center gap-1.5">
-              <span className="text-blue-400">fn</span> song_lyrics.chill
+              <span className="text-blue-400">fn</span> song_lyrics.myujiku
             </span>
           </div>
-          <div className="text-[10px] text-zinc-500">UTF-8 • LRCLIB</div>
+          <div className="text-[10px] text-zinc-500">UTF-8 • MyuJiku Code</div>
         </div>
 
         {/* Code Content Area with Line Numbers Gutter */}
@@ -77,6 +84,9 @@ export default function CodestyleStage({
                   className={`w-7 text-right select-none font-mono text-xs shrink-0 ${
                     isCurrentLine ? 'text-[var(--highlight,#ef4444)] font-bold' : 'text-zinc-600'
                   }`}
+                  style={{
+                    fontSize: `${0.8 * scale}rem`,
+                  }}
                 >
                   {String(lIdx + 1).padStart(2, '0')}
                 </span>
@@ -106,11 +116,14 @@ export default function CodestyleStage({
                         <span>{w.text}</span>
                         {/* Blinking cursor for active word */}
                         {isWordActive && (
-                          <span className="w-1.5 h-3.5 bg-[var(--highlight,#ef4444)] animate-pulse inline-block" />
+                          <span
+                            className="w-1.5 bg-[var(--highlight,#ef4444)] animate-pulse inline-block"
+                            style={{ height: `${1.1 * scale}rem` }}
+                          />
                         )}
                         {/* Inline comment emoji if enabled */}
                         {emoji && isWordActive && (
-                          <span className="text-xs bg-black/40 px-1 py-0.2 rounded text-zinc-300 select-none">
+                          <span className="text-xs bg-black/50 px-1 py-0.5 rounded text-zinc-300 select-none animate-pop-in">
                             /* {emoji} */
                           </span>
                         )}

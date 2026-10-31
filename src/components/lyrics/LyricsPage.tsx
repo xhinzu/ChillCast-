@@ -18,6 +18,10 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import EdgeGlow from './EdgeGlow';
 import SettingsMenu from './SettingsMenu';
 import SyncEditorModal from './SyncEditorModal';
+import LyricsBackground from './LyricsBackground';
+import LyricOverlays from './LyricOverlays';
+import { TextEffectsFilters } from './TextEffects';
+import { useQuality } from '@/hooks/useQuality';
 
 import LyricSpeedSlider from './LyricSpeedSlider';
 import {
@@ -189,6 +193,9 @@ export default function LyricsPage() {
   // Screen Wake Lock API
   useWakeLock(settings.keepAwake);
 
+  // Quality & Tab Visibility Manager
+  const { effectiveQuality, isTabHidden, isReducedMotion } = useQuality(settings.quality);
+
   // Auto-Sync Color Palette with ~600ms crossfade
   const palette = usePalette(currentTrack?.id, currentTrack?.artworkUrl, settings);
 
@@ -200,8 +207,12 @@ export default function LyricsPage() {
         setSettings(customEvent.detail);
       }
     };
+    window.addEventListener('myujiku_lyrics_settings_updated', handleSettingsUpdated);
     window.addEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
-    return () => window.removeEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('myujiku_lyrics_settings_updated', handleSettingsUpdated);
+      window.removeEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
+    };
   }, []);
 
   // Initialize edit fields from stored override or normalized candidate
@@ -902,11 +913,19 @@ export default function LyricsPage() {
       );
     }
 
+    const scale = (settings.size ?? settings.textSize ?? 100) / 100;
+
     const commonProps = {
       lines: displayLines,
       activeLineIndex: lineIndex,
       activeWordIndex: wordIndex,
       showIcons: settings.iconsEnabled,
+      scale,
+      cameraMovement: settings.cameraMovement,
+      cameraZoom: settings.cameraZoom,
+      isPaused: isTabHidden,
+      reducedMotion: isReducedMotion,
+      trackId: currentTrack?.id,
     };
 
     switch (settings.style) {
@@ -917,13 +936,15 @@ export default function LyricsPage() {
       case 'ship':
         return <ShipStage {...commonProps} />;
       case 'fisheye':
-        return <FisheyeStage {...commonProps} />;
-      case 'fisheye_visual':
-        return <FisheyeStage {...commonProps} showIcons={true} />;
+        return (
+          <FisheyeStage
+            {...commonProps}
+            strength={settings.fisheyeStrength}
+            axis={settings.fisheyeAxis}
+          />
+        );
       case 'codestyle':
         return <CodestyleStage {...commonProps} />;
-      case 'codestyle_visual':
-        return <CodestyleStage {...commonProps} showIcons={true} />;
       case 'branches':
         return <BranchesStage {...commonProps} />;
       case 'web':
@@ -938,6 +959,8 @@ export default function LyricsPage() {
             onLineClick={handleLineTapToSync}
             isTapToSyncActive={false}
             isEstimated={isEstimated}
+            showIcons={settings.iconsEnabled}
+            scale={scale}
           />
         );
     }
@@ -957,20 +980,57 @@ export default function LyricsPage() {
           '--lyric': palette.lyric,
           '--highlight': palette.highlight,
           '--secondary': palette.secondary,
+          '--scale': `${(settings.size ?? settings.textSize ?? 100) / 100}`,
           fontFamily: fontCssVar,
-          fontSize: `${settings.textSize}%`,
+          fontSize: `${settings.size ?? settings.textSize ?? 100}%`,
           transition: 'color 600ms ease, border-color 600ms ease',
         } as React.CSSProperties
       }
     >
-      {/* Edge Glow Visualizer (Lumn-inspired light ring) */}
-      <EdgeGlow
-        enabled={settings.edgeGlowEnabled}
-        mode={settings.edgeGlowMode}
-        thickness={settings.edgeGlowThickness}
-        glowSize={settings.edgeGlowSize}
+      {/* SVG Text Effect Filters Definition */}
+      <TextEffectsFilters />
+
+      {/* Layer 1: Background Media (Cover, Blurred, Gradient, Custom Media) */}
+      <LyricsBackground
+        type={settings.backgroundType}
+        dim={settings.backgroundDim}
+        blur={settings.backgroundBlur}
+        brightness={settings.backgroundBrightness}
+        parallaxStrength={settings.backgroundParallax}
+        artworkUrl={currentTrack?.artworkUrl}
         highlightColor={palette.highlight}
         secondaryColor={palette.secondary}
+        isTabHidden={isTabHidden}
+      />
+
+      {/* Layer 2: Atmospheric Background Particle Overlays (Snow, Embers, Grain, etc.) */}
+      <LyricOverlays
+        enabled={settings.masterOverlayEnabled}
+        activeOverlays={settings.activeOverlays}
+        opacity={settings.overlayOpacity}
+        speed={settings.overlaySpeed}
+        blendMode={settings.overlayBlendMode}
+        raindropsVariant={settings.raindropsVariant}
+        isTabHidden={isTabHidden}
+        isLowQuality={effectiveQuality === 'low'}
+        isForeground={false}
+      />
+
+      {/* Layer 3: Edge Glow Visualizer (11 styles with custom color/gradient sources) */}
+      <EdgeGlow
+        enabled={settings.edgeGlowEnabled}
+        style={settings.glowStyle}
+        colorSource={settings.glowColorSource}
+        customColor={settings.glowCustomColor}
+        customGradient={settings.glowGradient}
+        highlightColor={palette.highlight}
+        secondaryColor={palette.secondary}
+        intensity={settings.glowIntensity}
+        thickness={settings.glowThickness}
+        glowSize={settings.glowBlur}
+        speed={settings.glowSpeed}
+        mode={settings.glowMode}
+        blendMode={settings.glowBlendMode}
       />
 
       {/* Top Header Bar */}
@@ -1400,8 +1460,23 @@ export default function LyricsPage() {
         {currentTrack &&
           !isLoading &&
           !lyricsResult?.instrumental &&
-          displayLines.length > 0 &&
-          renderStyleStage()}
+          displayLines.length > 0 && (
+            <>
+              {renderStyleStage()}
+              {/* Foreground Overlay: Raindrops on glass sitting above text */}
+              <LyricOverlays
+                enabled={settings.masterOverlayEnabled}
+                activeOverlays={settings.activeOverlays}
+                opacity={settings.overlayOpacity}
+                speed={settings.overlaySpeed}
+                blendMode={settings.overlayBlendMode}
+                raindropsVariant={settings.raindropsVariant}
+                isTabHidden={isTabHidden}
+                isLowQuality={effectiveQuality === 'low'}
+                isForeground={true}
+              />
+            </>
+          )}
 
         {/* Not Found State with Inline Manual Fix & Add Lyrics */}
         {currentTrack &&

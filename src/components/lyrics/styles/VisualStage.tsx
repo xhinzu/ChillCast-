@@ -9,6 +9,7 @@ interface VisualStageProps {
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  scale?: number;
 }
 
 function getWordHash(lineIdx: number, wordIdx: number, text: string): number {
@@ -25,6 +26,7 @@ export default function VisualStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = true,
+  scale = 1.0,
 }: VisualStageProps) {
   const activeLine =
     activeLineIndex >= 0 && activeLineIndex < lines.length
@@ -69,12 +71,15 @@ export default function VisualStage({
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-6 select-none relative overflow-hidden text-center">
-      {/* Drifting previous words (shrinking to ~30% size, low opacity) */}
+      {/* Drifting previous words */}
       <div className="flex items-center gap-3 mb-6 transition-all duration-300 min-h-[32px] justify-center">
         {prevWords.map((w, idx) => (
           <span
             key={`prev-${idx}-${w}`}
-            className="text-base sm:text-xl font-bold tracking-tight text-[var(--secondary,#888888)] opacity-40 -translate-y-2 transition-all duration-300 transform-gpu"
+            className="font-bold tracking-tight text-[var(--secondary,#888888)] opacity-40 -translate-y-2 transition-all duration-300 transform-gpu"
+            style={{
+              fontSize: `${1.2 * scale}rem`,
+            }}
           >
             {w}
           </span>
@@ -86,7 +91,7 @@ export default function VisualStage({
         key={`${activeLineIndex}-${activeWordIndex}-${wordText}`}
         className="relative flex items-center justify-center gap-3 sm:gap-6 animate-spring-scale p-6 -m-6"
       >
-        {/* Optional solid marker box behind text (no box glow) */}
+        {/* Optional solid marker box behind text */}
         {hasMarkerBox && (
           <div
             className="absolute inset-0 -inset-x-6 -inset-y-3 rounded-2xl opacity-20 -z-10 pointer-events-none transition-all duration-200"
@@ -99,17 +104,20 @@ export default function VisualStage({
         <span
           className="font-black tracking-tighter transition-all duration-150 inline-block active-glyph-glow select-none"
           style={{
-            fontSize: 'clamp(48px, 10vw, 120px)',
+            fontSize: `calc(clamp(48px, 10vw, 120px) * ${scale})`,
             color: hasMarkerBox ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)',
           }}
         >
           {wordText || '♪'}
         </span>
 
-        {/* Pop-in Emoji Icon */}
+        {/* Pop-in Emoji Icon without shifting layout */}
         {emoji && (
           <span
-            className="inline-block animate-pop-in text-4xl sm:text-6xl md:text-7xl select-none"
+            className="inline-block animate-pop-in select-none"
+            style={{
+              fontSize: `calc(clamp(36px, 8vw, 80px) * ${scale})`,
+            }}
             role="img"
             aria-label="icon"
           >
@@ -121,7 +129,12 @@ export default function VisualStage({
       {/* Subtle upcoming next word below */}
       <div className="mt-8 min-h-[28px] transition-all duration-300">
         {nextWord && (
-          <span className="text-sm sm:text-base font-semibold text-[var(--secondary,#666666)] opacity-25 translate-y-1 inline-block">
+          <span
+            className="font-semibold text-[var(--secondary,#666666)] opacity-25 translate-y-1 inline-block"
+            style={{
+              fontSize: `${1.0 * scale}rem`,
+            }}
+          >
             {nextWord}
           </span>
         )}
