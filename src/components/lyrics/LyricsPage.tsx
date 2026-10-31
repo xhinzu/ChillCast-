@@ -2,8 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
-import { lrclibProvider } from '@/lib/lyrics/providers/lrclib';
+import { lrclibProvider, ManualLyricsOverride } from '@/lib/lyrics/providers/lrclib';
 import { LyricsResult } from '@/lib/lyrics/providers/types';
+import { normalizeTrackCandidates } from '@/lib/lyrics/normalize';
+import { parseLrc } from '@/lib/lyrics/parseLrc';
+import { deriveWordTimingsFromLrc } from '@/lib/lyrics/wordTiming';
 import {
   loadLyricsSettings,
   saveLyricsSettings,
@@ -25,6 +28,9 @@ import CodestyleStage from './styles/CodestyleStage';
 import BranchesStage from './styles/BranchesStage';
 import WebStage from './styles/WebStage';
 
+const MANUAL_OVERRIDE_PREFIX = 'chillify_manual_lyrics_override:';
+const COMMUNITY_LYRICS_PREFIX = 'chillify_community_lyrics:';
+
 export default function LyricsPage() {
   const { currentTrack } = usePlayback();
 
@@ -34,8 +40,20 @@ export default function LyricsPage() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(true);
 
+  // Manual fix state
+  const [showFixModal, setShowFixModal] = useState<boolean>(false);
+  const [editArtist, setEditArtist] = useState<string>('');
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [hasManualOverride, setHasManualOverride] = useState<boolean>(false);
+
+  // Community lyrics ("Add lyrics") state
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [customLyricText, setCustomLyricText] = useState<string>('');
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+
   const stageWrapperRef = useRef<HTMLDivElement | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Screen Wake Lock API
   useWakeLock(settings.keepAwake);
@@ -55,38 +73,176 @@ export default function LyricsPage() {
     return () => window.removeEventListener('chillify_lyrics_settings_updated', handleSettingsUpdated);
   }, []);
 
-  // Fetch lyrics when track changes
-  const fetchLyricsForCurrentTrack = useCallback(async () => {
-    if (!currentTrack || !currentTrack.title) {
-      setLyricsResult(null);
-      setIsLoading(false);
+  // Initialize edit fields from stored override or normalized candidate
+  useEffect(() => {
+    if (!currentTrack) {
+      setEditArtist('');
+      setEditTitle('');
+      setHasManualOverride(false);
       return;
     }
 
-    setIsLoading(true);
     try {
-      const res = await lrclibProvider.getLyrics({
-        id: currentTrack.id,
-        title: currentTrack.title,
-        artist: currentTrack.artist,
-        duration: currentTrack.duration,
-      });
-      setLyricsResult(res);
+      const stored = localStorage.getItem(`${MANUAL_OVERRIDE_PREFIX}${currentTrack.id}`);
+      if (stored) {
+        const parsed: ManualLyricsOverride = JSON.parse(stored);
+        setEditArtist(parsed.artist || '');
+        setEditTitle(parsed.title || '');
+        setHasManualOverride(true);
+        return;
+      }
     } catch {
-      setLyricsResult({
-        source: 'lrclib',
-        synced: 'none',
-        lines: [],
-        error: 'Network error connecting to lyrics provider.',
-      });
-    } finally {
-      setIsLoading(false);
+      // ignore parsing errors
     }
+
+    const candidates = normalizeTrackCandidates(currentTrack.title, currentTrack.artist);
+    const best = candidates[0] || { artist: currentTrack.artist || '', title: currentTrack.title || '' };
+    setEditArtist(best.artist);
+    setEditTitle(best.title);
+    setHasManualOverride(false);
   }, [currentTrack]);
+
+  // Fetch lyrics when track changes or manual override applied
+  const fetchLyricsForCurrentTrack = useCallback(
+    async (options?: { bypassCache?: boolean; manualOverride?: ManualLyricsOverride | null }) => {
+      if (!currentTrack || !currentTrack.title) {
+        setLyricsResult(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const res = await lrclibProvider.getLyrics(
+          {
+            id: currentTrack.id,
+            title: currentTrack.title,
+            artist: currentTrack.artist,
+            duration: currentTrack.duration,
+          },
+          options
+        );
+        setLyricsResult(res);
+      } catch {
+        setLyricsResult({
+          source: 'lrclib',
+          synced: 'none',
+          lines: [],
+          error: 'Network error connecting to lyrics provider.',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentTrack]
+  );
 
   useEffect(() => {
     fetchLyricsForCurrentTrack();
   }, [fetchLyricsForCurrentTrack]);
+
+  // Handle manual search
+  const handleManualSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!currentTrack || !editTitle.trim()) return;
+
+    const override: ManualLyricsOverride = {
+      artist: editArtist.trim(),
+      title: editTitle.trim(),
+    };
+
+    try {
+      localStorage.setItem(`${MANUAL_OVERRIDE_PREFIX}${currentTrack.id}`, JSON.stringify(override));
+      setHasManualOverride(true);
+    } catch {
+      // ignore storage error
+    }
+
+    setShowFixModal(false);
+    fetchLyricsForCurrentTrack({ bypassCache: true, manualOverride: override });
+  };
+
+  // Handle reset to automatic
+  const handleResetOverride = () => {
+    if (!currentTrack) return;
+
+    try {
+      localStorage.removeItem(`${MANUAL_OVERRIDE_PREFIX}${currentTrack.id}`);
+      setHasManualOverride(false);
+    } catch {
+      // ignore
+    }
+
+    const candidates = normalizeTrackCandidates(currentTrack.title, currentTrack.artist);
+    const best = candidates[0] || { artist: currentTrack.artist || '', title: currentTrack.title || '' };
+    setEditArtist(best.artist);
+    setEditTitle(best.title);
+    setShowFixModal(false);
+
+    fetchLyricsForCurrentTrack({ bypassCache: true, manualOverride: null });
+  };
+
+  // Save Community / Custom Uploaded Lyrics
+  const handleSaveCommunityLyrics = () => {
+    if (!currentTrack || !customLyricText.trim()) return;
+
+    const parsedLines = parseLrc(customLyricText);
+    const hasSync = parsedLines.length > 0;
+    const derived = hasSync ? deriveWordTimingsFromLrc(parsedLines, currentTrack.duration) : [];
+
+    const communityResult: LyricsResult = {
+      source: 'community',
+      synced: hasSync ? 'line' : 'none',
+      lines: derived,
+      plainLyrics: customLyricText.trim(),
+      instrumental: false,
+      trackName: currentTrack.title,
+      artistName: currentTrack.artist,
+      matchedTitle: currentTrack.title,
+      matchedArtist: currentTrack.artist,
+      durationMismatch: false,
+    };
+
+    try {
+      localStorage.setItem(`${COMMUNITY_LYRICS_PREFIX}${currentTrack.id}`, JSON.stringify(communityResult));
+    } catch {
+      // ignore
+    }
+
+    setLyricsResult(communityResult);
+    setShowAddModal(false);
+    setCustomLyricText('');
+  };
+
+  // Remove Community Lyrics and revert to provider
+  const handleRemoveCommunityLyrics = () => {
+    if (!currentTrack) return;
+    try {
+      localStorage.removeItem(`${COMMUNITY_LYRICS_PREFIX}${currentTrack.id}`);
+    } catch {
+      // ignore
+    }
+    fetchLyricsForCurrentTrack({ bypassCache: true });
+  };
+
+  // Handle file input for .lrc or .txt
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileUploadError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setCustomLyricText(content);
+      }
+    };
+    reader.onerror = () => {
+      setFileUploadError('Failed to read file. Please paste text directly.');
+    };
+    reader.readAsText(file);
+  };
 
   // Current track offset
   const currentOffset = useMemo(() => {
@@ -143,6 +299,24 @@ export default function LyricsPage() {
       default: return 'var(--font-inter, sans-serif)';
     }
   }, [settings.font]);
+
+  // Provenance string
+  const provenanceLabel = useMemo(() => {
+    if (!lyricsResult || lyricsResult.source === 'none') return null;
+    let name = 'LRCLIB';
+    if (lyricsResult.source === 'lyrics.ovh') name = 'lyrics.ovh';
+    else if (lyricsResult.source.includes('netease')) name = 'NetEase';
+    else if (lyricsResult.source.includes('youtube')) name = 'YouTube Captions';
+    else if (lyricsResult.source === 'community') name = 'Community (Local)';
+
+    const typeStr =
+      lyricsResult.synced === 'line'
+        ? 'synced'
+        : lyricsResult.synced === 'word'
+        ? 'word-synced'
+        : 'plain';
+    return `Source: ${name} (${typeStr})`;
+  }, [lyricsResult]);
 
   // Render the selected style component
   const renderStyleStage = () => {
@@ -226,27 +400,76 @@ export default function LyricsPage() {
             🎙️
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-2">
-              {currentTrack?.title || 'No song playing'}
+            <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-2 flex-wrap">
+              <span className="truncate">{currentTrack?.title || 'No song playing'}</span>
               {lyricsResult?.synced === 'line' && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
                   Synced
                 </span>
               )}
               {lyricsResult?.synced === 'none' && lyricsResult.plainLyrics && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                   Unsynced
                 </span>
               )}
+              {provenanceLabel && (
+                <span className="text-[10px] text-zinc-400 bg-zinc-900/80 px-2 py-0.5 rounded-full border border-zinc-800 shrink-0 hidden sm:inline-block">
+                  {provenanceLabel}
+                </span>
+              )}
             </h2>
-            <p className="text-xs text-[#888888] truncate">
-              {currentTrack?.artist || 'Play a track to view live synced lyrics'}
+            <p className="text-xs text-[#888888] truncate flex items-center gap-2">
+              <span>{currentTrack?.artist || 'Play a track to view live synced lyrics'}</span>
+              {lyricsResult?.matchedTitle && lyricsResult.matchedArtist && (
+                <span className="text-zinc-500 hidden md:inline truncate">
+                  (Matched: &ldquo;{lyricsResult.matchedArtist} - {lyricsResult.matchedTitle}&rdquo;)
+                </span>
+              )}
             </p>
           </div>
         </div>
 
-        {/* Right: Settings Menu & Fullscreen */}
+        {/* Right: Actions, Settings Menu & Fullscreen */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* If using community lyrics, allow removal */}
+          {lyricsResult?.source === 'community' && (
+            <button
+              type="button"
+              onClick={handleRemoveCommunityLyrics}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+              title="Revert to automatic provider lyrics"
+            >
+              <span>🗑️</span>
+              <span className="hidden sm:inline">Revert custom</span>
+            </button>
+          )}
+
+          {/* Add / Upload lyrics button */}
+          {currentTrack && (
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-[#161616] hover:bg-[#242424] border border-[#282828] text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+              title="Add or paste your own .lrc or plain lyrics"
+            >
+              <span>➕</span>
+              <span className="hidden sm:inline">Add lyrics</span>
+            </button>
+          )}
+
+          {/* Wrong lyrics? button */}
+          {currentTrack && lyricsResult && (lyricsResult.lines.length > 0 || lyricsResult.plainLyrics) && (
+            <button
+              type="button"
+              onClick={() => setShowFixModal(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-[#161616] hover:bg-[#242424] border border-[#282828] text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+              title="Search with custom artist and title"
+            >
+              <span>✏️</span>
+              <span className="hidden sm:inline">Wrong lyrics?</span>
+            </button>
+          )}
+
           <SettingsMenu
             settings={settings}
             trackId={currentTrack?.id}
@@ -271,6 +494,23 @@ export default function LyricsPage() {
           </button>
         </div>
       </div>
+
+      {/* Duration Mismatch Warning Banner */}
+      {lyricsResult?.durationMismatch && (
+        <div className="bg-amber-950/60 border-b border-amber-800/40 px-6 py-2 text-xs text-amber-300 flex items-center justify-between z-20 backdrop-blur-md">
+          <span className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>Duration differs from recording. You can fine-tune sync with the Timing Offset slider in Settings.</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowFixModal(true)}
+            className="underline hover:text-white text-xs font-semibold cursor-pointer shrink-0 ml-4"
+          >
+            Fix search
+          </button>
+        </div>
+      )}
 
       {/* Main Lyrics Stage Area */}
       <div className="flex-1 overflow-hidden relative flex flex-col items-center justify-center">
@@ -305,6 +545,22 @@ export default function LyricsPage() {
             <p className="text-xs text-[#888888] leading-relaxed">
               No lyrics detected for this track. Sit back and enjoy the pure lo-fi ambiance.
             </p>
+            <div className="flex gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowFixModal(true)}
+                className="text-xs text-zinc-400 hover:text-white underline cursor-pointer"
+              >
+                Search manually
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="text-xs text-zinc-400 hover:text-white underline cursor-pointer"
+              >
+                Upload lyrics
+              </button>
+            </div>
           </div>
         )}
 
@@ -329,30 +585,218 @@ export default function LyricsPage() {
             </div>
           )}
 
-        {/* Not Found State with Retry */}
+        {/* Not Found State with Inline Manual Fix & Add Lyrics */}
         {currentTrack &&
           !isLoading &&
           !lyricsResult?.instrumental &&
           (!lyricsResult?.lines || lyricsResult.lines.length === 0) &&
           !lyricsResult?.plainLyrics && (
-            <div className="p-8 text-center flex flex-col items-center gap-3 max-w-sm">
+            <div className="p-8 text-center flex flex-col items-center gap-4 max-w-md w-full">
               <div className="w-12 h-12 rounded-2xl bg-[#161616] border border-[#2a2a2a] flex items-center justify-center text-xl">
                 ✨
               </div>
-              <h3 className="text-base font-bold text-white">No lyrics available</h3>
-              <p className="text-xs text-[#888888]">
-                Lyrics haven&apos;t been added for &ldquo;{currentTrack.title}&rdquo; yet.
-              </p>
-              <button
-                type="button"
-                onClick={fetchLyricsForCurrentTrack}
-                className="mt-2 px-4 py-2 rounded-full bg-[#202020] hover:bg-[#2a2a2a] border border-[#333333] text-xs font-semibold text-white transition-all cursor-pointer"
-              >
-                Retry Search
-              </button>
+              <div>
+                <h3 className="text-base font-bold text-white">No lyrics available</h3>
+                <p className="text-xs text-[#888888] mt-1">
+                  Lyrics haven&apos;t been automatically matched for &ldquo;{currentTrack.title}&rdquo;.
+                </p>
+              </div>
+
+              {/* Inline User Correction Form */}
+              <form onSubmit={handleManualSearch} className="w-full flex flex-col gap-2.5 mt-2 text-left">
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Artist Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editArtist}
+                    onChange={(e) => setEditArtist(e.target.value)}
+                    placeholder="e.g. The Weeknd"
+                    className="w-full px-3 py-2 rounded-xl bg-[#141414] border border-[#2a2a2a] text-sm text-white focus:outline-none focus:border-zinc-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Song Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="e.g. Starboy"
+                    className="w-full px-3 py-2 rounded-xl bg-[#141414] border border-[#2a2a2a] text-sm text-white focus:outline-none focus:border-zinc-500 transition-colors"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all cursor-pointer shadow-md"
+                  >
+                    Search again
+                  </button>
+                  {hasManualOverride && (
+                    <button
+                      type="button"
+                      onClick={handleResetOverride}
+                      className="px-3 py-2 rounded-xl bg-[#1a1a1a] hover:bg-[#282828] border border-[#333333] text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(true)}
+                    className="px-3 py-2 rounded-xl bg-[#1e1e1e] hover:bg-[#2c2c2c] border border-[#333333] text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    ➕ Add lyrics
+                  </button>
+                </div>
+              </form>
             </div>
           )}
       </div>
+
+      {/* Manual Fix Modal */}
+      {showFixModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#141414] border border-[#282828] rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setShowFixModal(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-sm cursor-pointer p-1"
+            >
+              ✕
+            </button>
+            <h3 className="text-base font-bold text-white mb-1">Correct Lyric Search</h3>
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Edit the artist and song title to improve search accuracy. Changes will be saved for this track.
+            </p>
+
+            <form onSubmit={handleManualSearch} className="flex flex-col gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Artist
+                </label>
+                <input
+                  type="text"
+                  value={editArtist}
+                  onChange={(e) => setEditArtist(e.target.value)}
+                  placeholder="Artist"
+                  className="w-full px-3 py-2 rounded-xl bg-[#1c1c1c] border border-[#303030] text-sm text-white focus:outline-none focus:border-zinc-400 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Song Title"
+                  className="w-full px-3 py-2 rounded-xl bg-[#1c1c1c] border border-[#303030] text-sm text-white focus:outline-none focus:border-zinc-400 transition-colors"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  type="submit"
+                  className="flex-1 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all cursor-pointer"
+                >
+                  Search again
+                </button>
+                {hasManualOverride && (
+                  <button
+                    type="button"
+                    onClick={handleResetOverride}
+                    className="px-3 py-2 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#383838] text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer"
+                  >
+                    Reset to auto
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Upload Lyrics Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#121212] border border-[#2a2a2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl relative flex flex-col max-h-[85vh]">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-sm cursor-pointer p-1"
+            >
+              ✕
+            </button>
+            <h3 className="text-base font-bold text-white mb-1">
+              Add Lyrics for &ldquo;{currentTrack?.title}&rdquo;
+            </h3>
+            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
+              Paste synchronized LRC text (e.g. <code>[00:12.30] lyrics</code>) or plain text. You can also upload a <code>.lrc</code> file.
+            </p>
+
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".lrc,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-xs font-semibold text-zinc-300 hover:text-white cursor-pointer transition-colors"
+              >
+                📂 Choose .lrc / .txt file
+              </button>
+              {fileUploadError && (
+                <span className="text-xs text-rose-400">{fileUploadError}</span>
+              )}
+            </div>
+
+            <textarea
+              value={customLyricText}
+              onChange={(e) => setCustomLyricText(e.target.value)}
+              placeholder="Paste .lrc or plain text here...&#10;[00:04.20] First line of song&#10;[00:08.50] Second line of song"
+              rows={10}
+              className="w-full flex-1 p-3 rounded-xl bg-[#181818] border border-[#282828] text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 resize-none transition-colors"
+            />
+
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-[11px] text-zinc-500">
+                {customLyricText.includes('[') && customLyricText.includes(']')
+                  ? '⚡ Synced LRC format detected'
+                  : '📝 Plain unsynced text detected'}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-3 py-2 rounded-xl bg-[#1c1c1c] hover:bg-[#262626] text-xs text-zinc-300 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCommunityLyrics}
+                  disabled={!customLyricText.trim()}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-40 text-black text-xs font-bold cursor-pointer transition-all shadow-md"
+                >
+                  Save and Use Lyrics
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

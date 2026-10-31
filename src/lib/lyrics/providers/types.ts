@@ -15,13 +15,16 @@ export interface SyncedLyricLine {
 export type LyricSyncType = 'word' | 'line' | 'none';
 
 export interface LyricsResult {
-  source: string; // 'lrclib' | 'word-stub' | 'plain' etc.
+  source: string; // 'lrclib' | 'lyrics.ovh' | 'community' | 'word-stub' etc.
   synced: LyricSyncType;
   lines: SyncedLyricLine[];
   plainLyrics?: string;
   instrumental?: boolean;
   trackName?: string;
   artistName?: string;
+  matchedTitle?: string;
+  matchedArtist?: string;
+  durationMismatch?: boolean;
   error?: string;
 }
 

@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cleanArtistForLyrics, cleanTitleForLyrics } from '@/lib/lyrics/cleanTitle';
+import { normalizeTrackCandidates, normalizeString, CandidatePair } from '@/lib/lyrics/normalize';
+import { searchLrclibWithCandidates, RankedResult } from '@/lib/lyrics/searchLrclib';
+import { fetchLyricsOvh } from '@/lib/lyrics/providers/lyricsOvh';
 import { parseLrc } from '@/lib/lyrics/parseLrc';
 import { deriveWordTimingsFromLrc } from '@/lib/lyrics/wordTiming';
 import { LyricsResult } from '@/lib/lyrics/providers/types';
-
-interface LRCLIBRecord {
-  id: number;
-  trackName: string;
-  artistName: string;
-  albumName?: string;
-  duration?: number;
-  instrumental: boolean;
-  plainLyrics?: string;
-  syncedLyrics?: string;
-}
 
 // In-memory server-side cache
 interface CacheEntry {
@@ -23,241 +14,251 @@ interface CacheEntry {
 }
 
 const serverLyricsCache = new Map<string, CacheEntry>();
-const POSITIVE_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;      // 5 minutes for 404s
-
-function stringSimilarity(s1: string, s2: string): number {
-  const norm1 = s1.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const norm2 = s2.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (!norm1 || !norm2) return 0;
-  if (norm1 === norm2) return 1.0;
-  if (norm1.includes(norm2) || norm2.includes(norm1)) return 0.85;
-
-  // Simple token matching
-  const words1 = new Set(s1.toLowerCase().split(/\s+/).filter(Boolean));
-  const words2 = new Set(s2.toLowerCase().split(/\s+/).filter(Boolean));
-  let overlap = 0;
-  for (const w of words1) {
-    if (words2.has(w)) overlap++;
-  }
-  return overlap / Math.max(words1.size, words2.size);
-}
-
-function scoreCandidate(candidate: LRCLIBRecord, targetTitle: string, targetArtist: string, targetDuration?: number): number {
-  let score = 0;
-
-  // Title similarity
-  const titleSim = stringSimilarity(candidate.trackName || '', targetTitle);
-  score += titleSim * 50;
-
-  // Artist similarity (if artist provided)
-  if (targetArtist && candidate.artistName) {
-    const artistSim = stringSimilarity(candidate.artistName, targetArtist);
-    score += artistSim * 30;
-  }
-
-  // Duration proximity (within ~5s is a strong match)
-  if (targetDuration && targetDuration > 0 && candidate.duration && candidate.duration > 0) {
-    const diff = Math.abs(candidate.duration - targetDuration);
-    if (diff <= 3) score += 20;
-    else if (diff <= 6) score += 12;
-    else if (diff <= 12) score += 5;
-    else score -= 10;
-  }
-
-  // Bonus if synced lyrics are available
-  if (candidate.syncedLyrics) score += 15;
-
-  return score;
-}
+const POSITIVE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days for successful lyrics
+const NEGATIVE_CACHE_TTL_MS = 10 * 60 * 1000;          // 10 minutes max for not-found
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const rawTitle = url.searchParams.get('title') || '';
   const rawArtist = url.searchParams.get('artist') || '';
+  const manualTitle = url.searchParams.get('manualTitle') || '';
+  const manualArtist = url.searchParams.get('manualArtist') || '';
   const durationStr = url.searchParams.get('duration');
   const trackId = url.searchParams.get('id') || '';
+  const bypassCache = url.searchParams.get('bypassCache') === 'true';
 
-  if (!rawTitle.trim()) {
+  if (!rawTitle.trim() && !manualTitle.trim()) {
     return NextResponse.json({ error: 'Title parameter is required' }, { status: 400 });
   }
 
-  const cleanTitle = cleanTitleForLyrics(rawTitle);
-  const cleanArtist = cleanArtistForLyrics(rawArtist);
   const duration = durationStr ? Math.round(parseFloat(durationStr)) : undefined;
 
-  const cacheKey = `${trackId}:${cleanTitle.toLowerCase()}:${cleanArtist.toLowerCase()}:${duration || 0}`;
+  // Generate candidates using metadata normalization engine
+  const candidates: CandidatePair[] = normalizeTrackCandidates(rawTitle, rawArtist);
 
-  // Check in-memory cache
-  const cached = serverLyricsCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return NextResponse.json(cached.data, { status: cached.status });
+  // If manual override was supplied, give it top priority
+  if (manualTitle.trim()) {
+    candidates.unshift({
+      artist: manualArtist.trim(),
+      title: manualTitle.trim(),
+      featuredArtists: [],
+      isLive: false,
+      confidence: 1.0,
+    });
+  }
+
+  const primaryCandidate = candidates[0] || { artist: rawArtist, title: rawTitle };
+  const normKeyArtist = normalizeString(primaryCandidate.artist);
+  const normKeyTitle = normalizeString(primaryCandidate.title);
+
+  const posCacheKey = `pos:${trackId || 'any'}:${normKeyArtist}::${normKeyTitle}`;
+  const negCacheKey = `neg:${normKeyArtist}::${normKeyTitle}`;
+
+  // Log diagnostic lookup details
+  console.debug(`[lyrics-lookup] Query: rawTitle="${rawTitle}", rawArtist="${rawArtist}", duration=${duration}s, trackId="${trackId}"`);
+  console.debug(`[lyrics-lookup] Generated ${candidates.length} candidates:`, candidates.map(c => `[${c.artist} - ${c.title} (conf: ${c.confidence.toFixed(2)})]`).join(', '));
+
+  // Bypass cache if requested
+  if (bypassCache) {
+    serverLyricsCache.delete(posCacheKey);
+    serverLyricsCache.delete(negCacheKey);
+  } else {
+    // Check positive cache
+    const cachedPos = serverLyricsCache.get(posCacheKey);
+    if (cachedPos && cachedPos.expiresAt > Date.now()) {
+      console.debug(`[lyrics-lookup] Positive cache hit for key: ${posCacheKey}`);
+      return NextResponse.json(cachedPos.data, { status: cachedPos.status });
+    }
+
+    // Check negative cache (<= 10 mins)
+    const cachedNeg = serverLyricsCache.get(negCacheKey);
+    if (cachedNeg && cachedNeg.expiresAt > Date.now()) {
+      console.debug(`[lyrics-lookup] Negative cache hit (<10m) for key: ${negCacheKey}`);
+      return NextResponse.json(cachedNeg.data, { status: cachedNeg.status });
+    }
   }
 
   try {
-    let chosenRecord: LRCLIBRecord | null = null;
+    // -------------------------------------------------------------
+    // Step 1: Multi-candidate search across LRCLIB (with 6-step fallback ladder)
+    // -------------------------------------------------------------
+    const lrclibMatch: RankedResult | null = await searchLrclibWithCandidates(candidates, duration);
 
-    // 1. Attempt exact lookup on LRCLIB /api/get
-    try {
-      const getUrl = new URL('https://lrclib.net/api/get');
-      getUrl.searchParams.set('track_name', cleanTitle);
-      if (cleanArtist) getUrl.searchParams.set('artist_name', cleanArtist);
-      if (duration && duration > 0) getUrl.searchParams.set('duration', duration.toString());
+    if (lrclibMatch) {
+      const rec = lrclibMatch.record;
+      console.debug(`[lyrics-lookup] LRCLIB matched: "${rec.artistName}" - "${rec.trackName}" (score: ${lrclibMatch.score}, durationMismatch: ${lrclibMatch.durationMismatch})`);
 
-      const getRes = await fetch(getUrl.toString(), {
-        headers: {
-          'User-Agent': 'Chillify/2.0 (https://github.com/chillcast)',
-        },
-        signal: AbortSignal.timeout(4500),
-      });
+      // Handle instrumental
+      if (rec.instrumental) {
+        const instrumentalResult: LyricsResult = {
+          source: 'lrclib',
+          synced: 'none',
+          lines: [],
+          instrumental: true,
+          trackName: rec.trackName,
+          artistName: rec.artistName,
+          matchedTitle: rec.trackName,
+          matchedArtist: rec.artistName,
+          durationMismatch: lrclibMatch.durationMismatch,
+        };
 
-      if (getRes.ok) {
-        chosenRecord = (await getRes.json()) as LRCLIBRecord;
-      }
-    } catch (err) {
-      // Proceed to fallback search
-    }
-
-    // 2. If 404 or missing, fall back to /api/search and pick the best candidate
-    if (!chosenRecord) {
-      try {
-        const searchUrl = new URL('https://lrclib.net/api/search');
-        const query = cleanArtist ? `${cleanArtist} ${cleanTitle}` : cleanTitle;
-        searchUrl.searchParams.set('q', query);
-
-        const searchRes = await fetch(searchUrl.toString(), {
-          headers: {
-            'User-Agent': 'Chillify/2.0 (https://github.com/chillcast)',
-          },
-          signal: AbortSignal.timeout(5000),
+        serverLyricsCache.set(posCacheKey, {
+          data: instrumentalResult,
+          status: 200,
+          expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
         });
 
-        if (searchRes.ok) {
-          const candidates = (await searchRes.json()) as LRCLIBRecord[];
-          if (Array.isArray(candidates) && candidates.length > 0) {
-            // Rank candidates by title/artist similarity and ~5s duration proximity
-            let bestScore = -1;
-            let bestCandidate: LRCLIBRecord | null = null;
+        return NextResponse.json(instrumentalResult);
+      }
 
-            for (const cand of candidates) {
-              const sc = scoreCandidate(cand, cleanTitle, cleanArtist, duration);
-              if (sc > bestScore) {
-                bestScore = sc;
-                bestCandidate = cand;
-              }
-            }
+      // Handle synced lyrics
+      if (rec.syncedLyrics && rec.syncedLyrics.trim()) {
+        const parsedLines = parseLrc(rec.syncedLyrics);
+        const derivedLines = deriveWordTimingsFromLrc(parsedLines, duration || rec.duration);
 
-            // Only accept if score threshold meets basic relevance
-            if (bestCandidate && bestScore >= 25) {
-              chosenRecord = bestCandidate;
+        const successResult: LyricsResult = {
+          source: 'lrclib',
+          synced: 'line',
+          lines: derivedLines,
+          plainLyrics: rec.plainLyrics || undefined,
+          instrumental: false,
+          trackName: rec.trackName,
+          artistName: rec.artistName,
+          matchedTitle: rec.trackName,
+          matchedArtist: rec.artistName,
+          durationMismatch: lrclibMatch.durationMismatch,
+        };
+
+        serverLyricsCache.set(posCacheKey, {
+          data: successResult,
+          status: 200,
+          expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
+        });
+
+        return NextResponse.json(successResult);
+      }
+
+      // Handle unsynced plain lyrics on LRCLIB
+      if (rec.plainLyrics && rec.plainLyrics.trim()) {
+        const plainResult: LyricsResult = {
+          source: 'lrclib',
+          synced: 'none',
+          lines: [],
+          plainLyrics: rec.plainLyrics.trim(),
+          instrumental: false,
+          trackName: rec.trackName,
+          artistName: rec.artistName,
+          matchedTitle: rec.trackName,
+          matchedArtist: rec.artistName,
+          durationMismatch: lrclibMatch.durationMismatch,
+        };
+
+        serverLyricsCache.set(posCacheKey, {
+          data: plainResult,
+          status: 200,
+          expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
+        });
+
+        return NextResponse.json(plainResult);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Step 2: Fallback to lyrics.ovh (Plain lyrics API)
+    // -------------------------------------------------------------
+    console.debug(`[lyrics-lookup] LRCLIB yielded no lyrics. Trying lyrics.ovh fallback across candidates...`);
+    for (const cand of candidates.slice(0, 3)) {
+      if (cand.artist && cand.title) {
+        const ovhLyrics = await fetchLyricsOvh(cand.artist, cand.title);
+        if (ovhLyrics) {
+          console.debug(`[lyrics-lookup] lyrics.ovh hit for "${cand.artist}" - "${cand.title}"`);
+          const ovhResult: LyricsResult = {
+            source: 'lyrics.ovh',
+            synced: 'none',
+            lines: [],
+            plainLyrics: ovhLyrics,
+            instrumental: false,
+            trackName: cand.title,
+            artistName: cand.artist,
+            matchedTitle: cand.title,
+            matchedArtist: cand.artist,
+            durationMismatch: false,
+          };
+
+          serverLyricsCache.set(posCacheKey, {
+            data: ovhResult,
+            status: 200,
+            expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
+          });
+
+          return NextResponse.json(ovhResult);
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Step 3: Experimental Providers (if enabled via flag)
+    // -------------------------------------------------------------
+    if (process.env.LYRICS_EXPERIMENTAL_PROVIDERS === 'true') {
+      try {
+        const { fetchNetEaseLyrics } = await import('@/lib/lyrics/providers/netease');
+        for (const cand of candidates.slice(0, 2)) {
+          if (cand.title) {
+            const neteaseResult = await fetchNetEaseLyrics(cand.title, cand.artist, duration);
+            if (neteaseResult && (neteaseResult.lines.length > 0 || neteaseResult.plainLyrics)) {
+              console.debug(`[lyrics-lookup] NetEase experimental provider hit for "${cand.title}"`);
+              serverLyricsCache.set(posCacheKey, {
+                data: neteaseResult,
+                status: 200,
+                expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
+              });
+              return NextResponse.json(neteaseResult);
             }
           }
         }
-      } catch (err) {
-        // Search timeout or network error
+      } catch {
+        // Experimental provider error ignored
+      }
+
+      try {
+        if (trackId) {
+          const { fetchYouTubeCaptions } = await import('@/lib/lyrics/providers/youtubeCaptions');
+          const ytResult = await fetchYouTubeCaptions(trackId);
+          if (ytResult && ytResult.lines.length > 0) {
+            console.debug(`[lyrics-lookup] YouTube captions provider hit for trackId ${trackId}`);
+            serverLyricsCache.set(posCacheKey, {
+              data: ytResult,
+              status: 200,
+              expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
+            });
+            return NextResponse.json(ytResult);
+          }
+        }
+      } catch {
+        // Experimental provider error ignored
       }
     }
 
-    // 3. Process candidate or produce not-found
-    if (!chosenRecord) {
-      const notFoundResult: LyricsResult = {
-        source: 'lrclib',
-        synced: 'none',
-        lines: [],
-        plainLyrics: undefined,
-        instrumental: false,
-        error: 'No matching lyrics found on LRCLIB',
-      };
-
-      serverLyricsCache.set(cacheKey, {
-        data: notFoundResult,
-        status: 404,
-        expiresAt: Date.now() + NEGATIVE_CACHE_TTL_MS,
-      });
-
-      return NextResponse.json(notFoundResult, { status: 404 });
-    }
-
-    // Handle instrumental
-    if (chosenRecord.instrumental) {
-      const instrumentalResult: LyricsResult = {
-        source: 'lrclib',
-        synced: 'none',
-        lines: [],
-        instrumental: true,
-        trackName: chosenRecord.trackName,
-        artistName: chosenRecord.artistName,
-      };
-
-      serverLyricsCache.set(cacheKey, {
-        data: instrumentalResult,
-        status: 200,
-        expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
-      });
-
-      return NextResponse.json(instrumentalResult);
-    }
-
-    // Handle synced lyrics
-    if (chosenRecord.syncedLyrics && chosenRecord.syncedLyrics.trim()) {
-      const parsedLines = parseLrc(chosenRecord.syncedLyrics);
-      const derivedLines = deriveWordTimingsFromLrc(parsedLines, duration || chosenRecord.duration);
-
-      const successResult: LyricsResult = {
-        source: 'lrclib',
-        synced: 'line',
-        lines: derivedLines,
-        plainLyrics: chosenRecord.plainLyrics || undefined,
-        instrumental: false,
-        trackName: chosenRecord.trackName,
-        artistName: chosenRecord.artistName,
-      };
-
-      serverLyricsCache.set(cacheKey, {
-        data: successResult,
-        status: 200,
-        expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
-      });
-
-      return NextResponse.json(successResult);
-    }
-
-    // Handle unsynced plain lyrics fallback
-    if (chosenRecord.plainLyrics && chosenRecord.plainLyrics.trim()) {
-      const plainResult: LyricsResult = {
-        source: 'lrclib',
-        synced: 'none',
-        lines: [],
-        plainLyrics: chosenRecord.plainLyrics.trim(),
-        instrumental: false,
-        trackName: chosenRecord.trackName,
-        artistName: chosenRecord.artistName,
-      };
-
-      serverLyricsCache.set(cacheKey, {
-        data: plainResult,
-        status: 200,
-        expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
-      });
-
-      return NextResponse.json(plainResult);
-    }
-
-    // Final fallback if record is empty
-    const emptyResult: LyricsResult = {
-      source: 'lrclib',
+    // -------------------------------------------------------------
+    // Step 4: No matching lyrics found across any provider
+    // -------------------------------------------------------------
+    console.debug(`[lyrics-lookup] No lyrics found for "${rawTitle}". Setting negative cache for 10 min.`);
+    const notFoundResult: LyricsResult = {
+      source: 'none',
       synced: 'none',
       lines: [],
-      error: 'Empty lyric record',
+      plainLyrics: undefined,
+      instrumental: false,
+      error: 'No matching lyrics found on LRCLIB or fallbacks',
     };
 
-    serverLyricsCache.set(cacheKey, {
-      data: emptyResult,
+    serverLyricsCache.set(negCacheKey, {
+      data: notFoundResult,
       status: 404,
       expiresAt: Date.now() + NEGATIVE_CACHE_TTL_MS,
     });
 
-    return NextResponse.json(emptyResult, { status: 404 });
+    return NextResponse.json(notFoundResult, { status: 404 });
   } catch (err) {
     console.error('Error in /api/lyrics route handler:', err);
     return NextResponse.json(
