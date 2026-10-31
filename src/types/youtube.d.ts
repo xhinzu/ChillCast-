@@ -98,6 +98,8 @@ export interface YTPlayer {
   getPlayerState(): number;
   getCurrentTime(): number;
   getDuration(): number;
+  getPlaybackRate?(): number;
+  setPlaybackRate?(suggestedRate: number): void;
   getVideoData(): YTVideoData;
   getPlaylist(): string[] | null;
   getPlaylistIndex(): number;

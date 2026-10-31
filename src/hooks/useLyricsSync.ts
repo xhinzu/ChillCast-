@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+'use client';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { SyncedLyricLine, LyricWord } from '@/lib/lyrics/providers/types';
 import { usePlayback } from '@/context/PlaybackContext';
 
@@ -18,7 +20,14 @@ export function useLyricsSync({
   offsetSeconds = 0,
   stageElementRef,
 }: UseLyricsSyncOptions) {
-  const { isPlaying, activeAdapter, getAudioElement, currentTime } = usePlayback();
+  const {
+    isPlaying,
+    playbackState,
+    getCurrentTime,
+    getPlaybackRate,
+    currentTime,
+    activeAdapter,
+  } = usePlayback();
 
   // Low-frequency React state: ONLY updates when line or word index changes!
   const [syncState, setSyncState] = useState<LyricsSyncState>({
@@ -35,7 +44,7 @@ export function useLyricsSync({
   const lastLineIndexRef = useRef<number>(-1);
   const lastWordIndexRef = useRef<number>(-1);
 
-  // Keep latest parameters in refs so requestAnimationFrame doesn't recreate closures
+  // Keep latest parameters in refs so requestAnimationFrame doesn't capture stale closures
   const linesRef = useRef<SyncedLyricLine[]>(lines);
   linesRef.current = lines;
 
@@ -45,108 +54,166 @@ export function useLyricsSync({
   const isPlayingRef = useRef<boolean>(isPlaying);
   isPlayingRef.current = isPlaying;
 
-  const currentTimePropRef = useRef<number>(currentTime);
-  currentTimePropRef.current = currentTime;
+  const getClockRef = useRef<() => number>(getCurrentTime);
+  getClockRef.current = getCurrentTime;
 
+  const getRateRef = useRef<() => number>(getPlaybackRate);
+  getRateRef.current = getPlaybackRate;
+
+  // High-precision clock interpolation state
+  const lastKnownTimeRef = useRef<number>(currentTime || 0);
+  const lastKnownAtRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const lastDiagLogRef = useRef<number>(0);
+
+  // Re-anchor on external seek or coarse timeupdate from store
   useEffect(() => {
-    let animFrameId: number;
+    if (typeof currentTime === 'number' && !isNaN(currentTime)) {
+      lastKnownTimeRef.current = currentTime;
+      lastKnownAtRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+  }, [currentTime]);
 
-    const tick = () => {
-      const currentLines = linesRef.current;
-      if (!currentLines || currentLines.length === 0) {
-        if (lastLineIndexRef.current !== -1 || lastWordIndexRef.current !== -1) {
-          lastLineIndexRef.current = -1;
-          lastWordIndexRef.current = -1;
-          setSyncState({ lineIndex: -1, wordIndex: -1 });
-        }
-        animFrameId = requestAnimationFrame(tick);
-        return;
+  // Unified evaluation logic used for both continuous rAF frames and instant seek events
+  const evaluateSync = useCallback(() => {
+    const currentLines = linesRef.current;
+    if (!currentLines || currentLines.length === 0) {
+      if (lastLineIndexRef.current !== -1 || lastWordIndexRef.current !== -1) {
+        lastLineIndexRef.current = -1;
+        lastWordIndexRef.current = -1;
+        setSyncState({ lineIndex: -1, wordIndex: -1 });
       }
+      return;
+    }
 
-      // Read highest precision clock available
-      let rawClock = currentTimePropRef.current;
-      const audioEl = getAudioElement();
-      if (audioEl && typeof audioEl.currentTime === 'number' && !isNaN(audioEl.currentTime)) {
-        rawClock = audioEl.currentTime;
-      } else if (activeAdapter && typeof activeAdapter.getPosition === 'function') {
-        const adapterPos = activeAdapter.getPosition();
-        if (typeof adapterPos === 'number' && !isNaN(adapterPos) && adapterPos > 0) {
-          rawClock = adapterPos;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    // 1. Read live hardware/adapter clock
+    let sample = lastKnownTimeRef.current;
+    if (getClockRef.current) {
+      try {
+        const live = getClockRef.current();
+        if (typeof live === 'number' && !isNaN(live)) {
+          sample = live;
         }
+      } catch {
+        // ignore
       }
+    }
 
-      const effectiveTime = Math.max(0, rawClock + offsetRef.current);
-      effectiveTimeRef.current = effectiveTime;
+    // 2. Detect adapter clock updates and re-anchor interpolation
+    if (Math.abs(sample - lastKnownTimeRef.current) > 0.005) {
+      lastKnownTimeRef.current = sample;
+      lastKnownAtRef.current = now;
+    }
 
-      // Locate active line
-      let activeLineIdx = -1;
-      for (let i = 0; i < currentLines.length; i++) {
-        const line = currentLines[i];
-        if (effectiveTime >= line.start && effectiveTime < line.end) {
-          activeLineIdx = i;
+    // 3. Sub-frame continuous interpolation
+    let rawClock = lastKnownTimeRef.current;
+    if (isPlayingRef.current) {
+      const elapsedSec = (now - lastKnownAtRef.current) / 1000;
+      const rate = getRateRef.current ? getRateRef.current() : 1.0;
+      // Cap forward extrapolation to 0.75s between coarse ticks
+      const interpolatedOffset = Math.min(0.75, Math.max(0, elapsedSec * (rate > 0 ? rate : 1.0)));
+      rawClock = lastKnownTimeRef.current + interpolatedOffset;
+    }
+
+    // 4. Apply per-track offset
+    const effectiveTime = Math.max(0, rawClock + (offsetRef.current || 0));
+    effectiveTimeRef.current = effectiveTime;
+
+    // 5. Binary search or optimized scan for active line
+    let activeLineIdx = -1;
+    for (let i = 0; i < currentLines.length; i++) {
+      const line = currentLines[i];
+      if (effectiveTime >= line.start && effectiveTime < line.end) {
+        activeLineIdx = i;
+        break;
+      }
+      if (effectiveTime >= line.start) {
+        activeLineIdx = i;
+      }
+    }
+
+    // 6. Word-level progression inside active line
+    let activeWordIdx = -1;
+    let wordProg = 0;
+    let lineProg = 0;
+
+    if (activeLineIdx >= 0 && activeLineIdx < currentLines.length) {
+      const activeLine = currentLines[activeLineIdx];
+      const lineSpan = Math.max(0.01, activeLine.end - activeLine.start);
+      lineProg = Math.max(0, Math.min(1, (effectiveTime - activeLine.start) / lineSpan));
+
+      const words = activeLine.words;
+      for (let w = 0; w < words.length; w++) {
+        const word = words[w];
+        if (effectiveTime >= word.start && effectiveTime <= word.end) {
+          activeWordIdx = w;
+          const wordSpan = Math.max(0.01, word.end - word.start);
+          wordProg = Math.max(0, Math.min(1, (effectiveTime - word.start) / wordSpan));
           break;
         }
-        if (effectiveTime >= line.start) {
-          activeLineIdx = i;
+        if (effectiveTime >= word.start) {
+          activeWordIdx = w;
+          wordProg = 1;
         }
       }
+    }
 
-      // Locate active word inside the line
-      let activeWordIdx = -1;
-      let wordProg = 0;
-      let lineProg = 0;
+    // Update refs & CSS variables
+    progressRef.current = wordProg;
+    lineProgressRef.current = lineProg;
 
-      if (activeLineIdx >= 0 && activeLineIdx < currentLines.length) {
-        const activeLine = currentLines[activeLineIdx];
-        const lineSpan = Math.max(0.01, activeLine.end - activeLine.start);
-        lineProg = Math.max(0, Math.min(1, (effectiveTime - activeLine.start) / lineSpan));
+    const stageEl = stageElementRef?.current;
+    if (stageEl) {
+      stageEl.style.setProperty('--word-progress', wordProg.toFixed(3));
+      stageEl.style.setProperty('--line-progress', lineProg.toFixed(3));
+    }
 
-        const words = activeLine.words;
-        for (let w = 0; w < words.length; w++) {
-          const word = words[w];
-          if (effectiveTime >= word.start && effectiveTime <= word.end) {
-            activeWordIdx = w;
-            const wordSpan = Math.max(0.01, word.end - word.start);
-            wordProg = Math.max(0, Math.min(1, (effectiveTime - word.start) / wordSpan));
-            break;
-          }
-          if (effectiveTime >= word.start) {
-            activeWordIdx = w;
-            wordProg = 1;
-          }
-        }
-      }
+    // Dispatch React state update ONLY when line or word index transitions
+    if (
+      activeLineIdx !== lastLineIndexRef.current ||
+      activeWordIdx !== lastWordIndexRef.current
+    ) {
+      lastLineIndexRef.current = activeLineIdx;
+      lastWordIndexRef.current = activeWordIdx;
+      setSyncState({
+        lineIndex: activeLineIdx,
+        wordIndex: activeWordIdx,
+      });
+    }
+  }, [stageElementRef]);
 
-      // Save high-frequency per-frame values
-      progressRef.current = wordProg;
-      lineProgressRef.current = lineProg;
+  // Start / stop rAF loop according to playback state and mounting
+  useEffect(() => {
+    let animFrameId: number | null = null;
+    let isCancelled = false;
 
-      // Inject CSS variables into stage element for compositor performance
-      const stageEl = stageElementRef?.current;
-      if (stageEl) {
-        stageEl.style.setProperty('--word-progress', wordProg.toFixed(3));
-        stageEl.style.setProperty('--line-progress', lineProg.toFixed(3));
-      }
-
-      // ONLY dispatch React state update when indices change
-      if (
-        activeLineIdx !== lastLineIndexRef.current ||
-        activeWordIdx !== lastWordIndexRef.current
-      ) {
-        lastLineIndexRef.current = activeLineIdx;
-        lastWordIndexRef.current = activeWordIdx;
-        setSyncState({
-          lineIndex: activeLineIdx,
-          wordIndex: activeWordIdx,
-        });
-      }
-
-      animFrameId = requestAnimationFrame(tick);
+    const loop = () => {
+      if (isCancelled) return;
+      evaluateSync();
+      animFrameId = requestAnimationFrame(loop);
     };
 
-    animFrameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animFrameId);
-  }, [activeAdapter, getAudioElement, stageElementRef]);
+    // Run first frame immediately
+    evaluateSync();
+
+    // Loop runs continuously while playing or buffering
+    if (isPlaying || playbackState === 'playing' || playbackState === 'buffering') {
+      animFrameId = requestAnimationFrame(loop);
+    }
+
+    return () => {
+      isCancelled = true;
+      if (animFrameId !== null) {
+        cancelAnimationFrame(animFrameId);
+      }
+    };
+  }, [isPlaying, playbackState, evaluateSync]);
+
+  // Immediate evaluation when lines or offset change
+  useEffect(() => {
+    evaluateSync();
+  }, [lines, offsetSeconds, evaluateSync]);
 
   const activeLine: SyncedLyricLine | null =
     syncState.lineIndex >= 0 && syncState.lineIndex < lines.length

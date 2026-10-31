@@ -40,6 +40,10 @@ export abstract class BasePlaybackAdapter implements PlaybackAdapter {
     return this.position;
   }
 
+  public getPlaybackRate(): number {
+    return 1.0;
+  }
+
   public getDuration(): number {
     return this.duration;
   }

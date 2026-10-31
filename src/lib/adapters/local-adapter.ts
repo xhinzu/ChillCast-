@@ -285,6 +285,21 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
     return this.analyserNode;
   }
 
+  public override getPosition(): number {
+    if (this.audio && typeof this.audio.currentTime === 'number' && !isNaN(this.audio.currentTime)) {
+      this.position = this.audio.currentTime;
+      return this.audio.currentTime;
+    }
+    return this.position;
+  }
+
+  public override getPlaybackRate(): number {
+    if (this.audio && typeof this.audio.playbackRate === 'number') {
+      return this.audio.playbackRate;
+    }
+    return 1.0;
+  }
+
   public getAudioElement(): HTMLAudioElement | null {
     return this.audio;
   }

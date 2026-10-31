@@ -46,6 +46,8 @@ interface PlaybackContextValue {
   playCustomTrackList: (tracks: TrackInfo[], startIndex?: number) => Promise<void>;
   getAudioAnalyser: () => AnalyserNode | null;
   getAudioElement: () => HTMLAudioElement | null;
+  getCurrentTime: () => number;
+  getPlaybackRate: () => number;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -58,6 +60,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<TrackInfo | null>(null);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [currentTime, setCurrentTime] = useState<number>(0);
+  const currentTimeRef = useRef<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolumeState] = useState<number>(0.8);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -71,6 +74,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   // Bind subscriptions from an adapter
   const attachAdapterListeners = useCallback((adapter: PlaybackAdapter) => {
     const unsubPos = adapter.onPositionChange((pos) => {
+      currentTimeRef.current = pos;
       setCurrentTime(pos);
       const d = adapter.getDuration();
       if (d > 0) {
@@ -201,6 +205,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   }, [playbackState]);
 
   const seek = useCallback((seconds: number) => {
+    currentTimeRef.current = seconds;
     if (adapterRef.current) {
       adapterRef.current.seek(seconds);
     }
@@ -383,6 +388,27 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     return null;
   }, []);
 
+  const getCurrentTime = useCallback((): number => {
+    if (adapterRef.current && typeof adapterRef.current.getPosition === 'function') {
+      const pos = adapterRef.current.getPosition();
+      if (typeof pos === 'number' && !isNaN(pos)) {
+        currentTimeRef.current = pos;
+        return pos;
+      }
+    }
+    return currentTimeRef.current;
+  }, []);
+
+  const getPlaybackRate = useCallback((): number => {
+    if (adapterRef.current && typeof adapterRef.current.getPlaybackRate === 'function') {
+      const rate = adapterRef.current.getPlaybackRate();
+      if (typeof rate === 'number' && rate > 0) {
+        return rate;
+      }
+    }
+    return 1.0;
+  }, []);
+
   return (
     <PlaybackContext.Provider
       value={{
@@ -414,6 +440,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         playCustomTrackList,
         getAudioAnalyser,
         getAudioElement,
+        getCurrentTime,
+        getPlaybackRate,
       }}
     >
       {children}

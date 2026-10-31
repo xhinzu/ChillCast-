@@ -73,6 +73,7 @@ export interface PlaybackAdapter {
    */
   getAnalyser?(): AnalyserNode | null;
   getAudioElement?(): HTMLAudioElement | null;
+  getPlaybackRate?(): number;
 
   cleanup(): void;
 }

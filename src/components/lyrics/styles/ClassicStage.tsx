@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { usePlayback } from '@/context/PlaybackContext';
 
@@ -22,29 +22,45 @@ export default function ClassicStage({
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Auto-center active line smoothly
+  const scrollToActive = useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      if (!autoScroll || activeLineIndex < 0) return;
+      const activeEl = lineRefs.current.get(activeLineIndex);
+      const container = containerRef.current;
+      if (activeEl && container) {
+        const containerRect = container.getBoundingClientRect();
+        const elRect = activeEl.getBoundingClientRect();
+        const relativeTop = elRect.top - containerRect.top + container.scrollTop;
+        const targetScroll = relativeTop - container.clientHeight / 2 + elRect.height / 2;
+        container.scrollTo({
+          top: Math.max(0, targetScroll),
+          behavior,
+        });
+      }
+    },
+    [activeLineIndex, autoScroll]
+  );
+
+  // Smooth scroll on activeLineIndex change
   useEffect(() => {
-    if (!autoScroll || activeLineIndex < 0) return;
-    const activeEl = lineRefs.current.get(activeLineIndex);
-    const container = containerRef.current;
-    if (activeEl && container) {
-      const containerRect = container.getBoundingClientRect();
-      const elRect = activeEl.getBoundingClientRect();
-      const relativeTop = elRect.top - containerRect.top + container.scrollTop;
-      const targetScroll = relativeTop - container.clientHeight / 2 + activeEl.clientHeight / 2;
-      container.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth',
+    scrollToActive('smooth');
+  }, [activeLineIndex, scrollToActive]);
+
+  // Re-center when the page mounts mid-song or lines finish loading
+  useEffect(() => {
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => {
+        scrollToActive('auto');
       });
-    }
-  }, [activeLineIndex, autoScroll]);
+      return () => cancelAnimationFrame(r2);
+    });
+    return () => cancelAnimationFrame(r1);
+  }, [lines, scrollToActive]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-y-auto px-4 sm:px-12 py-32 flex flex-col gap-6 sm:gap-8 scroll-smooth select-none no-scrollbar text-center sm:text-left"
-      style={{
-        scrollBehavior: 'smooth',
-      }}
+      className="w-full h-full overflow-y-auto px-4 sm:px-12 py-32 flex flex-col gap-6 sm:gap-8 select-none no-scrollbar text-center sm:text-left"
     >
       {lines.map((line, lIdx) => {
         const isActiveLine = lIdx === activeLineIndex;

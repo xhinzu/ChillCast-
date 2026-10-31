@@ -805,8 +805,43 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     return this.analyserNode;
   }
 
+  public override getPosition(): number {
+    if (this.isDirectStreamFallback && this.streamAudio) {
+      return this.streamAudio.currentTime || 0;
+    }
+    if (this.player && typeof this.player.getCurrentTime === 'function') {
+      try {
+        const t = this.player.getCurrentTime();
+        if (typeof t === 'number' && !isNaN(t)) {
+          this.position = t;
+          return t;
+        }
+      } catch {}
+    }
+    return this.position;
+  }
+
+  public override getPlaybackRate(): number {
+    if (this.player && typeof this.player.getPlaybackRate === 'function') {
+      try {
+        const rate = this.player.getPlaybackRate();
+        if (typeof rate === 'number' && rate > 0) return rate;
+      } catch {}
+    }
+    if (this.streamAudio && typeof this.streamAudio.playbackRate === 'number') {
+      return this.streamAudio.playbackRate;
+    }
+    return 1.0;
+  }
+
   public getAudioElement(): HTMLAudioElement | null {
-    return this.streamAudio;
+    if (this.isDirectStreamFallback && this.streamAudio) {
+      return this.streamAudio;
+    }
+    if (this.isStreamingActive && this.streamAudio && !this.streamAudio.paused) {
+      return this.streamAudio;
+    }
+    return null;
   }
 
   public override cleanup(): void {
