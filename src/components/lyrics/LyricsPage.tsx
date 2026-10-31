@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
 import { lrclibProvider, ManualLyricsOverride } from '@/lib/lyrics/providers/lrclib';
-import { LyricsResult } from '@/lib/lyrics/providers/types';
-import { normalizeTrackCandidates } from '@/lib/lyrics/normalize';
+import { LyricsResult, SyncedLyricLine, LyricWord } from '@/lib/lyrics/providers/types';
+import { normalizeTrackCandidates, formatCleanDisplayTrack, normalizeString } from '@/lib/lyrics/normalize';
 import { parseLrc } from '@/lib/lyrics/parseLrc';
 import { deriveWordTimingsFromLrc } from '@/lib/lyrics/wordTiming';
 import {
@@ -17,6 +17,7 @@ import { usePalette } from '@/hooks/usePalette';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import EdgeGlow from './EdgeGlow';
 import SettingsMenu from './SettingsMenu';
+import SyncEditorModal from './SyncEditorModal';
 
 // Lyric Styles
 import ClassicStage from './styles/ClassicStage';
@@ -32,7 +33,7 @@ const MANUAL_OVERRIDE_PREFIX = 'chillify_manual_lyrics_override:';
 const COMMUNITY_LYRICS_PREFIX = 'chillify_community_lyrics:';
 
 export default function LyricsPage() {
-  const { currentTrack } = usePlayback();
+  const { currentTrack, getCurrentTime, currentTime } = usePlayback();
 
   const [settings, setSettings] = useState<LyricsSettings>(loadLyricsSettings());
   const [lyricsResult, setLyricsResult] = useState<LyricsResult | null>(null);
@@ -46,8 +47,16 @@ export default function LyricsPage() {
   const [editTitle, setEditTitle] = useState<string>('');
   const [hasManualOverride, setHasManualOverride] = useState<boolean>(false);
 
+  // Offset Assistant state
+  const [showOffsetAssistant, setShowOffsetAssistant] = useState<boolean>(false);
+  const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(false);
+  const [isTapToSyncMode, setIsTapToSyncMode] = useState<boolean>(false);
+  const [isCoarseStep, setIsCoarseStep] = useState<boolean>(false);
+  const [toast, setToast] = useState<{ message: string; undoOffset?: number } | null>(null);
+
   // Community lyrics ("Add lyrics") state
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [showSyncEditor, setShowSyncEditor] = useState<boolean>(false);
   const [customLyricText, setCustomLyricText] = useState<string>('');
   const [fileUploadError, setFileUploadError] = useState<string | null>(null);
 
@@ -238,6 +247,74 @@ export default function LyricsPage() {
     fetchLyricsForCurrentTrack({ bypassCache: true });
   };
 
+  // Handle Save from Sync Editor (Part F)
+  const handleSaveSyncEditor = ({ lrcText, shareWithEveryone }: { lrcText: string; shareWithEveryone: boolean }) => {
+    if (!currentTrack) return;
+    const parsedLines = parseLrc(lrcText);
+    const hasSync = parsedLines.length > 0;
+    const derived = hasSync ? deriveWordTimingsFromLrc(parsedLines, currentTrack.duration) : [];
+
+    const communityResult: LyricsResult = {
+      source: 'community',
+      synced: hasSync ? 'line' : 'none',
+      lines: derived,
+      plainLyrics: lrcText,
+      instrumental: false,
+      trackName: currentTrack.title,
+      artistName: currentTrack.artist,
+      matchedTitle: currentTrack.title,
+      matchedArtist: currentTrack.artist,
+      durationMismatch: false,
+    };
+
+    try {
+      localStorage.setItem(`${COMMUNITY_LYRICS_PREFIX}${currentTrack.id}`, JSON.stringify(communityResult));
+    } catch {}
+
+    if (shareWithEveryone) {
+      fetch('/api/lyrics/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackId: currentTrack.id,
+          artist: currentTrack.artist,
+          title: currentTrack.title,
+          duration: currentTrack.duration,
+          text: lrcText,
+        }),
+      }).catch(() => {});
+    }
+
+    setLyricsResult(communityResult);
+    setShowSyncEditor(false);
+    setToast({
+      message: shareWithEveryone
+        ? 'Lyrics synced and shared with community!'
+        : 'Lyrics synced and saved locally!',
+    });
+  };
+
+  // Report vandalized or low-quality community lyrics (Part F: 3 reports revert track)
+  const handleReportCommunityLyrics = async () => {
+    if (!currentTrack) return;
+    try {
+      const res = await fetch('/api/lyrics/community/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackId: currentTrack.id }),
+      });
+      const data = await res.json();
+      if (data.reverted) {
+        handleRemoveCommunityLyrics();
+        setToast({ message: 'Community lyrics received 3 reports and were reverted.' });
+      } else {
+        setToast({ message: data.message || 'Report submitted' });
+      }
+    } catch {
+      setToast({ message: 'Failed to submit report' });
+    }
+  };
+
   // Handle file input for .lrc or .txt
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -262,6 +339,120 @@ export default function LyricsPage() {
     if (!currentTrack) return 0;
     return settings.offsets[currentTrack.id] || 0;
   }, [currentTrack, settings.offsets]);
+
+  // Auto-sync offset from localStorage on track change and reset assistant state
+  useEffect(() => {
+    setIsBannerDismissed(false);
+    setIsTapToSyncMode(false);
+    setToast(null);
+
+    if (!currentTrack) return;
+    if (settings.offsets[currentTrack.id] === undefined) {
+      try {
+        const stored = localStorage.getItem(`chillify_lyric_offset:${currentTrack.id}`);
+        if (stored !== null) {
+          const parsed = parseFloat(stored);
+          if (!isNaN(parsed)) {
+            setSettings((prev) => ({
+              ...prev,
+              offsets: { ...prev.offsets, [currentTrack.id]: parsed },
+            }));
+          }
+        }
+      } catch {}
+    }
+  }, [currentTrack?.id]);
+
+  // Auto-apply community shared offset if user has not set their own manual offset
+  useEffect(() => {
+    if (!currentTrack || !lyricsResult) return;
+    if (lyricsResult.sharedOffset !== undefined && lyricsResult.sharedOffset !== null) {
+      try {
+        const localSaved = localStorage.getItem(`chillify_lyric_offset:${currentTrack.id}`);
+        if (localSaved === null && (!settings.offsets[currentTrack.id] || settings.offsets[currentTrack.id] === 0)) {
+          const commOffset = lyricsResult.sharedOffset;
+          setSettings((prev) => ({
+            ...prev,
+            offsets: {
+              ...prev.offsets,
+              [currentTrack.id]: commOffset,
+            },
+          }));
+        }
+      } catch {}
+    }
+  }, [currentTrack?.id, lyricsResult?.sharedOffset]);
+
+  // Apply offset and update both settings and per-videoId localStorage key
+  const applyOffset = useCallback(
+    (newOffset: number, description?: string) => {
+      if (!currentTrack) return;
+      const clamped = Math.max(-120, Math.min(120, Number(newOffset.toFixed(1))));
+      const prev = settings.offsets[currentTrack.id] || 0;
+
+      const newSettings: LyricsSettings = {
+        ...settings,
+        offsets: {
+          ...settings.offsets,
+          [currentTrack.id]: clamped,
+        },
+      };
+      setSettings(newSettings);
+      saveLyricsSettings(newSettings);
+
+      try {
+        localStorage.setItem(`chillify_lyric_offset:${currentTrack.id}`, String(clamped));
+      } catch {}
+
+      // Anonymously share offset to /api/lyrics/offset
+      fetch('/api/lyrics/offset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: currentTrack.id,
+          offsetSeconds: clamped,
+        }),
+      }).catch(() => {});
+
+      setToast({
+        message: description
+          ? `${description} (${clamped > 0 ? '+' : ''}${clamped}s)`
+          : `Offset set to ${clamped > 0 ? '+' : ''}${clamped}s`,
+        undoOffset: prev,
+      });
+    },
+    [currentTrack, settings]
+  );
+
+  // Undo previous offset action
+  const handleUndo = useCallback(() => {
+    if (toast?.undoOffset !== undefined && currentTrack) {
+      const prev = toast.undoOffset;
+      applyOffset(prev, 'Reverted offset');
+      setToast(null);
+    }
+  }, [toast, currentTrack, applyOffset]);
+
+  // Toast auto-dismiss timeout (6 seconds)
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Tap-to-sync click handler: offset = nominal_line_start - current_playback_time
+  const handleLineTapToSync = useCallback(
+    (line: SyncedLyricLine) => {
+      if (!currentTrack) return;
+      const now = getCurrentTime?.() ?? currentTime ?? 0;
+      const offset = Number((line.start - now).toFixed(1));
+      const lineSnippet = line.words.map((w: LyricWord) => w.text).join(' ').slice(0, 22);
+      applyOffset(offset, `Synced to "${lineSnippet}..."`);
+      setIsTapToSyncMode(false);
+    },
+    [currentTrack, getCurrentTime, currentTime, applyOffset]
+  );
 
   // Sync Engine Hook (runs on requestAnimationFrame, updates CSS vars on stage)
   const { lineIndex, wordIndex } = useLyricsSync({
@@ -331,9 +522,36 @@ export default function LyricsPage() {
     return `Source: ${name} (${typeStr})`;
   }, [lyricsResult]);
 
+  // Clean metadata display info (no duplicated featured artists, clean title & artist)
+  const cleanDisplayInfo = useMemo(() => {
+    if (!currentTrack || !currentTrack.title) return null;
+    return formatCleanDisplayTrack(currentTrack.title, currentTrack.artist);
+  }, [currentTrack]);
+
+  // Only show "Matched: ..." when matched title/artist differs from the cleaned display
+  const showMatchedDiff = useMemo(() => {
+    if (!lyricsResult?.matchedTitle || !cleanDisplayInfo) return false;
+    const normMatched = `${normalizeString(lyricsResult.matchedArtist || '')}::${normalizeString(lyricsResult.matchedTitle)}`;
+    const normClean = `${normalizeString(cleanDisplayInfo.cleanArtist)}::${normalizeString(cleanDisplayInfo.cleanTitle)}`;
+    return normMatched !== normClean;
+  }, [lyricsResult, cleanDisplayInfo]);
+
   // Render the selected style component
   const renderStyleStage = () => {
     if (!lyricsResult?.lines || lyricsResult.lines.length === 0) return null;
+
+    // In Tap-to-sync mode, always display ClassicStage so all lines are visible and clickable
+    if (isTapToSyncMode) {
+      return (
+        <ClassicStage
+          lines={lyricsResult.lines}
+          activeLineIndex={lineIndex}
+          activeWordIndex={wordIndex}
+          onLineClick={handleLineTapToSync}
+          isTapToSyncActive={true}
+        />
+      );
+    }
 
     const commonProps = {
       lines: lyricsResult.lines,
@@ -368,6 +586,8 @@ export default function LyricsPage() {
             lines={lyricsResult.lines}
             activeLineIndex={lineIndex}
             activeWordIndex={wordIndex}
+            onLineClick={handleLineTapToSync}
+            isTapToSyncActive={false}
           />
         );
     }
@@ -413,27 +633,48 @@ export default function LyricsPage() {
             🎙️
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-2 flex-wrap">
-              <span className="truncate">{currentTrack?.title || 'No song playing'}</span>
-              {lyricsResult?.synced === 'line' && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-                  Synced
+            {cleanDisplayInfo ? (
+              <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-2 flex-wrap">
+                <span
+                  title={`Original YouTube Title: ${cleanDisplayInfo.rawTitle}`}
+                  className="truncate cursor-default hover:text-zinc-200 transition-colors"
+                >
+                  {cleanDisplayInfo.cleanTitle}
                 </span>
-              )}
-              {lyricsResult?.synced === 'none' && lyricsResult.plainLyrics && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                  Unsynced
-                </span>
-              )}
-              {provenanceLabel && (
-                <span className="text-[10px] text-zinc-400 bg-zinc-900/80 px-2 py-0.5 rounded-full border border-zinc-800 shrink-0 hidden sm:inline-block">
-                  {provenanceLabel}
-                </span>
-              )}
-            </h2>
+                {lyricsResult?.synced === 'line' && (
+                  lyricsResult.sharedOffset !== undefined && currentOffset === lyricsResult.sharedOffset ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                      Synced (community offset: {lyricsResult.sharedOffset > 0 ? `+${lyricsResult.sharedOffset}` : lyricsResult.sharedOffset}s)
+                    </span>
+                  ) : lyricsResult.durationMismatch ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 animate-pulse">
+                      Synced (may be off by ~{Math.abs(lyricsResult.diffSeconds || 0)}s)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                      Synced
+                    </span>
+                  )
+                )}
+                {lyricsResult?.synced === 'none' && lyricsResult.plainLyrics && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                    Unsynced
+                  </span>
+                )}
+                {provenanceLabel && (
+                  <span className="text-[10px] text-zinc-400 bg-zinc-900/80 px-2 py-0.5 rounded-full border border-zinc-800 shrink-0 hidden sm:inline-block">
+                    {provenanceLabel}
+                  </span>
+                )}
+              </h2>
+            ) : (
+              <h2 className="text-sm sm:text-base font-bold text-white truncate">
+                No song playing
+              </h2>
+            )}
             <p className="text-xs text-[#888888] truncate flex items-center gap-2">
-              <span>{currentTrack?.artist || 'Play a track to view live synced lyrics'}</span>
-              {lyricsResult?.matchedTitle && lyricsResult.matchedArtist && (
+              <span>{cleanDisplayInfo?.cleanArtist || currentTrack?.artist || 'Play a track to view live synced lyrics'}</span>
+              {showMatchedDiff && lyricsResult?.matchedTitle && lyricsResult?.matchedArtist && (
                 <span className="text-zinc-500 hidden md:inline truncate">
                   (Matched: &ldquo;{lyricsResult.matchedArtist} - {lyricsResult.matchedTitle}&rdquo;)
                 </span>
@@ -444,16 +685,40 @@ export default function LyricsPage() {
 
         {/* Right: Actions, Settings Menu & Fullscreen */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* If using community lyrics, allow removal */}
+          {/* If using community lyrics, allow report or removal */}
           {lyricsResult?.source === 'community' && (
+            <>
+              <button
+                type="button"
+                onClick={handleReportCommunityLyrics}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/50 text-rose-300 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                title="Report incorrect or vandalized community lyrics (3 reports reverts track)"
+              >
+                <span>🚩</span>
+                <span className="hidden sm:inline">Report</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveCommunityLyrics}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                title="Revert to automatic provider lyrics"
+              >
+                <span>🗑️</span>
+                <span className="hidden sm:inline">Revert custom</span>
+              </button>
+            </>
+          )}
+
+          {/* Sync song button for unsynced plain lyrics */}
+          {lyricsResult?.synced === 'none' && lyricsResult.plainLyrics && (
             <button
               type="button"
-              onClick={handleRemoveCommunityLyrics}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-1 cursor-pointer transition-colors"
-              title="Revert to automatic provider lyrics"
+              onClick={() => setShowSyncEditor(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Open sync recorder to time lyrics"
             >
-              <span>🗑️</span>
-              <span className="hidden sm:inline">Revert custom</span>
+              <span>⏱️</span>
+              <span className="hidden sm:inline font-semibold">Sync song</span>
             </button>
           )}
 
@@ -467,6 +732,31 @@ export default function LyricsPage() {
             >
               <span>➕</span>
               <span className="hidden sm:inline">Add lyrics</span>
+            </button>
+          )}
+
+          {/* Wrong timing? button */}
+          {currentTrack && lyricsResult && lyricsResult.lines.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowOffsetAssistant((prev) => !prev);
+                setIsBannerDismissed(false);
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showOffsetAssistant || (lyricsResult.durationMismatch && !isBannerDismissed)
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                  : 'bg-[#161616] hover:bg-[#242424] border-[#282828] text-zinc-400 hover:text-white'
+              }`}
+              title="Adjust sync timing offset"
+            >
+              <span>⏱️</span>
+              <span className="hidden sm:inline">Wrong timing?</span>
+              {currentOffset !== 0 && (
+                <span className="text-[10px] font-mono px-1 rounded bg-black/50 text-amber-300">
+                  {currentOffset > 0 ? `+${currentOffset}` : currentOffset}s
+                </span>
+              )}
             </button>
           )}
 
@@ -508,20 +798,160 @@ export default function LyricsPage() {
         </div>
       </div>
 
-      {/* Duration Mismatch Warning Banner */}
-      {lyricsResult?.durationMismatch && (
-        <div className="bg-amber-950/60 border-b border-amber-800/40 px-6 py-2 text-xs text-amber-300 flex items-center justify-between z-20 backdrop-blur-md">
-          <span className="flex items-center gap-2">
-            <span>⚠️</span>
-            <span>Duration differs from recording. You can fine-tune sync with the Timing Offset slider in Settings.</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowFixModal(true)}
-            className="underline hover:text-white text-xs font-semibold cursor-pointer shrink-0 ml-4"
-          >
-            Fix search
-          </button>
+      {/* Offset Assistant Banner (shown when durationMismatch or user clicked 'Wrong timing?') */}
+      {currentTrack && lyricsResult && lyricsResult.lines.length > 0 && ((lyricsResult.durationMismatch && !isBannerDismissed) || showOffsetAssistant) && (
+        <div className="bg-[#15120c]/95 border-b border-amber-500/25 px-4 sm:px-6 py-3 text-xs text-zinc-200 z-30 backdrop-blur-md flex flex-col gap-2.5 shadow-lg animate-fade-in">
+          {/* Top row: Diff explanation + Quick shift buttons + Tap to sync */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 font-bold text-amber-400 shrink-0">
+                <span>⏱️</span>
+                <span>Offset Assistant</span>
+              </span>
+
+              {lyricsResult.durationMismatch && (
+                <span className="text-zinc-400 text-[11px] hidden md:inline">
+                  (Duration differs by ~{Math.abs(lyricsResult.diffSeconds || 0)}s)
+                </span>
+              )}
+
+              {/* One-click shift buttons when diffSeconds is known */}
+              {lyricsResult.diffSeconds !== undefined && Math.abs(lyricsResult.diffSeconds) > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => applyOffset(-Math.abs(lyricsResult.diffSeconds || 0), `Shifted by -${Math.abs(lyricsResult.diffSeconds || 0)}s`)}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold cursor-pointer transition-colors text-[11px]"
+                    title="Delay lyrics so they match a video with an intro"
+                  >
+                    Shift lyrics by -{Math.abs(lyricsResult.diffSeconds)}s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyOffset(Math.abs(lyricsResult.diffSeconds || 0), `Shifted by +${Math.abs(lyricsResult.diffSeconds || 0)}s`)}
+                    className="px-2 py-1 rounded-lg bg-[#222222] hover:bg-[#2c2c2c] border border-[#333333] text-zinc-300 font-medium cursor-pointer transition-colors text-[11px]"
+                    title="Advance lyrics earlier"
+                  >
+                    Try other direction (+{Math.abs(lyricsResult.diffSeconds)}s)
+                  </button>
+                </div>
+              )}
+
+              {/* Tap to sync button */}
+              <button
+                type="button"
+                onClick={() => setIsTapToSyncMode((prev) => !prev)}
+                className={`px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all text-[11px] flex items-center gap-1.5 ${
+                  isTapToSyncMode
+                    ? 'bg-amber-400 text-black border-amber-300 animate-pulse shadow-md'
+                    : 'bg-[#222222] hover:bg-[#2c2c2c] border-[#383838] text-zinc-200'
+                }`}
+                title="Click any lyric line when you hear it start to align sync"
+              >
+                <span>🎯</span>
+                <span>{isTapToSyncMode ? 'Tap any line below...' : 'Tap to sync'}</span>
+              </button>
+            </div>
+
+            {/* Right actions: Fix search & Dismiss */}
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
+              <button
+                type="button"
+                onClick={() => setShowFixModal(true)}
+                className="text-zinc-400 hover:text-white text-[11px] underline cursor-pointer"
+              >
+                Fix search
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBannerDismissed(true);
+                  setShowOffsetAssistant(false);
+                  setIsTapToSyncMode(false);
+                }}
+                className="text-zinc-500 hover:text-white p-1 cursor-pointer text-xs"
+                title="Dismiss offset assistant"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom row: Manual slider (-120s to +120s), Step toggle (0.1s / 1s), Readout & Reset */}
+          <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-[#2a2416]/60">
+            <span className="text-[11px] text-zinc-400 font-medium shrink-0">
+              Manual offset:
+            </span>
+
+            <div className="flex-1 min-w-[140px] max-w-xs flex items-center gap-2">
+              <span className="text-[10px] text-zinc-500 font-mono">-120s</span>
+              <input
+                type="range"
+                min={-120}
+                max={120}
+                step={isCoarseStep ? 1 : 0.1}
+                value={currentOffset}
+                onChange={(e) => applyOffset(parseFloat(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer h-1.5 bg-[#252525] rounded-lg"
+              />
+              <span className="text-[10px] text-zinc-500 font-mono">+120s</span>
+            </div>
+
+            {/* Step Toggle: Fine (0.1s) vs Coarse (1s) */}
+            <div className="flex items-center rounded-lg bg-[#1c1c1c] border border-[#2e2e2e] p-0.5 text-[10px] shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCoarseStep(false)}
+                className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
+                  !isCoarseStep ? 'bg-[#333333] text-white font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                0.1s Fine
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCoarseStep(true)}
+                className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
+                  isCoarseStep ? 'bg-[#333333] text-white font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                1s Coarse
+              </button>
+            </div>
+
+            {/* Number Display & Reset */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-mono text-xs font-bold text-amber-300 min-w-[50px] text-right">
+                {currentOffset > 0 ? `+${currentOffset.toFixed(1)}` : currentOffset.toFixed(1)}s
+              </span>
+
+              {currentOffset !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => applyOffset(0, 'Reset offset')}
+                  className="px-2 py-0.5 rounded-lg bg-[#222222] hover:bg-[#2c2c2c] border border-[#333333] text-[11px] text-zinc-300 hover:text-white cursor-pointer transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tap-to-sync Active Hint */}
+          {isTapToSyncMode && (
+            <div className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 flex items-center justify-between animate-fade-in">
+              <span>
+                🎧 Listen to the song. As soon as the artist sings a line, click that line below to instantly lock in timing!
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTapToSyncMode(false)}
+                className="underline hover:text-white ml-2 shrink-0 cursor-pointer text-[10px]"
+              >
+                Cancel tap-to-sync
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -592,6 +1022,27 @@ export default function LyricsPage() {
           (!lyricsResult?.lines || lyricsResult.lines.length === 0) &&
           lyricsResult?.plainLyrics && (
             <div className="w-full h-full overflow-y-auto px-6 sm:px-16 py-12 flex flex-col items-center">
+              {/* Prominent "Sync this song" Callout Banner (Part F) */}
+              <div className="max-w-xl w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 mb-8 rounded-2xl bg-[#15120c] border border-amber-500/35 shadow-xl">
+                <div>
+                  <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <span>⚡</span>
+                    <span>Turn this into live synced lyrics</span>
+                  </h4>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                    Listen to the track and tap spacebar to record line timings with the Sync Recorder.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSyncEditor(true)}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-lg transition-transform active:scale-95 shrink-0"
+                >
+                  <span>⏱️</span>
+                  <span>Sync this song</span>
+                </button>
+              </div>
+
               <div className="max-w-xl w-full space-y-4 whitespace-pre-line text-sm sm:text-base text-zinc-300 leading-relaxed text-center sm:text-left">
                 {lyricsResult.plainLyrics}
               </div>
@@ -808,6 +1259,45 @@ export default function LyricsPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Sync Editor Modal (Part F) */}
+      {showSyncEditor && currentTrack && lyricsResult?.plainLyrics && (
+        <SyncEditorModal
+          isOpen={showSyncEditor}
+          onClose={() => setShowSyncEditor(false)}
+          rawLyricsText={lyricsResult.plainLyrics}
+          songTitle={cleanDisplayInfo?.cleanTitle || currentTrack.title}
+          songArtist={cleanDisplayInfo?.cleanArtist || currentTrack.artist}
+          duration={currentTrack.duration}
+          onSave={handleSaveSyncEditor}
+        />
+      )}
+
+      {/* Floating Undo Toast */}
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#181818]/95 border border-[#333333] shadow-2xl px-4 py-2.5 rounded-2xl flex items-center gap-3 backdrop-blur-md animate-fade-in text-xs text-white">
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="text-amber-400">⏱️</span>
+            {toast.message}
+          </span>
+          {toast.undoOffset !== undefined && (
+            <button
+              type="button"
+              onClick={handleUndo}
+              className="px-2.5 py-1 bg-white hover:bg-zinc-200 text-black font-bold rounded-xl cursor-pointer text-xs transition-colors shadow"
+            >
+              Undo
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-zinc-500 hover:text-white ml-1 p-0.5 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

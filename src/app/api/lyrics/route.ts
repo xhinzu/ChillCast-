@@ -58,6 +58,18 @@ export async function GET(req: NextRequest) {
   console.debug(`[lyrics-lookup] Query: rawTitle="${rawTitle}", rawArtist="${rawArtist}", duration=${duration}s, trackId="${trackId}"`);
   console.debug(`[lyrics-lookup] Generated ${candidates.length} candidates:`, candidates.map(c => `[${c.artist} - ${c.title} (conf: ${c.confidence.toFixed(2)})]`).join(', '));
 
+  const attachSharedOffset = async (data: LyricsResult): Promise<LyricsResult> => {
+    if (!trackId) return data;
+    try {
+      const { getSharedOffset } = await import('@/lib/lyrics/offsetRedis');
+      const so = await getSharedOffset(trackId);
+      if (so !== null && so !== undefined) {
+        return { ...data, sharedOffset: so };
+      }
+    } catch {}
+    return data;
+  };
+
   // Bypass cache if requested
   if (bypassCache) {
     serverLyricsCache.delete(posCacheKey);
@@ -67,7 +79,8 @@ export async function GET(req: NextRequest) {
     const cachedPos = serverLyricsCache.get(posCacheKey);
     if (cachedPos && cachedPos.expiresAt > Date.now()) {
       console.debug(`[lyrics-lookup] Positive cache hit for key: ${posCacheKey}`);
-      return NextResponse.json(cachedPos.data, { status: cachedPos.status });
+      const withOffset = await attachSharedOffset(cachedPos.data);
+      return NextResponse.json(withOffset, { status: cachedPos.status });
     }
 
     // Check negative cache (<= 10 mins)
@@ -108,7 +121,7 @@ export async function GET(req: NextRequest) {
           expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
         });
 
-        return NextResponse.json(instrumentalResult);
+        return NextResponse.json(await attachSharedOffset(instrumentalResult));
       }
 
       // Handle synced lyrics
@@ -127,6 +140,7 @@ export async function GET(req: NextRequest) {
           matchedTitle: rec.trackName,
           matchedArtist: rec.artistName,
           durationMismatch: lrclibMatch.durationMismatch,
+          diffSeconds: lrclibMatch.diffSeconds,
         };
 
         serverLyricsCache.set(posCacheKey, {
@@ -135,7 +149,7 @@ export async function GET(req: NextRequest) {
           expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
         });
 
-        return NextResponse.json(successResult);
+        return NextResponse.json(await attachSharedOffset(successResult));
       }
 
       // Handle unsynced plain lyrics on LRCLIB
@@ -151,6 +165,7 @@ export async function GET(req: NextRequest) {
           matchedTitle: rec.trackName,
           matchedArtist: rec.artistName,
           durationMismatch: lrclibMatch.durationMismatch,
+          diffSeconds: lrclibMatch.diffSeconds,
         };
 
         serverLyricsCache.set(posCacheKey, {
@@ -159,16 +174,17 @@ export async function GET(req: NextRequest) {
           expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
         });
 
-        return NextResponse.json(plainResult);
+        return NextResponse.json(await attachSharedOffset(plainResult));
       }
     }
 
     // -------------------------------------------------------------
     // Step 2: Fallback to lyrics.ovh (Plain lyrics API)
+    // Only query when normalized artist/title is confident (confidence >= 0.7)
     // -------------------------------------------------------------
     console.debug(`[lyrics-lookup] LRCLIB yielded no lyrics. Trying lyrics.ovh fallback across candidates...`);
     for (const cand of candidates.slice(0, 3)) {
-      if (cand.artist && cand.title) {
+      if (cand.confidence >= 0.7 && cand.artist.trim() && cand.title.trim()) {
         const ovhLyrics = await fetchLyricsOvh(cand.artist, cand.title);
         if (ovhLyrics) {
           console.debug(`[lyrics-lookup] lyrics.ovh hit for "${cand.artist}" - "${cand.title}"`);
@@ -191,7 +207,7 @@ export async function GET(req: NextRequest) {
             expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
           });
 
-          return NextResponse.json(ovhResult);
+          return NextResponse.json(await attachSharedOffset(ovhResult));
         }
       }
     }
@@ -212,7 +228,7 @@ export async function GET(req: NextRequest) {
                 status: 200,
                 expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
               });
-              return NextResponse.json(neteaseResult);
+              return NextResponse.json(await attachSharedOffset(neteaseResult));
             }
           }
         }
@@ -231,7 +247,7 @@ export async function GET(req: NextRequest) {
               status: 200,
               expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
             });
-            return NextResponse.json(ytResult);
+            return NextResponse.json(await attachSharedOffset(ytResult));
           }
         }
       } catch {
@@ -252,7 +268,7 @@ export async function GET(req: NextRequest) {
           status: 200,
           expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
         });
-        return NextResponse.json(communityMatch);
+        return NextResponse.json(await attachSharedOffset(communityMatch));
       }
     } catch {
       // ignore

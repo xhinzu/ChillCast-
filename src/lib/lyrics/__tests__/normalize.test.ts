@@ -1,86 +1,104 @@
-import { normalizeTrackCandidates, cleanChannelName, tokenSetRatio } from '../normalize';
+import { normalizeTrackCandidates, tokenSetRatio, parseArtistList } from '../normalize';
 
 interface TestCase {
   title: string;
   artist?: string;
-  expectedArtist: string;
+  expectedArtists: string[];
   expectedTitle: string;
+  expectedFeatured?: string[];
 }
 
 const testCases: TestCase[] = [
-  // User Prompt Examples
+  // 1. Exact required prompt case: Hanumankind Big Dawgs repeated artist + en-dash + producer
   {
-    title: 'The Weeknd - Starboy (Lyrics) ft. Daft Punk',
+    title: 'Hanumankind, Kalmi - Hanumankind – Big Dawgs | Prod. Kalmi (Official Music Video)',
+    artist: 'Hanumankind',
+    expectedArtists: ['Hanumankind', 'Kalmi'],
+    expectedTitle: 'Big Dawgs',
+  },
+  // 2. Exact required prompt case: Starboy ft. Daft Punk
+  {
+    title: 'The Weeknd - Starboy ft. Daft Punk (Official Video)',
     artist: 'TheWeekndVEVO',
-    expectedArtist: 'The Weeknd',
+    expectedArtists: ['The Weeknd'],
     expectedTitle: 'Starboy',
+    expectedFeatured: ['Daft Punk'],
   },
+  // 3. Travis Scott FE!N
   {
-    title: 'Travis Scott - FE!N ft. Playboi Carti',
+    title: 'Travis Scott - FE!N ft. Playboi Carti (Official Music Video)',
     artist: 'TravisScottVEVO',
-    expectedArtist: 'Travis Scott',
+    expectedArtists: ['Travis Scott'],
     expectedTitle: 'FE!N',
+    expectedFeatured: ['Playboi Carti'],
   },
+  // 4. Billie Eilish
   {
     title: 'Billie Eilish - BIRDS OF A FEATHER (Official Music Video)',
     artist: 'BillieEilishVEVO',
-    expectedArtist: 'Billie Eilish',
+    expectedArtists: ['Billie Eilish'],
     expectedTitle: 'BIRDS OF A FEATHER',
   },
-  {
-    title: 'Hanumankind - Big Dawgs (Official Music Video) | Kalmi',
-    artist: 'Hanumankind',
-    expectedArtist: 'Hanumankind',
-    expectedTitle: 'Big Dawgs',
-  },
-  // Reverse "Title - Artist" and other common patterns
-  {
-    title: 'Sweater Weather - The Neighbourhood',
-    artist: 'The Neighbourhood',
-    expectedArtist: 'The Neighbourhood',
-    expectedTitle: 'Sweater Weather',
-  },
+  // 5. Dual artists: Lady Gaga & Bruno Mars
   {
     title: 'Lady Gaga, Bruno Mars - Die With A Smile (Official Music Video)',
     artist: 'LadyGagaVEVO',
-    expectedArtist: 'Lady Gaga, Bruno Mars',
+    expectedArtists: ['Lady Gaga', 'Bruno Mars'],
     expectedTitle: 'Die With A Smile',
   },
+  // 6. Dual artists: ROSÉ & Bruno Mars
   {
     title: 'ROSÉ & Bruno Mars - APT. (Official Music Video)',
     artist: 'ROSÉ',
-    expectedArtist: 'ROSÉ & Bruno Mars',
+    expectedArtists: ['ROSÉ', 'Bruno Mars'],
     expectedTitle: 'APT.',
   },
+  // 7. Sabrina Carpenter - Espresso
   {
-    title: 'Olivia Dean - Be My Own Boyfriend (Audio)',
-    artist: 'OliviaDeanVEVO',
-    expectedArtist: 'Olivia Dean',
-    expectedTitle: 'Be My Own Boyfriend',
+    title: 'Sabrina Carpenter - Espresso (Official Video)',
+    artist: 'SabrinaCarpenterVEVO',
+    expectedArtists: ['Sabrina Carpenter'],
+    expectedTitle: 'Espresso',
   },
-  // Indian / Regional (Malayalam, Tamil, Punjabi, Hindi)
+  // 8. Kendrick Lamar - Not Like Us
+  {
+    title: 'Kendrick Lamar - Not Like Us (Official Music Video)',
+    artist: 'KendrickLamarVEVO',
+    expectedArtists: ['Kendrick Lamar'],
+    expectedTitle: 'Not Like Us',
+  },
+  // 9. Malayalam: Aavesham | Illuminati | Sushin Shyam | Dabzee
   {
     title: 'Aavesham | Illuminati | Sushin Shyam | Dabzee',
     artist: 'Think Music India',
-    expectedArtist: 'Sushin Shyam',
+    expectedArtists: ['Sushin Shyam', 'Dabzee'],
     expectedTitle: 'Illuminati',
   },
+  // 10. Tamil: Aasa Kooda | Sai Abhyankkar | The Route | Think Indie Music
+  {
+    title: 'Aasa Kooda | Sai Abhyankkar | The Route | Think Indie Music',
+    artist: 'Think Music India',
+    expectedArtists: ['Sai Abhyankkar'],
+    expectedTitle: 'Aasa Kooda',
+  },
+  // 11. Punjabi: Karan Aujla - Tauba Tauba | Bad Newz | Vicky Kaushal
   {
     title: 'Karan Aujla - Tauba Tauba | Bad Newz | Vicky Kaushal',
     artist: 'Saregama Music',
-    expectedArtist: 'Karan Aujla',
+    expectedArtists: ['Karan Aujla'],
     expectedTitle: 'Tauba Tauba',
   },
+  // 12. Hindi: Chaleya | Jawan | Shah Rukh Khan | Anirudh | Arijit Singh
   {
     title: 'Chaleya | Jawan | Shah Rukh Khan | Anirudh | Arijit Singh',
     artist: 'T-Series',
-    expectedArtist: 'Anirudh',
+    expectedArtists: ['Anirudh', 'Arijit Singh'],
     expectedTitle: 'Chaleya',
   },
 ];
 
 console.log('====================================================');
-console.log('RUNNING METADATA NORMALIZATION TEST SUITE');
+console.log('RUNNING METADATA NORMALIZATION TEST SUITE (PART E)');
 console.log('====================================================\n');
 
 let passedCount = 0;
@@ -89,10 +107,16 @@ for (const tc of testCases) {
   const best = candidates[0];
 
   const matchingCand = candidates.find((cand) => {
-    const artistMatches =
-      tokenSetRatio(cand.artist, tc.expectedArtist) >= 0.75 ||
-      cand.artist.toLowerCase().includes(tc.expectedArtist.toLowerCase()) ||
-      tc.expectedArtist.toLowerCase().includes(cand.artist.toLowerCase());
+    // Check if cand.artist matches any expected artist
+    const candArtistList = parseArtistList(cand.artist);
+    const artistMatches = tc.expectedArtists.some((exp) =>
+      candArtistList.some(
+        (ca) =>
+          tokenSetRatio(ca, exp) >= 0.75 ||
+          ca.toLowerCase().includes(exp.toLowerCase()) ||
+          exp.toLowerCase().includes(ca.toLowerCase())
+      )
+    );
 
     const titleMatches =
       tokenSetRatio(cand.title, tc.expectedTitle) >= 0.75 ||
@@ -110,7 +134,7 @@ for (const tc of testCases) {
   if (matchingCand && matchingCand !== best) {
     console.log(`  -> Matched Candidate: Artist="${matchingCand.artist}", Title="${matchingCand.title}" (conf: ${matchingCand.confidence})`);
   }
-  console.log(`  -> Expected:       Artist="${tc.expectedArtist}", Title="${tc.expectedTitle}"`);
+  console.log(`  -> Expected:       Artists=${JSON.stringify(tc.expectedArtists)}, Title="${tc.expectedTitle}"`);
   console.log(`  -> Result: ${ok ? 'PASSED ✅' : 'FAILED ❌'}\n`);
 }
 

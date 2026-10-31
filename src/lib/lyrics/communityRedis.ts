@@ -80,3 +80,33 @@ export async function saveCommunityLyrics(
     return false;
   }
 }
+
+const fallbackReports = new Map<string, number>();
+
+export async function reportCommunityLyrics(
+  trackId: string
+): Promise<{ reportedCount: number; reverted: boolean }> {
+  if (!trackId) return { reportedCount: 0, reverted: false };
+  const redis = getRedisClient();
+
+  if (redis) {
+    try {
+      const key = `chillify:community:reports:${trackId}`;
+      const count = await redis.incr(key);
+      await redis.expire(key, 30 * 24 * 3600);
+
+      if (count >= 3) {
+        await redis.del(`chillify:community:id:${trackId}`);
+        return { reportedCount: count, reverted: true };
+      }
+      return { reportedCount: count, reverted: false };
+    } catch (err) {
+      console.warn('[community-lyrics] Redis report error:', err);
+    }
+  }
+
+  const curr = (fallbackReports.get(trackId) || 0) + 1;
+  fallbackReports.set(trackId, curr);
+  return { reportedCount: curr, reverted: curr >= 3 };
+}
+

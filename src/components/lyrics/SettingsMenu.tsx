@@ -64,19 +64,33 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
     saveLyricsSettings(next);
   };
 
-  const currentOffset = trackId ? settings.offsets[trackId] || 0 : 0;
+  const [isCoarseStep, setIsCoarseStep] = useState<boolean>(false);
+  const currentOffset = trackId ? settings.offsets[trackId] ?? 0 : 0;
 
   const handleOffsetChange = (val: number) => {
     if (!trackId) return;
     const rounded = Math.round(val * 10) / 10;
     const nextOffsets = { ...settings.offsets, [trackId]: rounded };
+    try {
+      localStorage.setItem(`chillify_lyric_offset:${trackId}`, String(rounded));
+    } catch {}
     updateSettings({ offsets: nextOffsets });
+
+    // Anonymously share offset back
+    fetch('/api/lyrics/offset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId: trackId, offsetSeconds: rounded }),
+    }).catch(() => {});
   };
 
   const handleOffsetReset = () => {
     if (!trackId) return;
     const nextOffsets = { ...settings.offsets };
     delete nextOffsets[trackId];
+    try {
+      localStorage.removeItem(`chillify_lyric_offset:${trackId}`);
+    } catch {}
     updateSettings({ offsets: nextOffsets });
   };
 
@@ -404,25 +418,35 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
                 Lyric Timing Offset
               </span>
-              <button
-                type="button"
-                onClick={handleOffsetReset}
-                className="text-[10px] text-zinc-400 hover:text-white underline cursor-pointer"
-              >
-                Reset
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCoarseStep(!isCoarseStep)}
+                  className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#1e1e1e] hover:bg-[#282828] text-zinc-300 border border-zinc-700 cursor-pointer"
+                  title="Toggle step between fine (0.1s) and coarse (1s)"
+                >
+                  {isCoarseStep ? 'Step: 1s' : 'Step: 0.1s'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOffsetReset}
+                  className="text-[10px] text-zinc-400 hover:text-white underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-zinc-400">
+              <span className="text-zinc-200 font-semibold font-mono">
                 {currentOffset > 0 ? `+${currentOffset.toFixed(1)}s` : `${currentOffset.toFixed(1)}s`}
               </span>
-              <span className="text-[10px] text-zinc-500">Per-track synchronization</span>
+              <span className="text-[10px] text-zinc-500">Range: ±120s</span>
             </div>
             <input
               type="range"
-              min="-3.0"
-              max="3.0"
-              step="0.1"
+              min="-120.0"
+              max="120.0"
+              step={isCoarseStep ? '1.0' : '0.1'}
               value={currentOffset}
               onChange={(e) => handleOffsetChange(parseFloat(e.target.value))}
               disabled={!trackId}

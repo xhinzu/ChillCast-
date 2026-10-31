@@ -25,6 +25,8 @@ export interface LyricsResult {
   matchedTitle?: string;
   matchedArtist?: string;
   durationMismatch?: boolean;
+  diffSeconds?: number;
+  sharedOffset?: number;
   error?: string;
 }
 

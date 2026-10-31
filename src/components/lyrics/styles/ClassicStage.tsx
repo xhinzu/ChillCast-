@@ -9,6 +9,8 @@ interface ClassicStageProps {
   activeLineIndex: number;
   activeWordIndex: number;
   autoScroll?: boolean;
+  onLineClick?: (line: SyncedLyricLine, index: number) => void;
+  isTapToSyncActive?: boolean;
 }
 
 export default function ClassicStage({
@@ -16,6 +18,8 @@ export default function ClassicStage({
   activeLineIndex,
   activeWordIndex,
   autoScroll = true,
+  onLineClick,
+  isTapToSyncActive = false,
 }: ClassicStageProps) {
   const { seek } = usePlayback();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -73,9 +77,17 @@ export default function ClassicStage({
               if (el) lineRefs.current.set(lIdx, el);
               else lineRefs.current.delete(lIdx);
             }}
-            onClick={() => seek(line.start)}
-            className={`cursor-pointer transition-all duration-300 py-1.5 rounded-2xl group ${
-              isActiveLine
+            onClick={() => {
+              if (isTapToSyncActive && onLineClick) {
+                onLineClick(line, lIdx);
+              } else {
+                seek(line.start);
+              }
+            }}
+            className={`cursor-pointer transition-all duration-300 py-1.5 px-3 rounded-2xl group ${
+              isTapToSyncActive
+                ? 'hover:bg-amber-500/20 hover:ring-2 hover:ring-amber-400 cursor-crosshair scale-100 opacity-90'
+                : isActiveLine
                 ? 'scale-100 sm:scale-105 origin-left'
                 : 'opacity-40 hover:opacity-80 scale-95 origin-left'
             }`}
