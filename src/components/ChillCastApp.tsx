@@ -11,23 +11,22 @@ import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 
-function ChillifyShell() {
+function MyuJikuShell() {
   const { togglePlay, currentTrack } = usePlayback();
   const [activeView, setActiveView] = useState<string>('home');
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
-  const [searchViewMode, setSearchViewMode] = useState<'list' | 'grid'>('list');
-
-  // Load search view preference from localStorage
-  useEffect(() => {
+  const [searchViewMode, setSearchViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window === 'undefined') return 'list';
     try {
       const saved = localStorage.getItem('chillify_search_view_mode');
       if (saved === 'grid' || saved === 'list') {
-        setSearchViewMode(saved);
+        return saved;
       }
     } catch {}
-  }, []);
+    return 'list';
+  });
 
   const handleSetSearchViewMode = (mode: 'list' | 'grid') => {
     setSearchViewMode(mode);
@@ -152,7 +151,7 @@ export default function ChillCastApp() {
   return (
     <PlaybackProvider>
       <AmbientProvider>
-        <ChillifyShell />
+        <MyuJikuShell />
       </AmbientProvider>
     </PlaybackProvider>
   );

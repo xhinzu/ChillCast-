@@ -46,6 +46,9 @@ export default function SpotifyLyricsView({ onClose }: { onClose: () => void }) 
       if (currentTrack.artist && currentTrack.artist !== 'YouTube Artist') {
         params.set('artist', currentTrack.artist);
       }
+      if (currentTrack.id) {
+        params.set('id', currentTrack.id);
+      }
       if (currentTrack.duration > 0) {
         params.set('duration', currentTrack.duration.toString());
       }

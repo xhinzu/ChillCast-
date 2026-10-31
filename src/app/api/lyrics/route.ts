@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTrackCandidates, normalizeString, CandidatePair } from '@/lib/lyrics/normalize';
 import { searchLrclibWithCandidates, RankedResult } from '@/lib/lyrics/searchLrclib';
 import { fetchLyricsOvh } from '@/lib/lyrics/providers/lyricsOvh';
-import { parseLrc } from '@/lib/lyrics/parseLrc';
-import { deriveWordTimingsFromLrc } from '@/lib/lyrics/wordTiming';
+import { parseEnhancedLrc } from '@/lib/lyrics/parseEnhancedLrc';
 import { LyricsResult } from '@/lib/lyrics/providers/types';
 
 // In-memory server-side cache
@@ -51,11 +50,52 @@ export async function GET(req: NextRequest) {
   const normKeyArtist = normalizeString(primaryCandidate.artist);
   const normKeyTitle = normalizeString(primaryCandidate.title);
 
-  const posCacheKey = `pos:${trackId || 'any'}:${normKeyArtist}::${normKeyTitle}`;
-  const negCacheKey = `neg:${normKeyArtist}::${normKeyTitle}`;
+  const expFlag = process.env.LYRICS_EXPERIMENTAL_PROVIDERS === 'true' ? 'exp1' : 'exp0';
+  const posCacheKey = `pos:${expFlag}:${trackId || 'any'}:${normKeyArtist}::${normKeyTitle}`;
+  const negCacheKey = `neg:${expFlag}:${normKeyArtist}::${normKeyTitle}`;
+
+  // Helper: Try aligning plain lyrics with YouTube caption timing (experimental)
+  const tryAlignWithCaptions = async (
+    plainText: string,
+    videoId: string,
+    targetDuration?: number,
+    tName?: string,
+    aName?: string
+  ): Promise<LyricsResult | null> => {
+    if (process.env.LYRICS_EXPERIMENTAL_PROVIDERS !== 'true' || !videoId) {
+      return null;
+    }
+    try {
+      const { fetchYouTubeCaptionCues } = await import('@/lib/lyrics/providers/ytCaptions');
+      const { alignPlainLyricsToCaptions } = await import('@/lib/lyrics/alignCaptions');
+
+      const cues = await fetchYouTubeCaptionCues(videoId, targetDuration);
+      if (!cues || cues.length === 0) return null;
+
+      const aligned = alignPlainLyricsToCaptions(plainText, cues, targetDuration);
+      if (!aligned || aligned.lines.length === 0) return null;
+
+      console.debug(`[lyrics-lookup] Successfully aligned plain lyrics with YouTube captions for trackId ${videoId} (quality: ${aligned.qualityScore})`);
+      return {
+        source: 'plain + captions timing',
+        synced: aligned.synced,
+        lines: aligned.lines,
+        plainLyrics: plainText,
+        instrumental: false,
+        trackName: tName,
+        artistName: aName,
+        matchedTitle: tName,
+        matchedArtist: aName,
+        durationMismatch: false,
+      };
+    } catch (err) {
+      console.debug('[lyrics-lookup] Caption alignment failed or timed out:', err);
+      return null;
+    }
+  };
 
   // Log diagnostic lookup details
-  console.debug(`[lyrics-lookup] Query: rawTitle="${rawTitle}", rawArtist="${rawArtist}", duration=${duration}s, trackId="${trackId}"`);
+  console.debug(`[lyrics-lookup] Query: rawTitle="${rawTitle}", rawArtist="${rawArtist}", duration=${duration}s, trackId="${trackId}", exp=${process.env.LYRICS_EXPERIMENTAL_PROVIDERS === 'true'}`);
   console.debug(`[lyrics-lookup] Generated ${candidates.length} candidates:`, candidates.map(c => `[${c.artist} - ${c.title} (conf: ${c.confidence.toFixed(2)})]`).join(', '));
 
   const attachSharedOffset = async (data: LyricsResult): Promise<LyricsResult> => {
@@ -126,14 +166,14 @@ export async function GET(req: NextRequest) {
 
       // Handle synced lyrics
       if (rec.syncedLyrics && rec.syncedLyrics.trim()) {
-        const parsedLines = parseLrc(rec.syncedLyrics);
-        const derivedLines = deriveWordTimingsFromLrc(parsedLines, duration || rec.duration);
+        const parsed = parseEnhancedLrc(rec.syncedLyrics, { songDuration: duration || rec.duration });
 
         const successResult: LyricsResult = {
           source: 'lrclib',
-          synced: 'line',
-          lines: derivedLines,
+          synced: parsed.synced,
+          lines: parsed.lines,
           plainLyrics: rec.plainLyrics || undefined,
+          rawText: rec.syncedLyrics,
           instrumental: false,
           trackName: rec.trackName,
           artistName: rec.artistName,
@@ -154,11 +194,20 @@ export async function GET(req: NextRequest) {
 
       // Handle unsynced plain lyrics on LRCLIB
       if (rec.plainLyrics && rec.plainLyrics.trim()) {
-        const plainResult: LyricsResult = {
+        const plainText = rec.plainLyrics.trim();
+        const alignedResult = await tryAlignWithCaptions(
+          plainText,
+          trackId,
+          duration || rec.duration,
+          rec.trackName,
+          rec.artistName
+        );
+
+        const finalResult: LyricsResult = alignedResult || {
           source: 'lrclib',
           synced: 'none',
           lines: [],
-          plainLyrics: rec.plainLyrics.trim(),
+          plainLyrics: plainText,
           instrumental: false,
           trackName: rec.trackName,
           artistName: rec.artistName,
@@ -169,12 +218,12 @@ export async function GET(req: NextRequest) {
         };
 
         serverLyricsCache.set(posCacheKey, {
-          data: plainResult,
+          data: finalResult,
           status: 200,
           expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
         });
 
-        return NextResponse.json(await attachSharedOffset(plainResult));
+        return NextResponse.json(await attachSharedOffset(finalResult));
       }
     }
 
@@ -188,7 +237,15 @@ export async function GET(req: NextRequest) {
         const ovhLyrics = await fetchLyricsOvh(cand.artist, cand.title);
         if (ovhLyrics) {
           console.debug(`[lyrics-lookup] lyrics.ovh hit for "${cand.artist}" - "${cand.title}"`);
-          const ovhResult: LyricsResult = {
+          const alignedResult = await tryAlignWithCaptions(
+            ovhLyrics,
+            trackId,
+            duration,
+            cand.title,
+            cand.artist
+          );
+
+          const finalResult: LyricsResult = alignedResult || {
             source: 'lyrics.ovh',
             synced: 'none',
             lines: [],
@@ -202,12 +259,12 @@ export async function GET(req: NextRequest) {
           };
 
           serverLyricsCache.set(posCacheKey, {
-            data: ovhResult,
+            data: finalResult,
             status: 200,
             expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
           });
 
-          return NextResponse.json(await attachSharedOffset(ovhResult));
+          return NextResponse.json(await attachSharedOffset(finalResult));
         }
       }
     }
@@ -230,24 +287,6 @@ export async function GET(req: NextRequest) {
               });
               return NextResponse.json(await attachSharedOffset(neteaseResult));
             }
-          }
-        }
-      } catch {
-        // Experimental provider error ignored
-      }
-
-      try {
-        if (trackId) {
-          const { fetchYouTubeCaptions } = await import('@/lib/lyrics/providers/youtubeCaptions');
-          const ytResult = await fetchYouTubeCaptions(trackId);
-          if (ytResult && ytResult.lines.length > 0) {
-            console.debug(`[lyrics-lookup] YouTube captions provider hit for trackId ${trackId}`);
-            serverLyricsCache.set(posCacheKey, {
-              data: ytResult,
-              status: 200,
-              expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
-            });
-            return NextResponse.json(await attachSharedOffset(ytResult));
           }
         }
       } catch {

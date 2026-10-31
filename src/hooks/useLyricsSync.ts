@@ -28,7 +28,6 @@ export function useLyricsSync({
     getCurrentTime,
     getPlaybackRate,
     currentTime,
-    activeAdapter,
   } = usePlayback();
 
   // Low-frequency React state: ONLY updates when line or word index changes!

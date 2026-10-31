@@ -101,7 +101,7 @@ export async function fetchAllLrclibCandidates(
   }
 
   // Execute in parallel
-  const promises = searchUrls.map((u) => fetchLrclibJson<any>(u, 5500));
+  const promises = searchUrls.map((u) => fetchLrclibJson<LRCLIBRecord | LRCLIBRecord[]>(u, 5500));
   const settled = await Promise.allSettled(promises);
 
   const seenIds = new Set<number>();
@@ -204,6 +204,13 @@ export function rankCandidates(
       return a.tier - b.tier;
     }
 
+    // In Tier 4, prefer synced lyrics over plain lyrics if available
+    if (a.tier === 4 && b.tier === 4) {
+      if (a.hasSynced !== b.hasSynced) {
+        return a.hasSynced ? -1 : 1;
+      }
+    }
+
     // Within same tier:
     // If similarity difference is substantial (> 0.15), higher similarity wins
     const simDiff = Math.abs(a.simScore - b.simScore);
@@ -261,11 +268,11 @@ export async function searchLrclibWithCandidates(
       }
     }
 
-    // If we already have records from the top candidate, rank them
+    // If we already have records from this candidate, check if Tier 1 (<= 3s) is found
     if (allRecords.length > 0) {
       const best = rankCandidates(allRecords, cand.title, cand.artist, targetDuration);
-      // If Tier 1 or Tier 2 found, return immediately
-      if (best && (best.tier === 1 || best.tier === 2)) {
+      // Return immediately only if Tier 1 (closest duration match <= 3s) is found
+      if (best && best.tier === 1) {
         return best;
       }
     }

@@ -8,7 +8,7 @@
  * This provider is only active when LYRICS_EXPERIMENTAL_PROVIDERS=true is explicitly set.
  */
 
-import { LyricsResult, SyncedLyricLine } from './types';
+import { LyricsResult } from './types';
 import { deriveWordTimingsFromLrc } from '../wordTiming';
 
 interface CaptionTrackInfo {
@@ -40,14 +40,20 @@ export async function fetchYouTubeCaptions(videoId: string): Promise<LyricsResul
     const match = html.match(/ytInitialPlayerResponse\s*=\s*({.+?});(?:var|<\/script>)/);
     if (!match || !match[1]) return null;
 
-    let playerResponse: any;
+    let playerResponse: {
+      captions?: {
+        playerCaptionsTracklistRenderer?: {
+          captionTracks?: CaptionTrackInfo[];
+        };
+      };
+    } | null = null;
     try {
       playerResponse = JSON.parse(match[1]);
     } catch {
       return null;
     }
 
-    const tracks: CaptionTrackInfo[] =
+    const tracks: CaptionTrackInfo[] | undefined =
       playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
     if (!Array.isArray(tracks) || tracks.length === 0) {
@@ -55,7 +61,7 @@ export async function fetchYouTubeCaptions(videoId: string): Promise<LyricsResul
     }
 
     // Prefer manual English captions, then any English captions, then first available
-    let selectedTrack: CaptionTrackInfo | undefined =
+    const selectedTrack: CaptionTrackInfo | undefined =
       tracks.find((t) => t.languageCode?.startsWith('en') && t.kind !== 'asr') ||
       tracks.find((t) => t.languageCode?.startsWith('en')) ||
       tracks[0];
@@ -85,7 +91,7 @@ export async function fetchYouTubeCaptions(videoId: string): Promise<LyricsResul
     for (const evt of events) {
       if (!evt.segs || !Array.isArray(evt.segs)) continue;
 
-      const segText = evt.segs.map((s: any) => s.utf8 || '').join('').trim();
+      const segText = evt.segs.map((s: { utf8?: string }) => s.utf8 || '').join('').trim();
       if (!segText || segText === '\n') continue;
 
       const start = (evt.tStartMs || 0) / 1000;

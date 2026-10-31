@@ -37,6 +37,7 @@ export interface LyricsSettings {
   iconsEnabled: boolean;
   keepAwake: boolean;
   showOutsideLyricsPage: boolean;
+  fixAllCaps: boolean;
   offsets: Record<string, number>; // trackId -> offset seconds (-3.0 to +3.0)
 }
 
@@ -56,6 +57,7 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   iconsEnabled: true,
   keepAwake: true,
   showOutsideLyricsPage: false,
+  fixAllCaps: false,
   offsets: {},
 };
 

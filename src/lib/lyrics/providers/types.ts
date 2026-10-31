@@ -1,7 +1,14 @@
+export interface LyricSyllable {
+  text: string;
+  start: number; // in seconds
+  end: number;   // in seconds
+}
+
 export interface LyricWord {
   text: string;
   start: number; // in seconds
   end: number;   // in seconds
+  syllables?: LyricSyllable[];
 }
 
 export interface SyncedLyricLine {
@@ -15,10 +22,12 @@ export interface SyncedLyricLine {
 export type LyricSyncType = 'word' | 'line' | 'none';
 
 export interface LyricsResult {
-  source: string; // 'lrclib' | 'lyrics.ovh' | 'community' | 'word-stub' etc.
+  source: string; // 'lrclib' | 'lyrics.ovh' | 'community' | 'user' etc.
   synced: LyricSyncType;
   lines: SyncedLyricLine[];
   plainLyrics?: string;
+  rawText?: string;
+  fixAllCaps?: boolean;
   instrumental?: boolean;
   trackName?: string;
   artistName?: string;

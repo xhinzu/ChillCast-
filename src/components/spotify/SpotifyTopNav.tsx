@@ -64,21 +64,31 @@ export default function SpotifyTopNav({
             setSearchQuery('');
           }}
           className="flex items-center gap-2 cursor-pointer group"
-          title="Chillify Home"
+          title="MyuJiku Home"
         >
-          {/* Wave Icon in Black & Grey Theme */}
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#242424] border border-[#383838] flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105 shrink-0">
-            <svg
-              className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.623.623 0 0 1-.858.207c-2.35-1.436-5.308-1.76-8.794-.963a.625.625 0 0 1-.28-1.218c3.815-.873 7.078-.504 9.725 1.116.295.18.388.567.207.858zm1.224-2.723a.782.782 0 0 1-1.077.257c-2.69-1.654-6.79-2.133-9.972-1.167a.782.782 0 0 1-.462-1.493c3.637-1.104 8.163-.574 11.254 1.326.37.228.487.712.257 1.077zm.105-2.836C14.692 8.95 9.38 8.773 6.302 9.708a.938.938 0 1 1-.548-1.794c3.518-1.069 9.387-.864 13.13 1.36a.938.938 0 0 1-1.029 1.59z" />
-            </svg>
+          {/* MyuJiku Mascot Logo */}
+          <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+            <Image
+              src="/myujiku-logo.png"
+              alt="MyuJiku Logo"
+              width={36}
+              height={36}
+              className="w-full h-full object-contain filter drop-shadow-[0_2px_6px_rgba(255,255,255,0.12)]"
+              priority
+            />
           </div>
-          <span className="font-bold text-base sm:text-lg tracking-tight text-white group-hover:text-zinc-200 transition-colors">
-            Chillify
-          </span>
+
+          {/* MyuJiku Stylized Text */}
+          <div className="relative h-6 sm:h-7 flex items-center transition-transform group-hover:scale-105 shrink-0">
+            <Image
+              src="/myujiku-text.png"
+              alt="MyuJiku"
+              width={78}
+              height={30}
+              className="h-5 sm:h-6 w-auto object-contain"
+              priority
+            />
+          </div>
         </div>
 
         {/* Navigation arrows (Desktop only) */}
@@ -257,7 +267,7 @@ export default function SpotifyTopNav({
                 <CoffeeIcon className="w-3.5 h-3.5 text-amber-300" /> Buy Me a Coffee
               </div>
               <h3 className="text-lg font-bold text-white tracking-tight">
-                Support Chillify
+                Support MyuJiku
               </h3>
               <p className="text-xs text-[#999999]">
                 Scan with <strong className="text-white font-semibold">FamPay</strong> or any UPI App to buy me a coffee!
@@ -285,7 +295,7 @@ export default function SpotifyTopNav({
                 <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[10px] font-bold text-zinc-300 border border-[#333333]">Paytm</span>
               </div>
               <p className="text-[11px] text-[#777777]">
-                Every coffee helps keep Chillify ad-free & hosted. Thank you!
+                Every coffee helps keep MyuJiku ad-free & hosted. Thank you!
               </p>
             </div>
           </div>

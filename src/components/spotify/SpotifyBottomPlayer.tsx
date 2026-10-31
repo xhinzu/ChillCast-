@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
+import Popover from '@/components/common/Popover';
+import Toast from '@/components/common/Toast';
+import AddToPlaylistMenu from './AddToPlaylistMenu';
+import { Z_INDEX } from '@/constants/zIndex';
 import {
   HeartIcon,
   MusicNoteIcon,
@@ -50,13 +54,22 @@ export default function SpotifyBottomPlayer({
 
   const { activeCount } = useAmbient();
 
-  const [isLiked, setIsLiked] = useState<boolean>(false);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [isRepeat, setIsRepeat] = useState<boolean>(false);
 
   // Playlists state for adding current track
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState<boolean>(false);
+  const playlistButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Derive isLiked directly from currentTrack and savedPlaylists
+  const isLiked = Boolean(
+    currentTrack &&
+      savedPlaylists
+        .find((p) => p.id === 'liked-songs')
+        ?.tracks?.some((t) => t.id === currentTrack.id)
+  );
 
   useEffect(() => {
     const loadPlaylists = () => {
@@ -80,51 +93,6 @@ export default function SpotifyBottomPlayer({
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
-
-  const handleAddCurrentTrackToPlaylist = (playlistId: string) => {
-    if (!currentTrack) return;
-    try {
-      const stored = localStorage.getItem('chillify_saved_playlists');
-      const prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
-      const updated = prev.map((p) => {
-        if (p.id === playlistId) {
-          const prevTracks = p.tracks || [];
-          if (prevTracks.some((t) => t.id === currentTrack.id)) return p;
-          const newTrack: CustomPlaylistTrack = {
-            id: currentTrack.id,
-            title: currentTrack.title,
-            artist: currentTrack.artist,
-            duration: formatTime(duration),
-            thumbnail: currentTrack.artworkUrl || `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`,
-            addedAt: Date.now(),
-          };
-          const newTracks = [...prevTracks, newTrack];
-          return {
-            ...p,
-            tracks: newTracks,
-            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Custom Playlist`,
-          };
-        }
-        return p;
-      });
-      localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
-      setSavedPlaylists(updated);
-      window.dispatchEvent(new Event('chillify_playlists_updated'));
-      window.dispatchEvent(new Event('storage'));
-      setShowPlaylistMenu(false);
-    } catch {}
-  };
-
-  // Sync isLiked whenever currentTrack or savedPlaylists changes
-  useEffect(() => {
-    if (!currentTrack) {
-      setIsLiked(false);
-      return;
-    }
-    const likedPlaylist = savedPlaylists.find((p) => p.id === 'liked-songs');
-    const isPresent = likedPlaylist?.tracks?.some((t) => t.id === currentTrack.id) || false;
-    setIsLiked(isPresent);
-  }, [currentTrack, savedPlaylists]);
 
   const handleToggleLike = () => {
     if (!currentTrack) return;
@@ -154,7 +122,6 @@ export default function SpotifyBottomPlayer({
       let newTracks: CustomPlaylistTrack[];
       if (alreadyLiked) {
         newTracks = prevTracks.filter((t) => t.id !== currentTrack.id);
-        setIsLiked(false);
       } else {
         const newTrack: CustomPlaylistTrack = {
           id: currentTrack.id,
@@ -165,7 +132,7 @@ export default function SpotifyBottomPlayer({
           addedAt: Date.now(),
         };
         newTracks = [newTrack, ...prevTracks];
-        setIsLiked(true);
+        setToastMessage('Added to Liked Songs');
       }
 
       const updated = prev.map((p) => {
@@ -186,13 +153,14 @@ export default function SpotifyBottomPlayer({
     } catch {}
   };
 
-  const customPlaylists = savedPlaylists.filter((p) => p.type === 'custom');
-
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const volumePercent = isMuted ? 0 : volume * 100;
 
   return (
-    <footer className="w-full bg-transparent shrink-0 z-50 select-none">
+    <footer
+      className="w-full bg-transparent shrink-0 z-40 select-none"
+      style={{ zIndex: Z_INDEX.playerBar }}
+    >
 
       {/* ─────────────────────────────── MOBILE MINI-PLAYER (Floating above tab bar when song played) ─────────────────────────────── */}
       <div
@@ -310,7 +278,7 @@ export default function SpotifyBottomPlayer({
             className="text-xs sm:text-sm font-semibold text-white truncate hover:underline cursor-pointer"
             title={currentTrack?.title || 'No Track Selected'}
           >
-            {currentTrack?.title || 'Chillify • Ready'}
+            {currentTrack?.title || 'MyuJiku • Ready'}
           </p>
           <p
             className="text-[11px] text-[#888888] truncate hover:underline hover:text-white cursor-pointer transition-colors"
@@ -336,49 +304,32 @@ export default function SpotifyBottomPlayer({
         {currentTrack && (
           <div className="relative">
             <button
+              ref={playlistButtonRef}
               type="button"
               onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
+              aria-haspopup="menu"
+              aria-expanded={showPlaylistMenu}
               className="p-1 text-[#888888] hover:text-white transition-colors cursor-pointer text-sm font-bold"
               title="Add current track to Custom Playlist"
             >
               ＋
             </button>
-            {showPlaylistMenu && (
-              <div
-                className="absolute bottom-10 left-0 w-52 bg-[#181818] border border-[#282828] rounded-xl shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between px-2 py-1 border-b border-[#242424]">
-                  <p className="text-[10px] font-bold text-[#b3b3b3] uppercase tracking-wider">
-                    Add to Playlist
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowPlaylistMenu(false)}
-                    className="text-[10px] text-[#888888] hover:text-white"
-                  >
-                    ✕
-                  </button>
-                </div>
-                {customPlaylists.length === 0 ? (
-                  <p className="text-[11px] text-[#888888] px-2 py-2 text-center">
-                    No custom playlists created yet
-                  </p>
-                ) : (
-                  customPlaylists.map((pl) => (
-                    <button
-                      key={pl.id}
-                      type="button"
-                      onClick={() => handleAddCurrentTrackToPlaylist(pl.id)}
-                      className="w-full text-left text-xs text-white hover:bg-[#282828] px-2.5 py-1.5 rounded-lg truncate cursor-pointer flex items-center gap-2"
-                    >
-                      <MusicNoteIcon className="w-3.5 h-3.5 text-zinc-400" />
-                      <span className="truncate flex-1">{pl.title}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
+            <Popover
+              triggerRef={playlistButtonRef}
+              isOpen={showPlaylistMenu}
+              onClose={() => setShowPlaylistMenu(false)}
+              placement="top"
+              align="start"
+              ariaLabel="Add to Playlist"
+            >
+              <AddToPlaylistMenu
+                currentTrack={currentTrack}
+                duration={duration}
+                savedPlaylists={savedPlaylists}
+                onClose={() => setShowPlaylistMenu(false)}
+                onAdded={(title) => setToastMessage(`Added to ${title}`)}
+              />
+            </Popover>
           </div>
         )}
 
@@ -663,7 +614,11 @@ export default function SpotifyBottomPlayer({
       </div>
       {/* end right column */}
       </div>
-      {/* end desktop player */}
+      {/* Confirmation Toast */}
+      <Toast
+        message={toastMessage}
+        onDismiss={() => setToastMessage(null)}
+      />
     </footer>
   );
 }

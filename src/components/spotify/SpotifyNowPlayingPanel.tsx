@@ -1,14 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
-import { SavedPlaylistItem } from '@/components/spotify/AddSourceModal';
+import { SavedPlaylistItem, CustomPlaylistTrack } from '@/components/spotify/AddSourceModal';
 import {
   MusicNoteIcon,
   HeartIcon,
 } from '@/components/common/MinimalIcons';
 import LyricSpeedSlider from '@/components/lyrics/LyricSpeedSlider';
+import Popover from '@/components/common/Popover';
+import Toast from '@/components/common/Toast';
+import AddToPlaylistMenu from './AddToPlaylistMenu';
+import { Z_INDEX } from '@/constants/zIndex';
 
 interface SpotifyNowPlayingPanelProps {
   isOpen?: boolean;
@@ -35,20 +39,50 @@ export default function SpotifyNowPlayingPanel({
     isMuffled,
   } = usePlayback();
 
-  const [isLiked, setIsLiked] = useState<boolean>(false);
+  const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
   const [hasLyrics, setHasLyrics] = useState<boolean>(false);
+  const [showPlaylistMenu, setShowPlaylistMenu] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const playlistButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Sync playlists from localStorage
+  useEffect(() => {
+    const loadPlaylists = () => {
+      try {
+        const stored = localStorage.getItem('chillify_saved_playlists');
+        if (stored) setSavedPlaylists(JSON.parse(stored));
+      } catch {}
+    };
+    loadPlaylists();
+    window.addEventListener('storage', loadPlaylists);
+    window.addEventListener('chillify_playlists_updated', loadPlaylists);
+    return () => {
+      window.removeEventListener('storage', loadPlaylists);
+      window.removeEventListener('chillify_playlists_updated', loadPlaylists);
+    };
+  }, []);
+
+  // Derive isLiked directly from currentTrack and savedPlaylists
+  const isLiked = Boolean(
+    currentTrack &&
+      savedPlaylists
+        .find((p) => p.id === 'liked-songs')
+        ?.tracks?.some((t) => t.id === currentTrack.id)
+  );
 
   // Check lyrics availability for rendering the LyricSpeedSlider
   useEffect(() => {
-    if (!currentTrack) {
-      setHasLyrics(false);
-      return;
-    }
+    if (!currentTrack) return;
 
+    let isMounted = true;
     try {
       const cached = sessionStorage.getItem(`chillify_has_lyrics:${currentTrack.id}`);
       if (cached !== null) {
-        setHasLyrics(cached === '1');
+        queueMicrotask(() => {
+          if (isMounted) {
+            setHasLyrics(cached === '1');
+          }
+        });
       }
     } catch {}
 
@@ -61,8 +95,8 @@ export default function SpotifyNowPlayingPanel({
 
     window.addEventListener('chillify_lyrics_status', handleLyricsStatus);
 
-    let isMounted = true;
-    fetch(`/api/lyrics?id=${encodeURIComponent(currentTrack.id)}&title=${encodeURIComponent(currentTrack.title)}&artist=${encodeURIComponent(currentTrack.artist || '')}`)
+    const durationParam = currentTrack.duration > 0 ? `&duration=${encodeURIComponent(currentTrack.duration)}` : '';
+    fetch(`/api/lyrics?id=${encodeURIComponent(currentTrack.id)}&title=${encodeURIComponent(currentTrack.title)}&artist=${encodeURIComponent(currentTrack.artist || '')}${durationParam}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!isMounted) return;
@@ -77,38 +111,6 @@ export default function SpotifyNowPlayingPanel({
     return () => {
       isMounted = false;
       window.removeEventListener('chillify_lyrics_status', handleLyricsStatus);
-    };
-  }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist]);
-
-  // Check if current track is in Liked Songs
-  useEffect(() => {
-    if (!currentTrack) {
-      setIsLiked(false);
-      return;
-    }
-
-    const checkLiked = () => {
-      try {
-        const stored = localStorage.getItem('chillify_saved_playlists');
-        if (stored) {
-          const playlists: SavedPlaylistItem[] = JSON.parse(stored);
-          const likedList = playlists.find((p) => p.id === 'liked-songs');
-          if (likedList && likedList.tracks) {
-            const found = likedList.tracks.some((t) => t.id === currentTrack.id);
-            setIsLiked(found);
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
-      setIsLiked(false);
-    };
-
-    checkLiked();
-    window.addEventListener('chillify_playlists_updated', checkLiked);
-    return () => {
-      window.removeEventListener('chillify_playlists_updated', checkLiked);
     };
   }, [currentTrack]);
 
@@ -128,7 +130,7 @@ export default function SpotifyNowPlayingPanel({
           targetUrl: '',
           icon: 'heart',
           tracks: [],
-          description: 'Your favorite liked tracks on Chillify',
+          description: 'Your favorite liked tracks on MyuJiku',
           createdAt: Date.now(),
         };
         playlists = [likedList, ...playlists];
@@ -139,17 +141,17 @@ export default function SpotifyNowPlayingPanel({
       const exists = likedList.tracks.some((t) => t.id === currentTrack.id);
       if (exists) {
         likedList.tracks = likedList.tracks.filter((t) => t.id !== currentTrack.id);
-        setIsLiked(false);
       } else {
-        likedList.tracks.unshift({
+        const newTrack: CustomPlaylistTrack = {
           id: currentTrack.id,
           title: currentTrack.title,
           artist: currentTrack.artist,
           duration: formatDuration(currentTrack.duration || 180),
           thumbnail: currentTrack.artworkUrl,
           addedAt: Date.now(),
-        });
-        setIsLiked(true);
+        };
+        likedList.tracks.unshift(newTrack);
+        setToastMessage('Added to Liked Songs');
       }
 
       likedList.subtitle = `${likedList.tracks.length} ${
@@ -158,7 +160,9 @@ export default function SpotifyNowPlayingPanel({
 
       const updated = playlists.map((p) => (p.id === 'liked-songs' ? likedList! : p));
       localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
+      setSavedPlaylists(updated);
       window.dispatchEvent(new Event('chillify_playlists_updated'));
+      window.dispatchEvent(new Event('storage'));
     } catch {
       // ignore
     }
@@ -167,7 +171,10 @@ export default function SpotifyNowPlayingPanel({
   if (!isOpen) return null;
 
   return (
-    <aside className="w-72 xl:w-80 h-full bg-[#121212] border-l border-[#202020] p-4 flex flex-col shrink-0 select-none overflow-hidden animate-in slide-in-from-right duration-200 z-30">
+    <aside
+      className="w-72 xl:w-80 h-full bg-[#121212] border-l border-[#202020] p-4 flex flex-col shrink-0 select-none overflow-hidden animate-in slide-in-from-right duration-200"
+      style={{ zIndex: Z_INDEX.nowPlayingPanel }}
+    >
       {/* 1. Header with Close Button */}
       <div className="flex items-center justify-between pb-3 border-b border-[#242424] shrink-0">
         <h3 className="text-sm font-bold text-white tracking-tight">Now Playing</h3>
@@ -222,7 +229,7 @@ export default function SpotifyNowPlayingPanel({
               )}
             </div>
 
-            {/* Song Title, Artist & Like Button */}
+            {/* Song Title, Artist, Like Button & Add to Playlist */}
             <div className="flex items-start justify-between gap-3 pt-1">
               <div className="min-w-0 flex-1">
                 <h4
@@ -241,17 +248,49 @@ export default function SpotifyNowPlayingPanel({
                 )}
               </div>
 
-              {/* Like Button */}
-              <button
-                type="button"
-                onClick={handleToggleLike}
-                className={`p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer shrink-0 ${
-                  isLiked ? 'text-white' : 'text-[#666666] hover:text-white'
-                }`}
-                title={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-              >
-                <HeartIcon filled={isLiked} className="w-5 h-5" />
-              </button>
+              {/* Actions: Like & Add to Playlist */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleToggleLike}
+                  className={`p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer ${
+                    isLiked ? 'text-white' : 'text-[#666666] hover:text-white'
+                  }`}
+                  title={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+                >
+                  <HeartIcon filled={isLiked} className="w-5 h-5" />
+                </button>
+
+                <div className="relative">
+                  <button
+                    ref={playlistButtonRef}
+                    type="button"
+                    onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
+                    aria-haspopup="menu"
+                    aria-expanded={showPlaylistMenu}
+                    className="p-1.5 rounded-full text-[#888888] hover:text-white hover:scale-110 transition-transform cursor-pointer font-bold text-sm"
+                    title="Add to Playlist"
+                  >
+                    ＋
+                  </button>
+                  <Popover
+                    triggerRef={playlistButtonRef}
+                    isOpen={showPlaylistMenu}
+                    onClose={() => setShowPlaylistMenu(false)}
+                    placement="top"
+                    align="end"
+                    ariaLabel="Add to Playlist"
+                  >
+                    <AddToPlaylistMenu
+                      currentTrack={currentTrack}
+                      duration={duration}
+                      savedPlaylists={savedPlaylists}
+                      onClose={() => setShowPlaylistMenu(false)}
+                      onAdded={(title) => setToastMessage(`Added to ${title}`)}
+                    />
+                  </Popover>
+                </div>
+              </div>
             </div>
 
             {/* Playback Badge & Active Effects */}
@@ -302,9 +341,15 @@ export default function SpotifyNowPlayingPanel({
       {/* 3. Footer Branding (only show when playing) */}
       {currentTrack && (
         <div className="pt-3 border-t border-[#242424] text-center text-[10px] text-[#666666] shrink-0">
-          Chillify • Now Playing View
+          MyuJiku • Now Playing View
         </div>
       )}
+
+      {/* Confirmation Toast */}
+      <Toast
+        message={toastMessage}
+        onDismiss={() => setToastMessage(null)}
+      />
     </aside>
   );
 }

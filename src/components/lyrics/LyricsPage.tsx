@@ -37,8 +37,12 @@ import CodestyleStage from './styles/CodestyleStage';
 import BranchesStage from './styles/BranchesStage';
 import WebStage from './styles/WebStage';
 
+import { parseEnhancedLrc, ParseEnhancedLrcResult } from '@/lib/lyrics/parseEnhancedLrc';
+import { isMostlyUppercase, fixSentenceCase, fixLineSentenceCase } from '@/lib/lyrics/textCase';
+
 const MANUAL_OVERRIDE_PREFIX = 'chillify_manual_lyrics_override:';
 const COMMUNITY_LYRICS_PREFIX = 'chillify_community_lyrics:';
+const USER_LYRICS_PREFIX = 'chillify_user_lyrics:';
 
 interface HeaderActionButtonProps {
   onClick: () => void;
@@ -89,8 +93,29 @@ function HeaderActionButton({
   );
 }
 
+function formatLrcTimestamp(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  const cs = Math.floor((seconds % 1) * 100);
+  return `[${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}]`;
+}
+
+function formatDurationClock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function LyricsPage() {
-  const { currentTrack, getCurrentTime, currentTime } = usePlayback();
+  const { currentTrack, duration, getCurrentTime, currentTime } = usePlayback();
+
+  // Playing video's duration (not placeholder/search duration)
+  const playingDuration =
+    duration && duration > 0
+      ? duration
+      : currentTrack?.duration && currentTrack.duration > 0
+      ? currentTrack.duration
+      : undefined;
 
   const [settings, setSettings] = useState<LyricsSettings>(loadLyricsSettings());
   const [transform, setTransform] = useState<LyricTransform>({ speed: 1.0, offset: 0.0 });
@@ -110,7 +135,7 @@ export default function LyricsPage() {
   const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(false);
   const [isTapToSyncMode, setIsTapToSyncMode] = useState<boolean>(false);
   const [isCoarseStep, setIsCoarseStep] = useState<boolean>(false);
-  const [toast, setToast] = useState<{ message: string; undoOffset?: number } | null>(null);
+  const [toast, setToast] = useState<{ message: string; undoOffset?: number; undoTransform?: LyricTransform } | null>(null);
 
   // Community lyrics ("Add lyrics") state
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -118,9 +143,48 @@ export default function LyricsPage() {
   const [customLyricText, setCustomLyricText] = useState<string>('');
   const [fileUploadError, setFileUploadError] = useState<string | null>(null);
 
+  // Enhanced "Add lyrics" Modal State (Part 2)
+  const [parsedLrcData, setParsedLrcData] = useState<ParseEnhancedLrcResult | null>(null);
+  const [modalFixAllCaps, setModalFixAllCaps] = useState<boolean>(false);
+  const [modalShareWithEveryone, setModalShareWithEveryone] = useState<boolean>(false);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+  const [hoveredWordTiming, setHoveredWordTiming] = useState<string | null>(null);
+
+  // Debounced live format detection and parse for custom lyric input (Part 2)
+  useEffect(() => {
+    if (!customLyricText.trim()) {
+      setParsedLrcData(null);
+      setFileUploadError(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const parsed = parseEnhancedLrc(customLyricText, { songDuration: playingDuration });
+      setParsedLrcData(parsed);
+      setFileUploadError(parsed.error || null);
+      if (isMostlyUppercase(customLyricText)) {
+        setModalFixAllCaps(true);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [customLyricText, playingDuration]);
+
+  const totalParsedWords = useMemo(() => {
+    if (!parsedLrcData?.lines) return 0;
+    return parsedLrcData.lines.reduce((sum, l) => sum + (l.words?.length || 0), 0);
+  }, [parsedLrcData]);
+
+  const detectedDurationSec = useMemo(() => {
+    if (parsedLrcData?.meta?.lengthSeconds) return parsedLrcData.meta.lengthSeconds;
+    if (parsedLrcData?.lines && parsedLrcData.lines.length > 0) {
+      return parsedLrcData.lines[parsedLrcData.lines.length - 1].end;
+    }
+    return 0;
+  }, [parsedLrcData]);
+
   const stageWrapperRef = useRef<HTMLDivElement | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const lastFetchedDurationRef = useRef<number | undefined>(undefined);
 
   // Screen Wake Lock API
   useWakeLock(settings.keepAwake);
@@ -178,6 +242,29 @@ export default function LyricsPage() {
         return;
       }
 
+      // 1. Check user-stored custom / enhanced lyrics first (Part 3 user priority)
+      if (!options?.bypassCache) {
+        try {
+          const userStored = localStorage.getItem(`${USER_LYRICS_PREFIX}${currentTrack.id}`);
+          if (userStored) {
+            const parsedData = JSON.parse(userStored);
+            if (parsedData && parsedData.result) {
+              setLyricsResult(parsedData.result);
+              setIsLoading(false);
+              const hasLyrics =
+                !parsedData.result.instrumental &&
+                ((parsedData.result.lines && parsedData.result.lines.length > 0) || !!parsedData.result.plainLyrics);
+              window.dispatchEvent(
+                new CustomEvent('chillify_lyrics_status', {
+                  detail: { trackId: currentTrack.id, hasLyrics },
+                })
+              );
+              return;
+            }
+          }
+        } catch {}
+      }
+
       setIsLoading(true);
       try {
         const res = await lrclibProvider.getLyrics(
@@ -185,7 +272,7 @@ export default function LyricsPage() {
             id: currentTrack.id,
             title: currentTrack.title,
             artist: currentTrack.artist,
-            duration: currentTrack.duration,
+            duration: playingDuration,
           },
           options
         );
@@ -212,12 +299,26 @@ export default function LyricsPage() {
         setIsLoading(false);
       }
     },
-    [currentTrack]
+    [currentTrack, playingDuration]
   );
 
   useEffect(() => {
+    lastFetchedDurationRef.current = playingDuration;
     fetchLyricsForCurrentTrack();
   }, [fetchLyricsForCurrentTrack]);
+
+  // Re-fetch when playing video duration becomes known after initial mount
+  useEffect(() => {
+    if (
+      currentTrack?.id &&
+      playingDuration &&
+      playingDuration > 0 &&
+      (!lastFetchedDurationRef.current || Math.abs(playingDuration - lastFetchedDurationRef.current) > 3)
+    ) {
+      lastFetchedDurationRef.current = playingDuration;
+      fetchLyricsForCurrentTrack({ bypassCache: true });
+    }
+  }, [currentTrack?.id, playingDuration, fetchLyricsForCurrentTrack]);
 
   // Handle manual search
   const handleManualSearch = (e?: React.FormEvent) => {
@@ -260,49 +361,169 @@ export default function LyricsPage() {
     fetchLyricsForCurrentTrack({ bypassCache: true, manualOverride: null });
   };
 
-  // Save Community / Custom Uploaded Lyrics
-  const handleSaveCommunityLyrics = () => {
+  // Helper to read .lrc / .txt files in UTF-8 and strip any BOM
+  const readLrcFile = useCallback((file: File) => {
+    setFileUploadError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      let content = event.target?.result as string;
+      if (content) {
+        if (content.charCodeAt(0) === 0xfeff) {
+          content = content.slice(1);
+        }
+        setCustomLyricText(content);
+      }
+    };
+    reader.onerror = () => {
+      setFileUploadError('Failed to read file. Please paste text directly.');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }, []);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    readLrcFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleModalDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  };
+
+  const handleModalDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleModalDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      readLrcFile(file);
+    }
+  };
+
+  // User / Enhanced Lyrics Save Handler (Part 3)
+  const handleSaveUserLyrics = () => {
     if (!currentTrack || !customLyricText.trim()) return;
 
-    const parsedLines = parseLrc(customLyricText);
-    const hasSync = parsedLines.length > 0;
-    const derived = hasSync ? deriveWordTimingsFromLrc(parsedLines, currentTrack.duration) : [];
+    const parsed = parsedLrcData || parseEnhancedLrc(customLyricText, { songDuration: playingDuration });
+    if (!parsed || parsed.error) {
+      setFileUploadError(parsed?.error || 'Failed to parse lyrics. Please check format.');
+      return;
+    }
 
-    const communityResult: LyricsResult = {
-      source: 'community',
-      synced: hasSync ? 'line' : 'none',
-      lines: derived,
+    const lengthDiff =
+      parsed.meta?.lengthSeconds && playingDuration
+        ? parsed.meta.lengthSeconds - playingDuration
+        : undefined;
+    const isDurationMismatch = lengthDiff !== undefined && Math.abs(lengthDiff) > 3;
+
+    const userResult: LyricsResult = {
+      source: 'user',
+      synced: parsed.synced,
+      lines: parsed.lines,
       plainLyrics: customLyricText.trim(),
+      rawText: customLyricText,
+      fixAllCaps: modalFixAllCaps,
       instrumental: false,
-      trackName: currentTrack.title,
-      artistName: currentTrack.artist,
-      matchedTitle: currentTrack.title,
-      matchedArtist: currentTrack.artist,
-      durationMismatch: false,
+      trackName: parsed.meta.title || currentTrack.title,
+      artistName: parsed.meta.artist || currentTrack.artist,
+      matchedTitle: parsed.meta.title || currentTrack.title,
+      matchedArtist: parsed.meta.artist || currentTrack.artist,
+      durationMismatch: isDurationMismatch,
+      diffSeconds: lengthDiff ? Math.round(lengthDiff) : undefined,
+    };
+
+    const storagePayload = {
+      rawText: customLyricText,
+      result: userResult,
+      fixAllCaps: modalFixAllCaps,
+      savedAt: Date.now(),
     };
 
     try {
-      localStorage.setItem(`${COMMUNITY_LYRICS_PREFIX}${currentTrack.id}`, JSON.stringify(communityResult));
-    } catch {
-      // ignore
+      localStorage.setItem(`${USER_LYRICS_PREFIX}${currentTrack.id}`, JSON.stringify(storagePayload));
+    } catch {}
+
+    // Only post to community server if explicitly opted in
+    if (modalShareWithEveryone) {
+      fetch('/api/lyrics/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackId: currentTrack.id,
+          artist: currentTrack.artist,
+          title: currentTrack.title,
+          duration: currentTrack.duration,
+          text: customLyricText.trim(),
+        }),
+      }).catch(() => {});
     }
 
-    // Also persist to Upstash Redis server backend asynchronously
-    fetch('/api/lyrics/community', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        trackId: currentTrack.id,
-        artist: currentTrack.artist,
-        title: currentTrack.title,
-        duration: currentTrack.duration,
-        text: customLyricText.trim(),
-      }),
-    }).catch(() => {});
-
-    setLyricsResult(communityResult);
+    setLyricsResult(userResult);
     setShowAddModal(false);
+    setToast({
+      message: modalShareWithEveryone
+        ? 'Lyrics saved locally & shared with community!'
+        : 'Lyrics saved and active for this track!',
+    });
+  };
+
+  const handleEditUserLyrics = () => {
+    if (!currentTrack) return;
+    try {
+      const stored = localStorage.getItem(`${USER_LYRICS_PREFIX}${currentTrack.id}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setCustomLyricText(parsed.rawText || lyricsResult?.rawText || lyricsResult?.plainLyrics || '');
+        setModalFixAllCaps(!!parsed.fixAllCaps);
+      } else {
+        setCustomLyricText(lyricsResult?.rawText || lyricsResult?.plainLyrics || '');
+      }
+    } catch {
+      setCustomLyricText(lyricsResult?.rawText || lyricsResult?.plainLyrics || '');
+    }
+    setShowAddModal(true);
+  };
+
+  const handleReplaceUserLyrics = () => {
     setCustomLyricText('');
+    setParsedLrcData(null);
+    setFileUploadError(null);
+    setShowAddModal(true);
+  };
+
+  const handleRemoveUserLyrics = () => {
+    if (!currentTrack) return;
+    try {
+      localStorage.removeItem(`${USER_LYRICS_PREFIX}${currentTrack.id}`);
+    } catch {}
+    fetchLyricsForCurrentTrack({ bypassCache: true });
+    setToast({ message: 'Custom lyrics removed. Reverted to automatic provider.' });
+  };
+
+  const handleApplySpeedFix = () => {
+    if (!parsedLrcData?.meta?.lengthSeconds || !playingDuration || playingDuration <= 0 || !currentTrack) return;
+    const prevTransform = { ...transform };
+    const rawSpeed = parsedLrcData.meta.lengthSeconds / playingDuration;
+    const newSpeed = Number(Math.max(0.5, Math.min(2.0, rawSpeed)).toFixed(3));
+    const nextTransform: LyricTransform = {
+      speed: newSpeed,
+      offset: transform.offset,
+    };
+    setTransform(nextTransform);
+    saveLyricTransform(currentTrack.id, nextTransform);
+    setToast({
+      message: `Adjusted lyric speed to ${newSpeed}x for duration match`,
+      undoTransform: prevTransform,
+    });
   };
 
   // Remove Community Lyrics and revert to provider
@@ -310,9 +531,7 @@ export default function LyricsPage() {
     if (!currentTrack) return;
     try {
       localStorage.removeItem(`${COMMUNITY_LYRICS_PREFIX}${currentTrack.id}`);
-    } catch {
-      // ignore
-    }
+    } catch {}
     fetchLyricsForCurrentTrack({ bypassCache: true });
   };
 
@@ -382,25 +601,6 @@ export default function LyricsPage() {
     } catch {
       setToast({ message: 'Failed to submit report' });
     }
-  };
-
-  // Handle file input for .lrc or .txt
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setFileUploadError(null);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) {
-        setCustomLyricText(content);
-      }
-    };
-    reader.onerror = () => {
-      setFileUploadError('Failed to read file. Please paste text directly.');
-    };
-    reader.readAsText(file);
   };
 
   // Load lyric transform and synchronize across changes
@@ -522,9 +722,16 @@ export default function LyricsPage() {
     [currentTrack, transform.speed, transform.offset, settings]
   );
 
-  // Undo previous offset action
+  // Undo previous offset or speed action
   const handleUndo = useCallback(() => {
-    if (toast?.undoOffset !== undefined && currentTrack) {
+    if (!currentTrack) return;
+    if (toast?.undoTransform) {
+      setTransform(toast.undoTransform);
+      saveLyricTransform(currentTrack.id, toast.undoTransform);
+      setToast(null);
+      return;
+    }
+    if (toast?.undoOffset !== undefined) {
       const prev = toast.undoOffset;
       applyOffset(prev, 'Reverted offset');
       setToast(null);
@@ -569,14 +776,19 @@ export default function LyricsPage() {
 
   // Active display lines (real synced lines or estimated lines)
   const displayLines: SyncedLyricLine[] = useMemo(() => {
+    let lines: SyncedLyricLine[] = [];
     if (lyricsResult?.lines && lyricsResult.lines.length > 0) {
-      return lyricsResult.lines;
+      lines = lyricsResult.lines;
+    } else if (estimatedLines && estimatedLines.length > 0) {
+      lines = estimatedLines;
     }
-    if (estimatedLines && estimatedLines.length > 0) {
-      return estimatedLines;
+
+    const shouldFixAllCaps = settings.fixAllCaps || (lyricsResult?.source === 'user' && lyricsResult.fixAllCaps);
+    if (shouldFixAllCaps && lines.length > 0) {
+      return lines.map((line) => fixLineSentenceCase(line));
     }
-    return [];
-  }, [lyricsResult?.lines, estimatedLines]);
+    return lines;
+  }, [lyricsResult, estimatedLines, settings.fixAllCaps]);
 
   const isEstimated = useMemo(() => {
     return (
@@ -642,6 +854,7 @@ export default function LyricsPage() {
   // Provenance string
   const provenanceLabel = useMemo(() => {
     if (!lyricsResult || lyricsResult.source === 'none') return null;
+    if (lyricsResult.source === 'user') return 'Source: Your file';
     let name = 'LRCLIB';
     if (lyricsResult.source === 'lyrics.ovh') name = 'lyrics.ovh';
     else if (lyricsResult.source.includes('netease')) name = 'NetEase';
@@ -780,7 +993,21 @@ export default function LyricsPage() {
                 >
                   {cleanDisplayInfo.cleanTitle}
                 </span>
-                {isEstimated ? (
+                {lyricsResult?.source === 'user' ? (
+                  lyricsResult.durationMismatch ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 animate-pulse">
+                      {lyricsResult.synced === 'word' ? 'Word-synced' : 'Line-synced'} (may be off by ~{Math.abs(lyricsResult.diffSeconds || 0)}s)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                      {lyricsResult.synced === 'word' ? 'Word-synced' : 'Line-synced'}
+                    </span>
+                  )
+                ) : lyricsResult?.source === 'plain + captions timing' ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
+                    Aligned
+                  </span>
+                ) : isEstimated ? (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                     Estimated
                   </span>
@@ -823,8 +1050,33 @@ export default function LyricsPage() {
 
         {/* Right: Actions, Settings Menu & Fullscreen */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          {/* If using community lyrics, allow report or removal */}
-          {lyricsResult?.source === 'community' && (
+          {/* User lyrics actions: Edit, Replace, Remove */}
+          {lyricsResult?.source === 'user' ? (
+            <>
+              <HeaderActionButton
+                onClick={handleEditUserLyrics}
+                icon="✏️"
+                label="Edit"
+                ariaLabel="Edit your lyrics"
+                title="Edit stored lyrics text and timing"
+              />
+              <HeaderActionButton
+                onClick={handleReplaceUserLyrics}
+                icon="🔄"
+                label="Replace"
+                ariaLabel="Replace your lyrics file"
+                title="Replace your lyrics with a new file or text"
+              />
+              <HeaderActionButton
+                onClick={handleRemoveUserLyrics}
+                icon="🗑️"
+                label="Remove"
+                ariaLabel="Remove your lyrics file"
+                variant="rose"
+                title="Remove your lyrics and revert to automatic provider"
+              />
+            </>
+          ) : lyricsResult?.source === 'community' ? (
             <>
               <HeaderActionButton
                 onClick={handleReportCommunityLyrics}
@@ -843,29 +1095,36 @@ export default function LyricsPage() {
                 title="Revert to automatic provider lyrics"
               />
             </>
-          )}
+          ) : (
+            <>
+              {/* Sync song button for estimated plain lyrics */}
+              {isEstimated && (
+                <HeaderActionButton
+                  onClick={() => setShowSyncEditor(true)}
+                  icon="⏱️"
+                  label="Sync song"
+                  ariaLabel="Open sync recorder to time lyrics"
+                  variant="amber"
+                  title="Open sync recorder to time lyrics"
+                />
+              )}
 
-          {/* Sync song button for estimated plain lyrics */}
-          {isEstimated && (
-            <HeaderActionButton
-              onClick={() => setShowSyncEditor(true)}
-              icon="⏱️"
-              label="Sync song"
-              ariaLabel="Open sync recorder to time lyrics"
-              variant="amber"
-              title="Open sync recorder to time lyrics"
-            />
-          )}
-
-          {/* Add / Upload lyrics button */}
-          {currentTrack && (
-            <HeaderActionButton
-              onClick={() => setShowAddModal(true)}
-              icon="➕"
-              label="Add lyrics"
-              ariaLabel="Add or paste your own .lrc or plain lyrics"
-              title="Add or paste your own .lrc or plain lyrics"
-            />
+              {/* Add / Upload lyrics button */}
+              {currentTrack && (
+                <HeaderActionButton
+                  onClick={() => {
+                    setCustomLyricText('');
+                    setParsedLrcData(null);
+                    setFileUploadError(null);
+                    setShowAddModal(true);
+                  }}
+                  icon="➕"
+                  label="Add lyrics"
+                  ariaLabel="Add or paste your own .lrc or plain lyrics"
+                  title="Add or paste your own .lrc or plain lyrics"
+                />
+              )}
+            </>
           )}
 
           {/* Wrong timing? button */}
@@ -1243,6 +1502,46 @@ export default function LyricsPage() {
               Edit the artist and song title to improve search accuracy. Changes will be saved for this track.
             </p>
 
+            {lyricsResult?.source === 'user' && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs flex flex-col gap-2">
+                <span className="text-emerald-300 font-semibold">
+                  You are currently using custom lyrics for this track.
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFixModal(false);
+                      handleEditUserLyrics();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium cursor-pointer"
+                  >
+                    Edit file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFixModal(false);
+                      handleReplaceUserLyrics();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium cursor-pointer"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFixModal(false);
+                      handleRemoveUserLyrics();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-medium cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleManualSearch} className="flex flex-col gap-3">
               <div>
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
@@ -1294,74 +1593,222 @@ export default function LyricsPage() {
 
       {/* Add / Upload Lyrics Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#121212] border border-[#2a2a2a] rounded-2xl p-6 max-w-lg w-full shadow-2xl relative flex flex-col max-h-[85vh]">
+        <div
+          onDragOver={handleModalDragOver}
+          onDragLeave={handleModalDragLeave}
+          onDrop={handleModalDrop}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in"
+        >
+          <div
+            className={`bg-[#121212] border rounded-2xl p-6 max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] transition-all duration-200 ${
+              isDraggingOver ? 'border-emerald-500/80 bg-[#142018] scale-[1.01]' : 'border-[#2a2a2a]'
+            }`}
+          >
+            {isDraggingOver && (
+              <div className="absolute inset-0 rounded-2xl bg-emerald-950/85 border-2 border-dashed border-emerald-400 flex flex-col items-center justify-center gap-2 z-30 pointer-events-none">
+                <span className="text-3xl animate-bounce">📂</span>
+                <span className="text-sm font-bold text-emerald-200">Drop your .lrc or .txt file here</span>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => setShowAddModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-sm cursor-pointer p-1"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-sm cursor-pointer p-1 transition-colors"
+              aria-label="Close dialog"
             >
               ✕
             </button>
-            <h3 className="text-base font-bold text-white mb-1">
-              Add Lyrics for &ldquo;{currentTrack?.title}&rdquo;
+            <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
+              <span>Add Lyrics</span>
+              {currentTrack?.title && (
+                <span className="text-zinc-400 font-normal truncate text-xs">
+                  for &ldquo;{currentTrack.title}&rdquo;
+                </span>
+              )}
             </h3>
             <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
-              Paste synchronized LRC text (e.g. <code>[00:12.30] lyrics</code>) or plain text. You can also upload a <code>.lrc</code> file.
+              Paste or drop Enhanced LRC (<code>&lt;mm:ss.xx&gt;</code> word tags), standard LRC, or plain text.
             </p>
 
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".lrc,.txt"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-xs font-semibold text-zinc-300 hover:text-white cursor-pointer transition-colors"
-              >
-                📂 Choose .lrc / .txt file
-              </button>
-              {fileUploadError && (
-                <span className="text-xs text-rose-400">{fileUploadError}</span>
+            {/* File picker & Drag-and-drop indicator */}
+            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".lrc,.txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-xs font-semibold text-zinc-300 hover:text-white cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  <span>📂</span>
+                  <span>Choose or drop file</span>
+                </button>
+                <span className="text-[11px] text-zinc-500 hidden sm:inline">
+                  Drag & drop .lrc / .txt supported
+                </span>
+              </div>
+
+              {/* Status Chip */}
+              {parsedLrcData && !parsedLrcData.error && (
+                <div className="flex items-center gap-2">
+                  {parsedLrcData.synced === 'word' ? (
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Word-synced (Enhanced LRC)
+                    </span>
+                  ) : parsedLrcData.synced === 'line' ? (
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                      Line-synced (LRC)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1.5">
+                      📝 Plain text (unsynced)
+                    </span>
+                  )}
+                  <span className="text-[11px] text-zinc-400">
+                    {parsedLrcData.lines.length} lines • {totalParsedWords} words
+                    {detectedDurationSec > 0 && ` • ~${formatDurationClock(detectedDurationSec)}`}
+                  </span>
+                </div>
               )}
             </div>
 
+            {/* Error banner if file reading or parsing failed */}
+            {(fileUploadError || parsedLrcData?.error) && (
+              <div className="mb-3 p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{fileUploadError || parsedLrcData?.error}</span>
+              </div>
+            )}
+
+            {/* Duration mismatch note with speed fix */}
+            {parsedLrcData?.meta?.lengthSeconds &&
+              playingDuration &&
+              Math.abs(parsedLrcData.meta.lengthSeconds - playingDuration) > 3 && (
+                <div className="mb-3 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⚠️</span>
+                    <span>
+                      Lyrics timing is for a version that is ~
+                      {Math.abs(Math.round(parsedLrcData.meta.lengthSeconds - playingDuration))}s{' '}
+                      {parsedLrcData.meta.lengthSeconds > playingDuration ? 'longer' : 'shorter'} than the playing track.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplySpeedFix}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold shrink-0 transition-colors cursor-pointer"
+                  >
+                    Apply offset/speed fix
+                  </button>
+                </div>
+              )}
+
+            {/* Textarea input */}
             <textarea
               value={customLyricText}
               onChange={(e) => setCustomLyricText(e.target.value)}
-              placeholder="Paste .lrc or plain text here...&#10;[00:04.20] First line of song&#10;[00:08.50] Second line of song"
-              rows={10}
-              className="w-full flex-1 p-3 rounded-xl bg-[#181818] border border-[#282828] text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 resize-none transition-colors"
+              placeholder="Paste .lrc or plain text here...&#10;[00:04.20]word <00:04.80>word <00:05.40>word&#10;[00:08.50]Second line of song"
+              rows={7}
+              className="w-full p-3 rounded-xl bg-[#181818] border border-[#282828] text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500 resize-none transition-colors"
             />
 
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-[11px] text-zinc-500">
-                {customLyricText.includes('[') && customLyricText.includes(']')
-                  ? '⚡ Synced LRC format detected'
-                  : '📝 Plain unsynced text detected'}
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-3 py-2 rounded-xl bg-[#1c1c1c] hover:bg-[#262626] text-xs text-zinc-300 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveCommunityLyrics}
-                  disabled={!customLyricText.trim()}
-                  className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-40 text-black text-xs font-bold cursor-pointer transition-all shadow-md"
-                >
-                  Save and Use Lyrics
-                </button>
+            {/* Compact Preview (first 3 parsed lines with word timing on hover) */}
+            {parsedLrcData && parsedLrcData.lines.length > 0 && (
+              <div className="mt-3 p-2.5 rounded-xl bg-[#151515] border border-[#252525] flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                  <span className="font-semibold uppercase tracking-wider text-zinc-300">
+                    Preview (first {Math.min(3, parsedLrcData.lines.length)} lines)
+                  </span>
+                  <span className="text-zinc-500">Hover a word to view timing</span>
+                </div>
+                <div className="flex flex-col gap-1 font-mono text-xs">
+                  {parsedLrcData.lines.slice(0, 3).map((line, lIdx) => (
+                    <div key={line.id || lIdx} className="flex items-baseline gap-2 flex-wrap text-zinc-300 leading-snug">
+                      <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400 font-mono shrink-0 select-none">
+                        {formatLrcTimestamp(line.start)}
+                      </span>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {line.words && line.words.length > 0 ? (
+                          line.words.map((w, wIdx) => (
+                            <span
+                              key={wIdx}
+                              onMouseEnter={() =>
+                                setHoveredWordTiming(
+                                  `"${w.text}": ${w.start.toFixed(2)}s – ${w.end.toFixed(2)}s (${(
+                                    w.end - w.start
+                                  ).toFixed(2)}s)`
+                                )
+                              }
+                              onMouseLeave={() => setHoveredWordTiming(null)}
+                              className="px-1 py-0.2 rounded hover:bg-emerald-500/25 hover:text-emerald-300 border border-transparent hover:border-emerald-500/40 transition-colors cursor-help"
+                              title={`${w.text}: ${w.start.toFixed(2)}s – ${w.end.toFixed(2)}s`}
+                            >
+                              {modalFixAllCaps ? fixSentenceCase(w.text) : w.text}
+                            </span>
+                          ))
+                        ) : (
+                          <span>{modalFixAllCaps ? fixSentenceCase(line.text) : line.text}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {hoveredWordTiming && (
+                  <div className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 px-2 py-0.5 rounded-md mt-0.5 animate-fade-in">
+                    ⏱️ {hoveredWordTiming}
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* Checkboxes: Fix ALL CAPS and Share */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[#222222]">
+              <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={modalFixAllCaps}
+                  onChange={(e) => setModalFixAllCaps(e.target.checked)}
+                  className="rounded bg-[#1a1a1a] border-zinc-700 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                />
+                <span>Fix ALL CAPS (display only)</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-[11px] text-zinc-400 hover:text-zinc-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={modalShareWithEveryone}
+                  onChange={(e) => setModalShareWithEveryone(e.target.checked)}
+                  className="rounded bg-[#1a1a1a] border-zinc-700 text-emerald-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                />
+                <span>Share with everyone (optional)</span>
+              </label>
+            </div>
+
+            {/* Modal Action Buttons */}
+            <div className="flex items-center justify-end gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="px-3.5 py-2 rounded-xl bg-[#1c1c1c] hover:bg-[#262626] text-xs font-semibold text-zinc-300 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUserLyrics}
+                disabled={!customLyricText.trim() || !parsedLrcData || !!parsedLrcData.error}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed text-black text-xs font-bold cursor-pointer transition-all shadow-md"
+              >
+                Save and Use Lyrics
+              </button>
             </div>
           </div>
         </div>

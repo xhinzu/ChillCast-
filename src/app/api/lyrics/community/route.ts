@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCommunityLyrics, saveCommunityLyrics } from '@/lib/lyrics/communityRedis';
-import { parseLrc } from '@/lib/lyrics/parseLrc';
-import { deriveWordTimingsFromLrc } from '@/lib/lyrics/wordTiming';
+import { parseEnhancedLrc } from '@/lib/lyrics/parseEnhancedLrc';
 import { LyricsResult } from '@/lib/lyrics/providers/types';
 
 export async function GET(req: NextRequest) {
@@ -35,15 +34,14 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanText = text.trim();
-    const parsedLines = parseLrc(cleanText);
-    const hasSync = parsedLines.length > 0;
-    const derived = hasSync ? deriveWordTimingsFromLrc(parsedLines, duration) : [];
+    const parsed = parseEnhancedLrc(cleanText, { songDuration: duration });
 
     const lyricsResult: LyricsResult = {
       source: 'community',
-      synced: hasSync ? 'line' : 'none',
-      lines: derived,
+      synced: parsed.synced,
+      lines: parsed.lines,
       plainLyrics: cleanText,
+      rawText: cleanText,
       instrumental: false,
       trackName: title,
       artistName: artist || '',

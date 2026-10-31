@@ -40,11 +40,36 @@ export default function LiveLyrics() {
     const fetchLyrics = async () => {
       setIsLoading(true);
 
+      // Check user-stored lyrics first
+      try {
+        const userStored = localStorage.getItem(`chillify_user_lyrics:${currentTrack.id}`);
+        if (userStored) {
+          const parsed = JSON.parse(userStored);
+          if (parsed && parsed.result) {
+            setLyricsData({
+              syncedLyrics: parsed.rawText || null,
+              plainLyrics: parsed.result.plainLyrics || null,
+              instrumental: false,
+              trackName: parsed.result.trackName,
+              artistName: parsed.result.artistName,
+            });
+            if (parsed.rawText) {
+              setLines(parseLrc(parsed.rawText));
+            }
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch {}
+
       const params = new URLSearchParams({
         title: currentTrack.title,
       });
       if (currentTrack.artist && currentTrack.artist !== 'YouTube Artist') {
         params.set('artist', currentTrack.artist);
+      }
+      if (currentTrack.id) {
+        params.set('id', currentTrack.id);
       }
       if (currentTrack.duration > 0) {
         params.set('duration', currentTrack.duration.toString());

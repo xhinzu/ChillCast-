@@ -6,11 +6,11 @@ import {
   LyricsSettings,
   LyricsStyle,
   LyricsFont,
-  EdgeGlowMode,
   saveLyricsSettings,
   DEFAULT_LYRICS_SETTINGS,
 } from '@/lib/lyrics/settings';
 import { loadLyricTransform, saveLyricTransform } from '@/lib/lyrics/transform';
+import { Z_INDEX } from '@/constants/zIndex';
 
 interface SettingsMenuProps {
   settings: LyricsSettings;
@@ -86,6 +86,27 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
       };
     }
   }, [isOpen, updateCoords]);
+
+  // Coordinate with other popovers across the application
+  useEffect(() => {
+    if (isOpen) {
+      window.dispatchEvent(
+        new CustomEvent('chillcast_popover_open', { detail: { id: 'lyrics-settings-menu' } })
+      );
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOtherPopover = (e: Event) => {
+      const customEvent = e as CustomEvent<{ id: string }>;
+      if (customEvent.detail && customEvent.detail.id !== 'lyrics-settings-menu') {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('chillcast_popover_open', handleOtherPopover);
+    return () => window.removeEventListener('chillcast_popover_open', handleOtherPopover);
+  }, [isOpen]);
 
   // Close on outside click and Esc key
   useEffect(() => {
@@ -224,7 +245,7 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
             bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
             left: `${coords.left}px`,
             maxHeight: `${coords.maxHeight}px`,
-            zIndex: 99999,
+            zIndex: Z_INDEX.popovers,
             boxShadow: '0 25px 50px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.08)',
           }}
         >
@@ -507,7 +528,26 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
             )}
           </div>
 
-          {/* 6. TIMING OFFSET */}
+          {/* 6. DISPLAY OPTIONS */}
+          <div className="py-4 space-y-2.5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+              Display
+            </div>
+            <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+              <div>
+                <span className="text-zinc-300 block">Fix ALL CAPS</span>
+                <span className="text-[10px] text-zinc-500">Sentence casing for shouty lyrics</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={!!settings.fixAllCaps}
+                onChange={(e) => updateSettings({ fixAllCaps: e.target.checked })}
+                className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+              />
+            </label>
+          </div>
+
+          {/* 7. TIMING OFFSET */}
           <div className="pt-4 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">

@@ -470,7 +470,7 @@ export default function SpotifyMainContent({
           targetUrl: '',
           icon: 'heart',
           tracks: [],
-          description: 'Your favorite liked tracks on Chillify',
+          description: 'Your favorite liked tracks on MyuJiku',
           createdAt: Date.now(),
         };
         prev = [likedPlaylist, ...prev];
@@ -629,7 +629,7 @@ export default function SpotifyMainContent({
                   </p>
                 )}
                 <div className="flex items-center gap-2 text-xs text-[#888888] mt-1 font-medium">
-                  <span className="text-white font-bold">Chillify</span>
+                  <span className="text-white font-bold">MyuJiku</span>
                   <span>•</span>
                   <span>{currentPlaylist.tracks?.length || 0} songs</span>
                   <span>•</span>
@@ -839,7 +839,7 @@ export default function SpotifyMainContent({
                   YouTube Results for &ldquo;{searchQuery}&rdquo;
                 </h2>
                 <p className="text-xs text-[#b3b3b3]">
-                  Play official tracks in Chillify or add them to your Custom Playlists
+                  Play official tracks in MyuJiku or add them to your Custom Playlists
                 </p>
               </div>
 
@@ -1224,7 +1224,7 @@ export default function SpotifyMainContent({
                   {greeting}
                 </h1>
                 <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
-                  Welcome to <strong className="text-white">Chillify</strong> — your personal ambient lo-fi music sanctuary.
+                  Welcome to <strong className="text-white">MyuJiku</strong> — your personal ambient lo-fi music sanctuary.
                 </p>
               </div>
             </div>
@@ -1635,7 +1635,7 @@ export default function SpotifyMainContent({
         {/* Footer Info & Creator Socials */}
         <footer className="pt-8 border-t border-[#242424] flex flex-col sm:flex-row items-center justify-between text-xs text-[#b3b3b3] gap-3">
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
-            <span className="font-semibold text-white">Chillify</span>
+            <span className="font-semibold text-white">MyuJiku</span>
             <span className="text-[#555555]">•</span>
             <span>Creator&apos;s Socials</span>
             <div className="flex items-center gap-2 ml-1">

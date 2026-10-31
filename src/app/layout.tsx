@@ -59,10 +59,10 @@ const playfairFont = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Chillify — Ambient Lo-Fi & Music Player",
-  description: "Spotify-inspired music player blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Spotify.",
+  title: "MyuJiku — Ambient Lo-Fi & Music Player",
+  description: "Personal music sanctuary blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Spotify.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/myujiku-logo.png",
   },
 };
 

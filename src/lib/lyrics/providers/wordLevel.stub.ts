@@ -19,6 +19,7 @@ export class WordLevelStubProvider implements LyricsProvider {
     artist: string;
     duration?: number;
   }): Promise<LyricsResult> {
+    void _track;
     // Stub provider currently returns not found so that the architecture
     // falls through to the line-level derivation provider (LRCLIB).
     return {
