@@ -107,6 +107,8 @@ export default function BranchesStage({
                 <circle
                   r={isActive ? 9 : 6}
                   fill={isActive ? 'var(--highlight, #ef4444)' : isPast ? '#888888' : '#444444'}
+                  stroke={isActive ? 'var(--highlight, #ef4444)' : 'none'}
+                  strokeWidth={isActive ? 2 : 0}
                   className="transition-all duration-200"
                 />
 
@@ -118,8 +120,9 @@ export default function BranchesStage({
                   fontSize={isActive ? 22 : 16}
                   fontWeight={isActive ? '800' : '600'}
                   fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
-                  className="select-none tracking-tight transition-all duration-200"
-                  filter={isActive ? 'drop-shadow(0 0 10px var(--highlight, #ef4444))' : undefined}
+                  className={`select-none tracking-tight transition-all duration-200 ${
+                    isActive ? 'active-glyph-glow' : ''
+                  }`}
                 >
                   {node.word.text}
                 </text>

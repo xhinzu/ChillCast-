@@ -148,7 +148,7 @@ export default function ClassicStage({
                     key={`${lIdx}-${wIdx}-${word.text}`}
                     className={`transition-all duration-150 inline-block rounded-md px-1 py-0.5 ${
                       isActiveWord
-                        ? 'text-[var(--highlight,#ef4444)] font-black scale-110 shadow-sm'
+                        ? 'text-[var(--highlight,#ef4444)] font-black scale-105 active-glyph-glow-sm'
                         : isPastWord
                         ? 'text-[var(--lyric,#ffffff)] opacity-95'
                         : isActiveLine

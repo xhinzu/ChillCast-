@@ -20,11 +20,13 @@ function StarIcon({ size = 16, active = false }: { size?: number; active?: boole
       width={size}
       height={size}
       viewBox={`0 0 ${size} ${size}`}
-      className={`transition-all duration-300 ${active ? 'scale-125 filter drop-shadow-[0_0_8px_var(--highlight,#ef4444)]' : ''}`}
+      className={`overflow-visible transition-all duration-300 ${active ? 'scale-125' : ''}`}
     >
       <polygon
         points={`${half},0 ${half * 1.25},${half * 0.75} ${size},${half} ${half * 1.25},${half * 1.25} ${half},${size} ${half * 0.75},${half * 1.25} 0,${half} ${half * 0.75},${half * 0.75}`}
         fill={active ? 'var(--highlight, #ef4444)' : 'currentColor'}
+        stroke={active ? 'var(--highlight, #ef4444)' : 'none'}
+        strokeWidth={active ? 1.5 : 0}
       />
     </svg>
   );
@@ -131,8 +133,9 @@ export default function ConstellationStage({
                   fontSize={isActive ? 24 : 17}
                   fontWeight={isActive ? '800' : '500'}
                   fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
-                  className="select-none tracking-tight transition-all duration-200"
-                  filter={isActive ? 'drop-shadow(0 0 12px var(--highlight, #ef4444))' : undefined}
+                  className={`select-none tracking-tight transition-all duration-200 ${
+                    isActive ? 'active-glyph-glow' : ''
+                  }`}
                 >
                   {node.word.text}
                 </text>

@@ -67,25 +67,22 @@ export default function ShipStage({
           return (
             <div
               key={`ship-word-${idx}-${word.text}`}
-              className="py-2.5 px-6 my-1 transition-all duration-300 ease-out text-center flex items-center justify-center gap-3 transform-gpu"
+              className="py-3 px-8 my-1 transition-all duration-300 ease-out text-center flex items-center justify-center gap-3 transform-gpu"
               style={{
                 transform: `translateZ(${tz}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`,
                 opacity,
                 color: isActive ? 'var(--highlight, #ef4444)' : isPast ? 'var(--secondary, #888888)' : 'var(--lyric, #ffffff)',
-                textShadow: isActive
-                  ? '0 0 25px var(--highlight, rgba(239, 68, 68, 0.6))'
-                  : 'none',
               }}
             >
               <span
-                className={`tracking-tight font-black transition-all duration-200 ${
-                  isActive ? 'text-4xl sm:text-6xl' : 'text-2xl sm:text-3xl font-semibold'
+                className={`tracking-tight font-black transition-all duration-200 select-none ${
+                  isActive ? 'text-4xl sm:text-6xl active-glyph-glow' : 'text-2xl sm:text-3xl font-semibold'
                 }`}
               >
                 {word.text}
               </span>
               {emoji && isActive && (
-                <span className="text-3xl sm:text-5xl animate-pop-in filter drop-shadow">
+                <span className="text-3xl sm:text-5xl animate-pop-in select-none">
                   {emoji}
                 </span>
               )}

@@ -81,15 +81,15 @@ export default function VisualStage({
         ))}
       </div>
 
-      {/* Main Single Active Word with Spring Scale-in and Blur-to-Sharp */}
+      {/* Main Single Active Word with Spring Scale-in and Soft Glyph Glow */}
       <div
         key={`${activeLineIndex}-${activeWordIndex}-${wordText}`}
-        className="relative flex items-center justify-center gap-3 sm:gap-6 animate-spring-scale"
+        className="relative flex items-center justify-center gap-3 sm:gap-6 animate-spring-scale p-6 -m-6"
       >
-        {/* Optional solid marker box behind text */}
+        {/* Optional solid marker box behind text (no box glow) */}
         {hasMarkerBox && (
           <div
-            className="absolute inset-0 -inset-x-4 -inset-y-2 rounded-2xl opacity-20 -z-10 pointer-events-none transition-all duration-200"
+            className="absolute inset-0 -inset-x-6 -inset-y-3 rounded-2xl opacity-20 -z-10 pointer-events-none transition-all duration-200"
             style={{
               backgroundColor: 'var(--highlight, #ef4444)',
             }}
@@ -97,11 +97,10 @@ export default function VisualStage({
         )}
 
         <span
-          className="font-black tracking-tighter transition-all duration-150 inline-block drop-shadow-2xl"
+          className="font-black tracking-tighter transition-all duration-150 inline-block active-glyph-glow select-none"
           style={{
             fontSize: 'clamp(48px, 10vw, 120px)',
             color: hasMarkerBox ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)',
-            textShadow: '0 0 30px rgba(0,0,0,0.8)',
           }}
         >
           {wordText || '♪'}
@@ -110,7 +109,7 @@ export default function VisualStage({
         {/* Pop-in Emoji Icon */}
         {emoji && (
           <span
-            className="inline-block animate-pop-in text-4xl sm:text-6xl md:text-7xl filter drop-shadow-lg"
+            className="inline-block animate-pop-in text-4xl sm:text-6xl md:text-7xl select-none"
             role="img"
             aria-label="icon"
           >

@@ -76,16 +76,16 @@ export default function FisheyeStage({
               }}
             >
               <span
-                className={`font-black tracking-tight transition-all duration-200 select-none ${
+                className={`font-black tracking-tight transition-all duration-200 select-none py-2 px-4 ${
                   isActive
-                    ? 'text-4xl sm:text-6xl text-[var(--highlight,#ef4444)] drop-shadow-[0_0_20px_var(--highlight,#ef4444)]'
+                    ? 'text-4xl sm:text-6xl text-[var(--highlight,#ef4444)] active-glyph-glow'
                     : 'text-2xl sm:text-3xl text-[var(--lyric,#ffffff)]'
                 }`}
               >
                 {word.text}
               </span>
               {emoji && isActive && (
-                <span className="text-3xl sm:text-5xl animate-pop-in filter drop-shadow">
+                <span className="text-3xl sm:text-5xl animate-pop-in select-none">
                   {emoji}
                 </span>
               )}

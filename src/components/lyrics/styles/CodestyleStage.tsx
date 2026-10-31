@@ -93,9 +93,9 @@ export default function CodestyleStage({
                     return (
                       <span
                         key={`code-word-${wIdx}-${w.text}`}
-                        className={`inline-flex items-center gap-1 transition-all duration-150 rounded px-1 ${
+                        className={`inline-flex items-center gap-1 transition-all duration-150 rounded px-1.5 py-0.5 ${
                           isWordActive
-                            ? 'bg-[var(--highlight,#ef4444)] text-black font-black shadow-[0_0_12px_var(--highlight,#ef4444)]'
+                            ? 'text-[var(--highlight,#ef4444)] font-black active-glyph-glow-sm'
                             : isWordPast
                             ? 'text-zinc-500 opacity-60'
                             : isCurrentLine
@@ -106,11 +106,11 @@ export default function CodestyleStage({
                         <span>{w.text}</span>
                         {/* Blinking cursor for active word */}
                         {isWordActive && (
-                          <span className="w-1.5 h-3.5 bg-black animate-pulse inline-block" />
+                          <span className="w-1.5 h-3.5 bg-[var(--highlight,#ef4444)] animate-pulse inline-block" />
                         )}
                         {/* Inline comment emoji if enabled */}
                         {emoji && isWordActive && (
-                          <span className="text-xs bg-black/30 px-1 py-0.2 rounded text-zinc-300 select-none">
+                          <span className="text-xs bg-black/40 px-1 py-0.2 rounded text-zinc-300 select-none">
                             /* {emoji} */
                           </span>
                         )}
