@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LyricsSettings,
   LyricsStyle,
@@ -9,6 +10,7 @@ import {
   saveLyricsSettings,
   DEFAULT_LYRICS_SETTINGS,
 } from '@/lib/lyrics/settings';
+import { loadLyricTransform, saveLyricTransform } from '@/lib/lyrics/transform';
 
 interface SettingsMenuProps {
   settings: LyricsSettings;
@@ -41,20 +43,77 @@ const FONT_OPTIONS: { id: LyricsFont; name: string; styleName: string; fontVar: 
 
 export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [coords, setCoords] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // Close on outside click
+  // Position calculation with viewport clamping and upward flip if needed
+  const updateCoords = useCallback(() => {
+    if (!triggerRef.current || typeof window === 'undefined') return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const width = Math.min(384, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.right - width));
+
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+
+    if (spaceBelow < 280 && spaceAbove > spaceBelow) {
+      // Flip upward
+      setCoords({
+        bottom: window.innerHeight - rect.top + 8,
+        left,
+        maxHeight: Math.min(spaceAbove - 12, window.innerHeight - 24),
+      });
+    } else {
+      // Position downward
+      setCoords({
+        top: rect.bottom + 8,
+        left,
+        maxHeight: Math.min(spaceBelow - 12, window.innerHeight - 24),
+      });
+    }
+  }, []);
+
+  // Update position on open, resize, or scroll
   useEffect(() => {
+    if (isOpen) {
+      updateCoords();
+      window.addEventListener('resize', updateCoords);
+      window.addEventListener('scroll', updateCoords, true);
+      return () => {
+        window.removeEventListener('resize', updateCoords);
+        window.removeEventListener('scroll', updateCoords, true);
+      };
+    }
+  }, [isOpen, updateCoords]);
+
+  // Close on outside click and Esc key
+  useEffect(() => {
+    if (!isOpen) return;
+
     const handleOutsideClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (triggerRef.current && triggerRef.current.contains(target)) {
+        return;
+      }
+      if (dropdownRef.current && dropdownRef.current.contains(target)) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
         setIsOpen(false);
+        triggerRef.current?.focus();
       }
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
@@ -76,6 +135,10 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
     } catch {}
     updateSettings({ offsets: nextOffsets });
 
+    // Update unified transform preserving speed
+    const currentTrans = loadLyricTransform(trackId);
+    saveLyricTransform(trackId, { speed: currentTrans.speed, offset: rounded });
+
     // Anonymously share offset back
     fetch('/api/lyrics/offset', {
       method: 'POST',
@@ -92,6 +155,10 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
       localStorage.removeItem(`chillify_lyric_offset:${trackId}`);
     } catch {}
     updateSettings({ offsets: nextOffsets });
+
+    // Reset offset to 0 in unified transform preserving speed
+    const currentTrans = loadLyricTransform(trackId);
+    saveLyricTransform(trackId, { speed: currentTrans.speed, offset: 0 });
   };
 
   const handleResetColors = () => {
@@ -103,35 +170,63 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
   };
 
   return (
-    <div className="relative inline-block text-left" ref={menuRef}>
-      {/* Trigger Button */}
+    <div className="relative inline-block text-left">
+      {/* Trigger Button - Compact icon-only that expands on hover / focus */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        aria-label="Lyrics and Visualizer Settings"
+        className={`group h-9 px-2.5 rounded-xl border text-xs font-semibold flex items-center transition-all duration-180 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shrink-0 ${
           isOpen
             ? 'bg-[#2a2a2a] border-white/30 text-white shadow-lg'
             : 'bg-[#161616] hover:bg-[#222222] border-[#2c2c2c] text-zinc-300 hover:text-white'
         }`}
-        title="Lyrics & Visualizer Settings"
       >
-        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
           <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
         </svg>
-        <span>Settings</span>
-        <svg
-          className={`w-3 h-3 fill-current transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-          viewBox="0 0 20 20"
+
+        {/* Expandable text and chevron */}
+        <span
+          className={`grid transition-[grid-template-columns] duration-180 ease-out motion-reduce:transition-none ${
+            isOpen ? 'grid-cols-[1fr]' : 'grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr]'
+          }`}
         >
-          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-        </svg>
+          <span
+            className={`overflow-hidden whitespace-nowrap transition-opacity duration-180 ease-out flex items-center gap-1.5 ${
+              isOpen
+                ? 'opacity-100 pl-1.5'
+                : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 pl-0 group-hover:pl-1.5 group-focus-visible:pl-1.5'
+            }`}
+          >
+            <span>Settings</span>
+            <svg
+              className={`w-3 h-3 fill-current transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+              viewBox="0 0 20 20"
+            >
+              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+            </svg>
+          </span>
+        </span>
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
+      {/* Dropdown Menu Portaled to Document Body or Fullscreen Element */}
+      {isOpen && coords && typeof document !== 'undefined' && createPortal(
         <div
-          className="absolute right-0 mt-2 w-80 sm:w-96 max-h-[80vh] overflow-y-auto rounded-2xl bg-[#121212]/95 backdrop-blur-xl border border-[#262626] shadow-2xl p-4 z-50 text-white divide-y divide-[#222222] scrollbar-thin scrollbar-thumb-zinc-700"
-          style={{ boxShadow: '0 20px 40px -15px rgba(0,0,0,0.85)' }}
+          ref={dropdownRef}
+          className="fixed w-80 sm:w-96 rounded-2xl bg-[#121212]/95 backdrop-blur-xl border border-[#262626] shadow-2xl p-4 text-white divide-y divide-[#222222] scrollbar-thin scrollbar-thumb-zinc-700 overflow-y-auto animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: coords.top !== undefined ? `${coords.top}px` : undefined,
+            bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+            left: `${coords.left}px`,
+            maxHeight: `${coords.maxHeight}px`,
+            zIndex: 99999,
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.08)',
+          }}
         >
           {/* 1. STYLES */}
           <div className="pb-4">
@@ -453,7 +548,8 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
               className="w-full h-1.5 bg-[#252525] rounded-lg appearance-none cursor-pointer accent-red-500 disabled:opacity-40"
             />
           </div>
-        </div>
+        </div>,
+        (typeof document !== 'undefined' ? (document.fullscreenElement as HTMLElement) || document.body : null)!
       )}
     </div>
   );

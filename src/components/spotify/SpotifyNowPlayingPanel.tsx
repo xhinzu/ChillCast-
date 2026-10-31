@@ -8,6 +8,7 @@ import {
   MusicNoteIcon,
   HeartIcon,
 } from '@/components/common/MinimalIcons';
+import LyricSpeedSlider from '@/components/lyrics/LyricSpeedSlider';
 
 interface SpotifyNowPlayingPanelProps {
   isOpen?: boolean;
@@ -35,6 +36,49 @@ export default function SpotifyNowPlayingPanel({
   } = usePlayback();
 
   const [isLiked, setIsLiked] = useState<boolean>(false);
+  const [hasLyrics, setHasLyrics] = useState<boolean>(false);
+
+  // Check lyrics availability for rendering the LyricSpeedSlider
+  useEffect(() => {
+    if (!currentTrack) {
+      setHasLyrics(false);
+      return;
+    }
+
+    try {
+      const cached = sessionStorage.getItem(`chillify_has_lyrics:${currentTrack.id}`);
+      if (cached !== null) {
+        setHasLyrics(cached === '1');
+      }
+    } catch {}
+
+    const handleLyricsStatus = (e: Event) => {
+      const customEvent = e as CustomEvent<{ trackId: string; hasLyrics: boolean }>;
+      if (customEvent.detail && customEvent.detail.trackId === currentTrack.id) {
+        setHasLyrics(customEvent.detail.hasLyrics);
+      }
+    };
+
+    window.addEventListener('chillify_lyrics_status', handleLyricsStatus);
+
+    let isMounted = true;
+    fetch(`/api/lyrics?id=${encodeURIComponent(currentTrack.id)}&title=${encodeURIComponent(currentTrack.title)}&artist=${encodeURIComponent(currentTrack.artist || '')}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!isMounted) return;
+        const exists = !!(data && !data.instrumental && ((data.lines && data.lines.length > 0) || data.plainLyrics));
+        setHasLyrics(exists);
+        try {
+          sessionStorage.setItem(`chillify_has_lyrics:${currentTrack.id}`, exists ? '1' : '0');
+        } catch {}
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('chillify_lyrics_status', handleLyricsStatus);
+    };
+  }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist]);
 
   // Check if current track is in Liked Songs
   useEffect(() => {
@@ -243,6 +287,13 @@ export default function SpotifyNowPlayingPanel({
                   }}
                 />
               </div>
+
+              {/* Minimal translucent Lyric Speed slider directly UNDER the progress/time bar */}
+              {hasLyrics && (
+                <div className="pt-1.5">
+                  <LyricSpeedSlider trackId={currentTrack.id} />
+                </div>
+              )}
             </div>
           </>
         )}

@@ -31,6 +31,14 @@ export default function VisualStage({
       ? lines[activeLineIndex]
       : null;
 
+  if (!activeLine) {
+    return (
+      <div className="w-full h-full min-h-[300px] flex items-center justify-center p-8 text-center text-zinc-500">
+        <p className="text-sm font-medium tracking-wide animate-pulse">Waiting for vocals...</p>
+      </div>
+    );
+  }
+
   const activeWord =
     activeLine && activeWordIndex >= 0 && activeWordIndex < activeLine.words.length
       ? activeLine.words[activeWordIndex]

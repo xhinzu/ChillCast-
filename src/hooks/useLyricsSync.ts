@@ -7,6 +7,7 @@ import { usePlayback } from '@/context/PlaybackContext';
 interface UseLyricsSyncOptions {
   lines: SyncedLyricLine[];
   offsetSeconds?: number;
+  speed?: number;
   stageElementRef?: React.RefObject<HTMLElement | null>;
 }
 
@@ -18,6 +19,7 @@ interface LyricsSyncState {
 export function useLyricsSync({
   lines,
   offsetSeconds = 0,
+  speed = 1.0,
   stageElementRef,
 }: UseLyricsSyncOptions) {
   const {
@@ -46,24 +48,24 @@ export function useLyricsSync({
 
   // Keep latest parameters in refs so requestAnimationFrame doesn't capture stale closures
   const linesRef = useRef<SyncedLyricLine[]>(lines);
-  linesRef.current = lines;
-
   const offsetRef = useRef<number>(offsetSeconds);
-  offsetRef.current = offsetSeconds;
-
+  const speedRef = useRef<number>(speed);
   const isPlayingRef = useRef<boolean>(isPlaying);
-  isPlayingRef.current = isPlaying;
-
   const getClockRef = useRef<() => number>(getCurrentTime);
-  getClockRef.current = getCurrentTime;
-
   const getRateRef = useRef<() => number>(getPlaybackRate);
-  getRateRef.current = getPlaybackRate;
+
+  useEffect(() => {
+    linesRef.current = lines;
+    offsetRef.current = offsetSeconds;
+    speedRef.current = speed;
+    isPlayingRef.current = isPlaying;
+    getClockRef.current = getCurrentTime;
+    getRateRef.current = getPlaybackRate;
+  });
 
   // High-precision clock interpolation state
   const lastKnownTimeRef = useRef<number>(currentTime || 0);
-  const lastKnownAtRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : Date.now());
-  const lastDiagLogRef = useRef<number>(0);
+  const lastKnownAtRef = useRef<number>(0);
 
   // Re-anchor on external seek or coarse timeupdate from store
   useEffect(() => {
@@ -116,8 +118,10 @@ export function useLyricsSync({
       rawClock = lastKnownTimeRef.current + interpolatedOffset;
     }
 
-    // 4. Apply per-track offset
-    const effectiveTime = Math.max(0, rawClock + (offsetRef.current || 0));
+    // 4. Apply unified transform: lyricTime(t) = speed * t + offset
+    const currentSpeed = speedRef.current ?? 1.0;
+    const currentOffset = offsetRef.current ?? 0;
+    const effectiveTime = Math.max(0, currentSpeed * rawClock + currentOffset);
     effectiveTimeRef.current = effectiveTime;
 
     // 5. Binary search or optimized scan for active line

@@ -24,7 +24,7 @@ export default function FisheyeStage({
 
   if (!activeLine || !activeLine.words || activeLine.words.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
+      <div className="w-full h-full min-h-[300px] flex items-center justify-center text-zinc-500 text-sm select-none">
         Waiting for vocals...
       </div>
     );

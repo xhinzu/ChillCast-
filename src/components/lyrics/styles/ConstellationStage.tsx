@@ -56,8 +56,8 @@ export default function ConstellationStage({
 
   if (!activeLine || layout.nodes.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm">
-        Waiting for next verse...
+      <div className="w-full h-full min-h-[300px] flex items-center justify-center text-zinc-500 text-sm select-none">
+        Waiting for vocals...
       </div>
     );
   }

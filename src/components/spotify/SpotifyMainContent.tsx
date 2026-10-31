@@ -1472,7 +1472,7 @@ export default function SpotifyMainContent({
         {/* VIEW: LYRICS                                                  */}
         {/* ------------------------------------------------------------- */}
         {isLyricsView && (
-          <section aria-label="Lyrics View" className="h-full w-full overflow-hidden">
+          <section aria-label="Lyrics View" className="w-full flex-1 flex flex-col min-h-[calc(100vh-210px)] overflow-hidden">
             <LyricsPage />
           </section>
         )}

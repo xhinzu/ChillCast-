@@ -19,6 +19,14 @@ import EdgeGlow from './EdgeGlow';
 import SettingsMenu from './SettingsMenu';
 import SyncEditorModal from './SyncEditorModal';
 
+import LyricSpeedSlider from './LyricSpeedSlider';
+import {
+  loadLyricTransform,
+  saveLyricTransform,
+  LyricTransform,
+  estimatePlainLyricsTimings,
+} from '@/lib/lyrics/transform';
+
 // Lyric Styles
 import ClassicStage from './styles/ClassicStage';
 import VisualStage from './styles/VisualStage';
@@ -32,10 +40,60 @@ import WebStage from './styles/WebStage';
 const MANUAL_OVERRIDE_PREFIX = 'chillify_manual_lyrics_override:';
 const COMMUNITY_LYRICS_PREFIX = 'chillify_community_lyrics:';
 
+interface HeaderActionButtonProps {
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  ariaLabel?: string;
+  badge?: React.ReactNode;
+  active?: boolean;
+  variant?: 'default' | 'amber' | 'rose';
+  title?: string;
+}
+
+function HeaderActionButton({
+  onClick,
+  icon,
+  label,
+  ariaLabel,
+  badge,
+  active = false,
+  variant = 'default',
+  title,
+}: HeaderActionButtonProps) {
+  let colorClasses = 'bg-[#161616] hover:bg-[#242424] border-[#282828] text-zinc-400 hover:text-white';
+  if (variant === 'amber' || active) {
+    colorClasses = 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300';
+  } else if (variant === 'rose') {
+    colorClasses = 'bg-rose-950/40 hover:bg-rose-900/50 border-rose-800/50 text-rose-300';
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title || label}
+      aria-label={ariaLabel || label}
+      className={`group h-9 px-2.5 rounded-xl border text-xs flex items-center justify-center shrink-0 cursor-pointer transition-all duration-180 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 motion-reduce:transition-none ${colorClasses}`}
+    >
+      <span className="shrink-0 flex items-center justify-center text-sm leading-none" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="grid grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr] transition-[grid-template-columns] duration-180 ease-out motion-reduce:transition-none">
+        <span className="overflow-hidden whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-180 ease-out motion-reduce:transition-none pl-0 group-hover:pl-1.5 group-focus-visible:pl-1.5 flex items-center gap-1 font-medium">
+          <span>{label}</span>
+          {badge}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export default function LyricsPage() {
   const { currentTrack, getCurrentTime, currentTime } = usePlayback();
 
   const [settings, setSettings] = useState<LyricsSettings>(loadLyricsSettings());
+  const [transform, setTransform] = useState<LyricTransform>({ speed: 1.0, offset: 0.0 });
   const [lyricsResult, setLyricsResult] = useState<LyricsResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -132,6 +190,12 @@ export default function LyricsPage() {
           options
         );
         setLyricsResult(res);
+        const hasLyrics = !res.instrumental && ((res.lines && res.lines.length > 0) || !!res.plainLyrics);
+        window.dispatchEvent(
+          new CustomEvent('chillify_lyrics_status', {
+            detail: { trackId: currentTrack.id, hasLyrics },
+          })
+        );
       } catch {
         setLyricsResult({
           source: 'lrclib',
@@ -139,6 +203,11 @@ export default function LyricsPage() {
           lines: [],
           error: 'Network error connecting to lyrics provider.',
         });
+        window.dispatchEvent(
+          new CustomEvent('chillify_lyrics_status', {
+            detail: { trackId: currentTrack.id, hasLyrics: false },
+          })
+        );
       } finally {
         setIsLoading(false);
       }
@@ -334,11 +403,32 @@ export default function LyricsPage() {
     reader.readAsText(file);
   };
 
-  // Current track offset
-  const currentOffset = useMemo(() => {
-    if (!currentTrack) return 0;
-    return settings.offsets[currentTrack.id] || 0;
-  }, [currentTrack, settings.offsets]);
+  // Load lyric transform and synchronize across changes
+  useEffect(() => {
+    if (!currentTrack) {
+      setTransform({ speed: 1.0, offset: 0.0 });
+      return;
+    }
+    const loaded = loadLyricTransform(currentTrack.id);
+    if (loaded.offset === 0 && settings.offsets[currentTrack.id] !== undefined) {
+      loaded.offset = settings.offsets[currentTrack.id];
+    }
+    setTransform(loaded);
+  }, [currentTrack?.id]);
+
+  useEffect(() => {
+    const handleTransformUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ trackId: string; transform: LyricTransform }>;
+      if (customEvent.detail && currentTrack && customEvent.detail.trackId === currentTrack.id) {
+        setTransform(customEvent.detail.transform);
+      }
+    };
+    window.addEventListener('chillify_lyric_transform_updated', handleTransformUpdated);
+    return () => window.removeEventListener('chillify_lyric_transform_updated', handleTransformUpdated);
+  }, [currentTrack?.id]);
+
+  // Current track offset from unified transform
+  const currentOffset = transform.offset;
 
   // Auto-sync offset from localStorage on track change and reset assistant state
   useEffect(() => {
@@ -378,17 +468,30 @@ export default function LyricsPage() {
               [currentTrack.id]: commOffset,
             },
           }));
+          const nextTransform: LyricTransform = {
+            speed: transform.speed,
+            offset: commOffset,
+          };
+          setTransform(nextTransform);
+          saveLyricTransform(currentTrack.id, nextTransform);
         }
       } catch {}
     }
   }, [currentTrack?.id, lyricsResult?.sharedOffset]);
 
-  // Apply offset and update both settings and per-videoId localStorage key
+  // Apply offset preserving speed and update settings, localStorage, and listeners
   const applyOffset = useCallback(
     (newOffset: number, description?: string) => {
       if (!currentTrack) return;
       const clamped = Math.max(-120, Math.min(120, Number(newOffset.toFixed(1))));
-      const prev = settings.offsets[currentTrack.id] || 0;
+      const prev = transform.offset;
+
+      const nextTransform: LyricTransform = {
+        speed: transform.speed,
+        offset: clamped,
+      };
+      setTransform(nextTransform);
+      saveLyricTransform(currentTrack.id, nextTransform);
 
       const newSettings: LyricsSettings = {
         ...settings,
@@ -400,11 +503,6 @@ export default function LyricsPage() {
       setSettings(newSettings);
       saveLyricsSettings(newSettings);
 
-      try {
-        localStorage.setItem(`chillify_lyric_offset:${currentTrack.id}`, String(clamped));
-      } catch {}
-
-      // Anonymously share offset to /api/lyrics/offset
       fetch('/api/lyrics/offset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -421,7 +519,7 @@ export default function LyricsPage() {
         undoOffset: prev,
       });
     },
-    [currentTrack, settings]
+    [currentTrack, transform.speed, transform.offset, settings]
   );
 
   // Undo previous offset action
@@ -441,23 +539,60 @@ export default function LyricsPage() {
     }
   }, [toast]);
 
-  // Tap-to-sync click handler: offset = nominal_line_start - current_playback_time
+  // Tap-to-sync click handler using unified transform:
+  // lyricTime(now) = speed * now + offset => to match line.start: offset = line.start - speed * now
   const handleLineTapToSync = useCallback(
     (line: SyncedLyricLine) => {
       if (!currentTrack) return;
       const now = getCurrentTime?.() ?? currentTime ?? 0;
-      const offset = Number((line.start - now).toFixed(1));
+      const spd = transform.speed || 1.0;
+      const offset = Number((line.start - spd * now).toFixed(1));
       const lineSnippet = line.words.map((w: LyricWord) => w.text).join(' ').slice(0, 22);
       applyOffset(offset, `Synced to "${lineSnippet}..."`);
       setIsTapToSyncMode(false);
     },
-    [currentTrack, getCurrentTime, currentTime, applyOffset]
+    [currentTrack, getCurrentTime, currentTime, transform.speed, applyOffset]
   );
+
+  // Unsynced Plain Lyrics: generate estimated timestamps based on duration and character weights
+  const estimatedLines = useMemo(() => {
+    if (
+      lyricsResult &&
+      lyricsResult.synced === 'none' &&
+      lyricsResult.plainLyrics &&
+      (!lyricsResult.lines || lyricsResult.lines.length === 0)
+    ) {
+      return estimatePlainLyricsTimings(lyricsResult.plainLyrics, currentTrack?.duration);
+    }
+    return null;
+  }, [lyricsResult, currentTrack?.duration]);
+
+  // Active display lines (real synced lines or estimated lines)
+  const displayLines: SyncedLyricLine[] = useMemo(() => {
+    if (lyricsResult?.lines && lyricsResult.lines.length > 0) {
+      return lyricsResult.lines;
+    }
+    if (estimatedLines && estimatedLines.length > 0) {
+      return estimatedLines;
+    }
+    return [];
+  }, [lyricsResult?.lines, estimatedLines]);
+
+  const isEstimated = useMemo(() => {
+    return (
+      !isLoading &&
+      !lyricsResult?.instrumental &&
+      lyricsResult?.synced === 'none' &&
+      !!lyricsResult?.plainLyrics &&
+      displayLines.length > 0
+    );
+  }, [isLoading, lyricsResult, displayLines]);
 
   // Sync Engine Hook (runs on requestAnimationFrame, updates CSS vars on stage)
   const { lineIndex, wordIndex } = useLyricsSync({
-    lines: lyricsResult?.lines || [],
-    offsetSeconds: currentOffset,
+    lines: displayLines,
+    offsetSeconds: transform.offset,
+    speed: transform.speed,
     stageElementRef: stageWrapperRef,
   });
 
@@ -538,23 +673,24 @@ export default function LyricsPage() {
 
   // Render the selected style component
   const renderStyleStage = () => {
-    if (!lyricsResult?.lines || lyricsResult.lines.length === 0) return null;
+    if (displayLines.length === 0) return null;
 
     // In Tap-to-sync mode, always display ClassicStage so all lines are visible and clickable
     if (isTapToSyncMode) {
       return (
         <ClassicStage
-          lines={lyricsResult.lines}
+          lines={displayLines}
           activeLineIndex={lineIndex}
           activeWordIndex={wordIndex}
           onLineClick={handleLineTapToSync}
           isTapToSyncActive={true}
+          isEstimated={isEstimated}
         />
       );
     }
 
     const commonProps = {
-      lines: lyricsResult.lines,
+      lines: displayLines,
       activeLineIndex: lineIndex,
       activeWordIndex: wordIndex,
       showIcons: settings.iconsEnabled,
@@ -583,11 +719,12 @@ export default function LyricsPage() {
       default:
         return (
           <ClassicStage
-            lines={lyricsResult.lines}
+            lines={displayLines}
             activeLineIndex={lineIndex}
             activeWordIndex={wordIndex}
             onLineClick={handleLineTapToSync}
             isTapToSyncActive={false}
+            isEstimated={isEstimated}
           />
         );
     }
@@ -597,8 +734,10 @@ export default function LyricsPage() {
     <div
       ref={stageWrapperRef}
       onMouseMove={handleMouseMove}
-      className={`w-full h-full flex flex-col bg-black text-white relative select-none overflow-hidden transition-all duration-300 ${
-        isFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-8' : 'rounded-2xl border border-[#222222]'
+      className={`w-full flex flex-col bg-black text-white relative select-none overflow-hidden transition-all duration-300 ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 p-4 sm:p-8 h-screen w-screen'
+          : 'rounded-2xl border border-[#222222] flex-1 min-h-[60vh] sm:min-h-[70vh] h-[calc(100vh-230px)] max-h-[960px]'
       }`}
       style={
         {
@@ -628,11 +767,11 @@ export default function LyricsPage() {
         }`}
       >
         {/* Left: Track metadata & Sync Status */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
           <div className="w-8 h-8 rounded-full bg-[#181818] border border-[#2a2a2a] flex items-center justify-center text-sm shrink-0">
             🎙️
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {cleanDisplayInfo ? (
               <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-2 flex-wrap">
                 <span
@@ -641,8 +780,12 @@ export default function LyricsPage() {
                 >
                   {cleanDisplayInfo.cleanTitle}
                 </span>
-                {lyricsResult?.synced === 'line' && (
-                  lyricsResult.sharedOffset !== undefined && currentOffset === lyricsResult.sharedOffset ? (
+                {isEstimated ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                    Estimated
+                  </span>
+                ) : lyricsResult?.synced === 'line' || lyricsResult?.synced === 'word' ? (
+                  lyricsResult.sharedOffset !== undefined && transform.offset === lyricsResult.sharedOffset ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
                       Synced (community offset: {lyricsResult.sharedOffset > 0 ? `+${lyricsResult.sharedOffset}` : lyricsResult.sharedOffset}s)
                     </span>
@@ -655,12 +798,7 @@ export default function LyricsPage() {
                       Synced
                     </span>
                   )
-                )}
-                {lyricsResult?.synced === 'none' && lyricsResult.plainLyrics && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                    Unsynced
-                  </span>
-                )}
+                ) : null}
                 {provenanceLabel && (
                   <span className="text-[10px] text-zinc-400 bg-zinc-900/80 px-2 py-0.5 rounded-full border border-zinc-800 shrink-0 hidden sm:inline-block">
                     {provenanceLabel}
@@ -673,7 +811,7 @@ export default function LyricsPage() {
               </h2>
             )}
             <p className="text-xs text-[#888888] truncate flex items-center gap-2">
-              <span>{cleanDisplayInfo?.cleanArtist || currentTrack?.artist || 'Play a track to view live synced lyrics'}</span>
+              <span className="truncate">{cleanDisplayInfo?.cleanArtist || currentTrack?.artist || 'Play a track to view live synced lyrics'}</span>
               {showMatchedDiff && lyricsResult?.matchedTitle && lyricsResult?.matchedArtist && (
                 <span className="text-zinc-500 hidden md:inline truncate">
                   (Matched: &ldquo;{lyricsResult.matchedArtist} - {lyricsResult.matchedTitle}&rdquo;)
@@ -684,93 +822,84 @@ export default function LyricsPage() {
         </div>
 
         {/* Right: Actions, Settings Menu & Fullscreen */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           {/* If using community lyrics, allow report or removal */}
           {lyricsResult?.source === 'community' && (
             <>
-              <button
-                type="button"
+              <HeaderActionButton
                 onClick={handleReportCommunityLyrics}
-                className="px-2.5 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 border border-rose-800/50 text-rose-300 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                icon="🚩"
+                label="Report"
+                ariaLabel="Report incorrect or vandalized community lyrics"
+                variant="rose"
                 title="Report incorrect or vandalized community lyrics (3 reports reverts track)"
-              >
-                <span>🚩</span>
-                <span className="hidden sm:inline">Report</span>
-              </button>
-              <button
-                type="button"
+              />
+              <HeaderActionButton
                 onClick={handleRemoveCommunityLyrics}
-                className="px-2.5 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                icon="🗑️"
+                label="Revert custom"
+                ariaLabel="Revert to automatic provider lyrics"
+                variant="amber"
                 title="Revert to automatic provider lyrics"
-              >
-                <span>🗑️</span>
-                <span className="hidden sm:inline">Revert custom</span>
-              </button>
+              />
             </>
           )}
 
-          {/* Sync song button for unsynced plain lyrics */}
-          {lyricsResult?.synced === 'none' && lyricsResult.plainLyrics && (
-            <button
-              type="button"
+          {/* Sync song button for estimated plain lyrics */}
+          {isEstimated && (
+            <HeaderActionButton
               onClick={() => setShowSyncEditor(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              icon="⏱️"
+              label="Sync song"
+              ariaLabel="Open sync recorder to time lyrics"
+              variant="amber"
               title="Open sync recorder to time lyrics"
-            >
-              <span>⏱️</span>
-              <span className="hidden sm:inline font-semibold">Sync song</span>
-            </button>
+            />
           )}
 
           {/* Add / Upload lyrics button */}
           {currentTrack && (
-            <button
-              type="button"
+            <HeaderActionButton
               onClick={() => setShowAddModal(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-[#161616] hover:bg-[#242424] border border-[#282828] text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+              icon="➕"
+              label="Add lyrics"
+              ariaLabel="Add or paste your own .lrc or plain lyrics"
               title="Add or paste your own .lrc or plain lyrics"
-            >
-              <span>➕</span>
-              <span className="hidden sm:inline">Add lyrics</span>
-            </button>
+            />
           )}
 
           {/* Wrong timing? button */}
-          {currentTrack && lyricsResult && lyricsResult.lines.length > 0 && (
-            <button
-              type="button"
+          {currentTrack && displayLines.length > 0 && (
+            <HeaderActionButton
               onClick={() => {
                 setShowOffsetAssistant((prev) => !prev);
                 setIsBannerDismissed(false);
               }}
-              className={`px-2.5 py-1.5 rounded-xl border text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showOffsetAssistant || (lyricsResult.durationMismatch && !isBannerDismissed)
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                  : 'bg-[#161616] hover:bg-[#242424] border-[#282828] text-zinc-400 hover:text-white'
-              }`}
+              icon="⏱️"
+              label="Wrong timing?"
+              ariaLabel="Adjust sync timing offset"
+              active={showOffsetAssistant || (lyricsResult?.durationMismatch && !isBannerDismissed)}
+              variant={showOffsetAssistant || (lyricsResult?.durationMismatch && !isBannerDismissed) ? 'amber' : 'default'}
+              badge={
+                transform.offset !== 0 ? (
+                  <span className="text-[10px] font-mono px-1 rounded bg-black/60 text-amber-300">
+                    {transform.offset > 0 ? `+${transform.offset}` : transform.offset}s
+                  </span>
+                ) : null
+              }
               title="Adjust sync timing offset"
-            >
-              <span>⏱️</span>
-              <span className="hidden sm:inline">Wrong timing?</span>
-              {currentOffset !== 0 && (
-                <span className="text-[10px] font-mono px-1 rounded bg-black/50 text-amber-300">
-                  {currentOffset > 0 ? `+${currentOffset}` : currentOffset}s
-                </span>
-              )}
-            </button>
+            />
           )}
 
           {/* Wrong lyrics? button */}
-          {currentTrack && lyricsResult && (lyricsResult.lines.length > 0 || lyricsResult.plainLyrics) && (
-            <button
-              type="button"
+          {currentTrack && (displayLines.length > 0 || lyricsResult?.plainLyrics) && (
+            <HeaderActionButton
               onClick={() => setShowFixModal(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-[#161616] hover:bg-[#242424] border border-[#282828] text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+              icon="✏️"
+              label="Wrong lyrics?"
+              ariaLabel="Search with custom artist and title"
               title="Search with custom artist and title"
-            >
-              <span>✏️</span>
-              <span className="hidden sm:inline">Wrong lyrics?</span>
-            </button>
+            />
           )}
 
           <SettingsMenu
@@ -782,8 +911,9 @@ export default function LyricsPage() {
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="p-2 rounded-xl bg-[#161616] hover:bg-[#262626] border border-[#282828] text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs"
+            className="h-9 w-9 rounded-xl bg-[#161616] hover:bg-[#262626] border border-[#282828] text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen'}
+            aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           >
             {isFullscreen ? (
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -799,7 +929,7 @@ export default function LyricsPage() {
       </div>
 
       {/* Offset Assistant Banner (shown when durationMismatch or user clicked 'Wrong timing?') */}
-      {currentTrack && lyricsResult && lyricsResult.lines.length > 0 && ((lyricsResult.durationMismatch && !isBannerDismissed) || showOffsetAssistant) && (
+      {currentTrack && displayLines.length > 0 && ((lyricsResult?.durationMismatch && !isBannerDismissed) || showOffsetAssistant) && (
         <div className="bg-[#15120c]/95 border-b border-amber-500/25 px-4 sm:px-6 py-3 text-xs text-zinc-200 z-30 backdrop-blur-md flex flex-col gap-2.5 shadow-lg animate-fade-in">
           {/* Top row: Diff explanation + Quick shift buttons + Tap to sync */}
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -809,14 +939,14 @@ export default function LyricsPage() {
                 <span>Offset Assistant</span>
               </span>
 
-              {lyricsResult.durationMismatch && (
+              {lyricsResult?.durationMismatch && (
                 <span className="text-zinc-400 text-[11px] hidden md:inline">
                   (Duration differs by ~{Math.abs(lyricsResult.diffSeconds || 0)}s)
                 </span>
               )}
 
               {/* One-click shift buttons when diffSeconds is known */}
-              {lyricsResult.diffSeconds !== undefined && Math.abs(lyricsResult.diffSeconds) > 0 && (
+              {lyricsResult?.diffSeconds !== undefined && Math.abs(lyricsResult.diffSeconds) > 0 && (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -890,7 +1020,7 @@ export default function LyricsPage() {
                 min={-120}
                 max={120}
                 step={isCoarseStep ? 1 : 0.1}
-                value={currentOffset}
+                value={transform.offset}
                 onChange={(e) => applyOffset(parseFloat(e.target.value))}
                 className="w-full accent-amber-400 cursor-pointer h-1.5 bg-[#252525] rounded-lg"
               />
@@ -922,10 +1052,10 @@ export default function LyricsPage() {
             {/* Number Display & Reset */}
             <div className="flex items-center gap-2 shrink-0">
               <span className="font-mono text-xs font-bold text-amber-300 min-w-[50px] text-right">
-                {currentOffset > 0 ? `+${currentOffset.toFixed(1)}` : currentOffset.toFixed(1)}s
+                {transform.offset > 0 ? `+${transform.offset.toFixed(1)}` : transform.offset.toFixed(1)}s
               </span>
 
-              {currentOffset !== 0 && (
+              {transform.offset !== 0 && (
                 <button
                   type="button"
                   onClick={() => applyOffset(0, 'Reset offset')}
@@ -956,10 +1086,10 @@ export default function LyricsPage() {
       )}
 
       {/* Main Lyrics Stage Area */}
-      <div className="flex-1 overflow-hidden relative flex flex-col items-center justify-center">
+      <div className="flex-1 w-full min-h-[380px] overflow-hidden relative flex flex-col items-center justify-center">
         {/* Empty State: No song playing */}
         {!currentTrack && (
-          <div className="p-8 text-center flex flex-col items-center gap-3">
+          <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-full bg-[#181818] border border-[#2a2a2a] flex items-center justify-center text-3xl">
               🎵
             </div>
@@ -980,7 +1110,7 @@ export default function LyricsPage() {
 
         {/* Instrumental Track */}
         {currentTrack && !isLoading && lyricsResult?.instrumental && (
-          <div className="p-8 text-center flex flex-col items-center gap-3 max-w-md">
+          <div className="p-8 text-center flex flex-col items-center justify-center gap-3 max-w-md">
             <div className="w-16 h-16 rounded-3xl bg-[#161616] border border-[#282828] flex items-center justify-center text-3xl animate-pulse">
               ☕
             </div>
@@ -1007,61 +1137,25 @@ export default function LyricsPage() {
           </div>
         )}
 
-        {/* Synced Lyrics Stage (Renders the selected style) */}
+        {/* Synced or Estimated Lyrics Stage (Renders the selected style) */}
         {currentTrack &&
           !isLoading &&
           !lyricsResult?.instrumental &&
-          lyricsResult?.lines &&
-          lyricsResult.lines.length > 0 &&
+          displayLines.length > 0 &&
           renderStyleStage()}
-
-        {/* Unsynced Plain Lyrics */}
-        {currentTrack &&
-          !isLoading &&
-          !lyricsResult?.instrumental &&
-          (!lyricsResult?.lines || lyricsResult.lines.length === 0) &&
-          lyricsResult?.plainLyrics && (
-            <div className="w-full h-full overflow-y-auto px-6 sm:px-16 py-12 flex flex-col items-center">
-              {/* Prominent "Sync this song" Callout Banner (Part F) */}
-              <div className="max-w-xl w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 mb-8 rounded-2xl bg-[#15120c] border border-amber-500/35 shadow-xl">
-                <div>
-                  <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <span>⚡</span>
-                    <span>Turn this into live synced lyrics</span>
-                  </h4>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Listen to the track and tap spacebar to record line timings with the Sync Recorder.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSyncEditor(true)}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-lg transition-transform active:scale-95 shrink-0"
-                >
-                  <span>⏱️</span>
-                  <span>Sync this song</span>
-                </button>
-              </div>
-
-              <div className="max-w-xl w-full space-y-4 whitespace-pre-line text-sm sm:text-base text-zinc-300 leading-relaxed text-center sm:text-left">
-                {lyricsResult.plainLyrics}
-              </div>
-            </div>
-          )}
 
         {/* Not Found State with Inline Manual Fix & Add Lyrics */}
         {currentTrack &&
           !isLoading &&
           !lyricsResult?.instrumental &&
-          (!lyricsResult?.lines || lyricsResult.lines.length === 0) &&
-          !lyricsResult?.plainLyrics && (
-            <div className="p-8 text-center flex flex-col items-center gap-4 max-w-md w-full">
+          displayLines.length === 0 && (
+            <div className="p-8 text-center flex flex-col items-center justify-center gap-4 max-w-md w-full">
               <div className="w-12 h-12 rounded-2xl bg-[#161616] border border-[#2a2a2a] flex items-center justify-center text-xl">
                 ✨
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">No lyrics available</h3>
-                <p className="text-xs text-[#888888] mt-1">
+                <p className="text-xs text-[#888888] mt-1 leading-relaxed">
                   Lyrics haven&apos;t been automatically matched for &ldquo;{currentTrack.title}&rdquo;.
                 </p>
               </div>
@@ -1121,6 +1215,17 @@ export default function LyricsPage() {
             </div>
           )}
       </div>
+
+      {/* Slim Lyric Speed Slider in Fullscreen View */}
+      {isFullscreen && currentTrack && !lyricsResult?.instrumental && displayLines.length > 0 && (
+        <div
+          className={`absolute bottom-6 left-1/2 -translate-x-1/2 w-64 max-w-[85vw] px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 z-40 transition-opacity duration-300 ${
+            isFullscreen && !showControls ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <LyricSpeedSlider trackId={currentTrack.id} />
+        </div>
+      )}
 
       {/* Manual Fix Modal */}
       {showFixModal && (

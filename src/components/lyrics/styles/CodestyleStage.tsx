@@ -20,6 +20,14 @@ export default function CodestyleStage({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const activeLineRef = useRef<HTMLDivElement | null>(null);
 
+  if (!lines || lines.length === 0) {
+    return (
+      <div className="w-full h-full min-h-[300px] flex items-center justify-center p-8 text-center text-zinc-500">
+        <p className="text-sm font-medium tracking-wide animate-pulse">Waiting for vocals...</p>
+      </div>
+    );
+  }
+
   // Auto-scroll active line to center
   useEffect(() => {
     if (activeLineRef.current) {
