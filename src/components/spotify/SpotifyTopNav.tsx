@@ -10,6 +10,8 @@ interface SpotifyTopNavProps {
   setActiveView: (view: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  searchViewMode?: 'list' | 'grid';
+  setSearchViewMode?: (mode: 'list' | 'grid') => void;
 }
 
 export default function SpotifyTopNav({
@@ -17,6 +19,8 @@ export default function SpotifyTopNav({
   setActiveView,
   searchQuery,
   setSearchQuery,
+  searchViewMode = 'list',
+  setSearchViewMode,
 }: SpotifyTopNavProps) {
   const { playbackState } = usePlayback();
 
@@ -127,19 +131,75 @@ export default function SpotifyTopNav({
               }
             }}
             placeholder="Search songs, lo-fi beats..."
-            className="w-full h-9 sm:h-10 rounded-full bg-[#1c1c1c] hover:bg-[#242424] focus:bg-[#242424] text-white placeholder-[#777777] text-xs pl-8 sm:pl-10 pr-8 sm:pr-9 outline-none border border-[#2c2c2c] focus:border-[#666666] transition-all"
+            className="w-full h-9 sm:h-10 rounded-full bg-[#1c1c1c] hover:bg-[#242424] focus:bg-[#242424] text-white placeholder-[#777777] text-xs pl-8 sm:pl-10 pr-16 sm:pr-20 outline-none border border-[#2c2c2c] focus:border-[#666666] transition-all"
           />
 
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute right-2.5 sm:right-3 text-[#888888] hover:text-white text-xs cursor-pointer p-1"
-              title="Clear search"
-            >
-              ✕
-            </button>
-          )}
+          <div className="absolute right-2 sm:right-2.5 flex items-center gap-0.5 sm:gap-1">
+            {/* Small view mode toggle button near cross */}
+            {setSearchViewMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextMode = searchViewMode === 'list' ? 'grid' : 'list';
+                  setSearchViewMode(nextMode);
+                  if (activeView !== 'search' && searchQuery.trim()) {
+                    setActiveView('search');
+                  }
+                }}
+                className="p-1 sm:p-1.5 rounded-full text-[#888888] hover:text-white hover:bg-[#282828] transition-colors cursor-pointer flex items-center justify-center"
+                title={searchViewMode === 'list' ? 'Switch to Grid view' : 'Switch to List view'}
+                aria-label={searchViewMode === 'list' ? 'Switch to Grid view' : 'Switch to List view'}
+              >
+                {searchViewMode === 'list' ? (
+                  /* Grid icon */
+                  <svg
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                ) : (
+                  /* List icon */
+                  <svg
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                  </svg>
+                )}
+              </button>
+            )}
+
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="text-[#888888] hover:text-white text-xs cursor-pointer p-1 rounded-full hover:bg-[#282828] transition-colors"
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

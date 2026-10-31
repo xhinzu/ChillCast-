@@ -38,6 +38,8 @@ interface SpotifyMainContentProps {
   setShowVideo: (show: boolean) => void;
   searchQuery: string;
   setSearchQuery?: (query: string) => void;
+  searchViewMode?: 'list' | 'grid';
+  setSearchViewMode?: (mode: 'list' | 'grid') => void;
   /** Extra Tailwind classes injected by parent for mobile bottom-padding compensation */
   extraBottomPadding?: string;
   onToggleNowPlaying?: () => void;
@@ -61,6 +63,8 @@ export default function SpotifyMainContent({
   setShowVideo,
   searchQuery,
   setSearchQuery,
+  searchViewMode = 'list',
+  setSearchViewMode,
   extraBottomPadding = '',
 }: SpotifyMainContentProps) {
   const {
@@ -113,13 +117,30 @@ export default function SpotifyMainContent({
   const loadStoredPlaylists = () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
+          // One-time cleanup for existing browser state with legacy seeded playlists
+          if (localStorage.getItem('chillify_cleaned_starter_v2') !== 'true') {
+            const legacyIds = new Set(['chill-vibes', 'ig-viral-mix', 'lofi-midnight']);
+            let cleaned = parsed.filter((p: SavedPlaylistItem) => !legacyIds.has(p.id));
+            cleaned = cleaned.filter((p: SavedPlaylistItem) => {
+              if (p.id === 'liked-songs' && p.tracks && p.tracks.length === 10) {
+                const hasOldStarter = p.tracks.some((t) => t.id === 'z4UDNuTla2k' || t.id === 'kPhpHvnnn0E');
+                return !hasOldStarter;
+              }
+              return true;
+            });
+            localStorage.setItem('chillify_cleaned_starter_v2', 'true');
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+            setSavedPlaylists(cleaned);
+            return;
+          }
           setSavedPlaylists(parsed);
           return;
         }
       }
+      localStorage.setItem('chillify_cleaned_starter_v2', 'true');
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STARTER_PLAYLISTS));
       setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
     } catch {
@@ -235,9 +256,6 @@ export default function SpotifyMainContent({
       yt?.primeAudioStream?.(video.id);
     }
     loadPlaylist(video.id, 'youtube');
-    // Clear search and return to home page
-    setSearchQuery?.('');
-    setActiveView('home');
   };
 
   // Add video to an existing or new Custom Playlist
@@ -814,7 +832,7 @@ export default function SpotifyMainContent({
         {/* ------------------------------------------------------------- */}
         {isSearchActive && !isPlaylistView && (
           <section aria-label="Search Results" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-extrabold text-white tracking-tight">
                   YouTube Results for &ldquo;{searchQuery}&rdquo;
@@ -824,12 +842,76 @@ export default function SpotifyMainContent({
                 </p>
               </div>
 
-              {isSearching && (
-                <div className="flex items-center gap-2 text-xs text-[#1d90f5] font-medium">
-                  <div className="w-4 h-4 border-2 border-[#1d90f5] border-t-transparent rounded-full animate-spin" />
-                  <span>Searching songs...</span>
-                </div>
-              )}
+              <div className="flex items-center gap-3 self-end sm:self-auto">
+                {isSearching && (
+                  <div className="flex items-center gap-2 text-xs text-white/80 font-medium">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="hidden sm:inline">Searching songs...</span>
+                  </div>
+                )}
+
+                {/* View switcher buttons: List / Grid */}
+                {setSearchViewMode && (
+                  <div className="flex items-center bg-[#1c1c1c] p-1 rounded-xl border border-[#2a2a2a]">
+                    <button
+                      type="button"
+                      onClick={() => setSearchViewMode('list')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        searchViewMode === 'list'
+                          ? 'bg-white text-black shadow-sm'
+                          : 'text-[#888888] hover:text-white'
+                      }`}
+                      title="List View"
+                      aria-label="List View"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                      </svg>
+                      <span>List</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSearchViewMode('grid')}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        searchViewMode === 'grid'
+                          ? 'bg-white text-black shadow-sm'
+                          : 'text-[#888888] hover:text-white'
+                      }`}
+                      title="Grid View"
+                      aria-label="Grid View"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                      <span>Grid</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {searchResults.length === 0 && !isSearching ? (
@@ -869,68 +951,204 @@ export default function SpotifyMainContent({
                   <p className="text-xs">Try searching for song titles, artists, or &ldquo;lofi beats&rdquo;.</p>
                 </div>
               )
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {searchResults.map((video) => (
-                  <div
-                    key={video.id}
-                    onClick={() => handlePlaySearchResult(video)}
-                    className="spotify-card p-3.5 rounded-xl cursor-pointer group flex flex-col justify-between relative shadow-lg border border-transparent hover:border-[#2a2a2a]"
-                  >
-                    {/* Video Thumbnail Tile */}
-                    <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-zinc-900 shadow-md">
-                      <Image
-                        src={video.thumbnail}
-                        alt={video.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 280px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        unoptimized
-                      />
+            ) : searchViewMode === 'list' ? (
+              /* LIST VIEW */
+              <div className="bg-[#161616] rounded-xl border border-[#242424] divide-y divide-[#222222] overflow-hidden shadow-lg">
+                {searchResults.map((video, idx) => {
+                  const isThisPlaying = isPlaying && currentTrack?.id === video.id;
+                  const liked = isTrackLiked(video.id);
 
-                      {/* Video Duration Badge */}
-                      <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-medium text-white shadow">
-                        {video.duration}
-                      </span>
+                  return (
+                    <div
+                      key={video.id}
+                      onClick={() => handlePlaySearchResult(video)}
+                      className={`flex items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 py-2.5 transition-colors cursor-pointer group select-none ${
+                        isThisPlaying
+                          ? 'bg-[#222222] text-white'
+                          : 'hover:bg-[#1f1f1f]'
+                      }`}
+                    >
+                      {/* Left: Index / Play Icon & Thumbnail & Title / Channel */}
+                      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
+                        {/* Index number or Play icon */}
+                        <div className="w-5 text-center shrink-0 text-xs font-medium text-[#777777]">
+                          {isThisPlaying ? (
+                            <div className="flex items-end justify-center gap-0.5 h-3">
+                              <span className="w-0.5 bg-white rounded-full animate-bounce h-2" />
+                              <span className="w-0.5 bg-white rounded-full animate-bounce h-3 delay-75" />
+                              <span className="w-0.5 bg-white rounded-full animate-bounce h-1.5 delay-150" />
+                            </div>
+                          ) : (
+                            <span className="group-hover:hidden">{idx + 1}</span>
+                          )}
+                          {!isThisPlaying && (
+                            <span className="hidden group-hover:flex items-center justify-center">
+                              <PlayIcon className="w-3.5 h-3.5 text-white fill-current" />
+                            </span>
+                          )}
+                        </div>
 
-                      {/* Hover Play Button */}
-                      <button
-                        type="button"
-                        className="absolute bottom-2 left-2 w-10 h-10 rounded-full bg-[#1d90f5] text-black shadow-xl flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 cursor-pointer"
-                        title="Play Track"
-                      >
-                        <svg className="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </button>
-                    </div>
+                        {/* Thumbnail */}
+                        <div className="relative w-12 h-8 sm:w-14 sm:h-9 rounded-md overflow-hidden bg-black shrink-0 border border-[#2a2a2a]">
+                          <Image
+                            src={video.thumbnail}
+                            alt={video.title}
+                            fill
+                            sizes="56px"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized
+                          />
+                        </div>
 
-                    {/* Metadata & Actions */}
-                    <div className="flex flex-col justify-between flex-1 gap-2">
-                      <div>
-                        <h3 className="font-bold text-xs sm:text-sm text-white line-clamp-2 group-hover:text-[#1d90f5] transition-colors">
-                          {video.title}
-                        </h3>
-                        <p className="text-[11px] text-[#b3b3b3] truncate mt-1">
-                          {video.channel}
-                        </p>
+                        {/* Title & Channel */}
+                        <div className="min-w-0 flex-1 pr-2">
+                          <p
+                            className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
+                              isThisPlaying ? 'text-white' : 'text-zinc-100 group-hover:text-white'
+                            }`}
+                            title={video.title}
+                          >
+                            {video.title}
+                          </p>
+                          <p className="text-[11px] text-[#8e8b98] truncate mt-0.5">
+                            {video.channel}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Add to Playlist button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPlaylistTargetVideo(video);
-                        }}
-                        className="mt-1 w-full py-1.5 px-3 rounded-full bg-[#242424] hover:bg-[#1d90f5] hover:text-white text-[#b3b3b3] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        title="Add to Custom Playlist"
-                      >
-                        <span>＋</span> Add to Playlist
-                      </button>
+                      {/* Right: Duration + Add to Playlist + Like Button */}
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                        <span className="text-xs font-mono text-[#777777] hidden xs:inline sm:inline">
+                          {video.duration}
+                        </span>
+
+                        {/* Add to Playlist button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPlaylistTargetVideo(video);
+                          }}
+                          className="py-1 px-2.5 sm:px-3 rounded-full bg-[#242424] hover:bg-white hover:text-black text-[#b3b3b3] text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer border border-[#333333]"
+                          title="Add to Custom Playlist"
+                        >
+                          <span>＋</span>
+                          <span className="hidden sm:inline">Add</span>
+                        </button>
+
+                        {/* Like button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTrackLike({
+                              id: video.id,
+                              title: video.title,
+                              artist: video.channel,
+                              duration: video.duration,
+                              thumbnail: video.thumbnail,
+                            });
+                          }}
+                          className="p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer text-[#888888] hover:text-white"
+                          title={liked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+                        >
+                          <HeartIcon className="w-4 h-4" filled={liked} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+            ) : (
+              /* GRID VIEW */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {searchResults.map((video) => {
+                  const isThisPlaying = isPlaying && currentTrack?.id === video.id;
+                  const liked = isTrackLiked(video.id);
+
+                  return (
+                    <div
+                      key={video.id}
+                      onClick={() => handlePlaySearchResult(video)}
+                      className={`spotify-card p-3.5 rounded-xl cursor-pointer group flex flex-col justify-between relative shadow-lg border transition-all ${
+                        isThisPlaying
+                          ? 'border-white/40 bg-[#222222]'
+                          : 'border-transparent hover:border-[#2a2a2a]'
+                      }`}
+                    >
+                      {/* Video Thumbnail Tile */}
+                      <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-zinc-900 shadow-md">
+                        <Image
+                          src={video.thumbnail}
+                          alt={video.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 280px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          unoptimized
+                        />
+
+                        {/* Video Duration Badge */}
+                        <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono font-medium text-white shadow">
+                          {video.duration}
+                        </span>
+
+                        {/* Hover Play Button */}
+                        <button
+                          type="button"
+                          className="absolute bottom-2 left-2 w-10 h-10 rounded-full bg-white text-black shadow-xl flex items-center justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-200 cursor-pointer"
+                          title="Play Track"
+                        >
+                          <PlayIcon className="w-4 h-4 text-black ml-0.5" />
+                        </button>
+                      </div>
+
+                      {/* Metadata & Actions */}
+                      <div className="flex flex-col justify-between flex-1 gap-2">
+                        <div>
+                          <h3 className="font-bold text-xs sm:text-sm text-white line-clamp-2 group-hover:text-zinc-200 transition-colors">
+                            {video.title}
+                          </h3>
+                          <p className="text-[11px] text-[#b3b3b3] truncate mt-1">
+                            {video.channel}
+                          </p>
+                        </div>
+
+                        {/* Action buttons: Add to Playlist and Like */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPlaylistTargetVideo(video);
+                            }}
+                            className="flex-1 py-1.5 px-3 rounded-full bg-[#242424] hover:bg-white hover:text-black text-[#b3b3b3] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#333333]"
+                            title="Add to Custom Playlist"
+                          >
+                            <span>＋</span> Add to Playlist
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTrackLike({
+                                id: video.id,
+                                title: video.title,
+                                artist: video.channel,
+                                duration: video.duration,
+                                thumbnail: video.thumbnail,
+                              });
+                            }}
+                            className="p-1.5 rounded-full hover:scale-110 transition-transform cursor-pointer text-[#888888] hover:text-white"
+                            title={liked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
+                          >
+                            <HeartIcon className="w-4 h-4" filled={liked} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

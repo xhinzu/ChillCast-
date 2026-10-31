@@ -16,6 +16,24 @@ function ChillifyShell() {
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
+  const [searchViewMode, setSearchViewMode] = useState<'list' | 'grid'>('list');
+
+  // Load search view preference from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('chillify_search_view_mode');
+      if (saved === 'grid' || saved === 'list') {
+        setSearchViewMode(saved);
+      }
+    } catch {}
+  }, []);
+
+  const handleSetSearchViewMode = (mode: 'list' | 'grid') => {
+    setSearchViewMode(mode);
+    try {
+      localStorage.setItem('chillify_search_view_mode', mode);
+    } catch {}
+  };
 
   // Global spacebar hotkey for play/pause
   useEffect(() => {
@@ -45,6 +63,8 @@ function ChillifyShell() {
         setActiveView={setActiveView}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        searchViewMode={searchViewMode}
+        setSearchViewMode={handleSetSearchViewMode}
       />
 
       {/* 2. Main Middle: Sidebar + Main Discovery Content + Right-side Now Playing Panel */}
@@ -67,6 +87,8 @@ function ChillifyShell() {
             setShowVideo={setShowVideo}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            searchViewMode={searchViewMode}
+            setSearchViewMode={handleSetSearchViewMode}
             extraBottomPadding={currentTrack ? 'pb-[130px] md:pb-0' : 'pb-[64px] md:pb-0'}
             onToggleNowPlaying={() => setShowNowPlaying((prev) => !prev)}
             isNowPlayingOpen={showNowPlaying}
