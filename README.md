@@ -6,7 +6,7 @@ A modern, high-performance web application designed as an **exact replica of the
 
 ## ✨ Features
 
-- **🎧 Live lyrics**:
+- **🎧 Livse lyrics**:
   
 - **🎛️ Ambient Soundscape Mixer**:
   
