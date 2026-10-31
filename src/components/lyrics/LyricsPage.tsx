@@ -209,6 +209,19 @@ export default function LyricsPage() {
       // ignore
     }
 
+    // Also persist to Upstash Redis server backend asynchronously
+    fetch('/api/lyrics/community', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trackId: currentTrack.id,
+        artist: currentTrack.artist,
+        title: currentTrack.title,
+        duration: currentTrack.duration,
+        text: customLyricText.trim(),
+      }),
+    }).catch(() => {});
+
     setLyricsResult(communityResult);
     setShowAddModal(false);
     setCustomLyricText('');

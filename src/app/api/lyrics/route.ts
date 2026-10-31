@@ -240,7 +240,26 @@ export async function GET(req: NextRequest) {
     }
 
     // -------------------------------------------------------------
-    // Step 4: No matching lyrics found across any provider
+    // Step 4: Check Community Lyrics (Upstash Redis)
+    // -------------------------------------------------------------
+    try {
+      const { getCommunityLyrics } = await import('@/lib/lyrics/communityRedis');
+      const communityMatch = await getCommunityLyrics(trackId, primaryCandidate.artist, primaryCandidate.title);
+      if (communityMatch && (communityMatch.lines.length > 0 || communityMatch.plainLyrics)) {
+        console.debug(`[lyrics-lookup] Community lyrics hit for trackId ${trackId}`);
+        serverLyricsCache.set(posCacheKey, {
+          data: communityMatch,
+          status: 200,
+          expiresAt: Date.now() + POSITIVE_CACHE_TTL_MS,
+        });
+        return NextResponse.json(communityMatch);
+      }
+    } catch {
+      // ignore
+    }
+
+    // -------------------------------------------------------------
+    // Step 5: No matching lyrics found across any provider
     // -------------------------------------------------------------
     console.debug(`[lyrics-lookup] No lyrics found for "${rawTitle}". Setting negative cache for 10 min.`);
     const notFoundResult: LyricsResult = {
