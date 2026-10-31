@@ -44,6 +44,8 @@ interface PlaybackContextValue {
   toggleSpatial8D: () => void;
   toggleMuffled: () => void;
   playCustomTrackList: (tracks: TrackInfo[], startIndex?: number) => Promise<void>;
+  getAudioAnalyser: () => AnalyserNode | null;
+  getAudioElement: () => HTMLAudioElement | null;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -367,6 +369,20 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const isPlaying = playbackState === 'playing';
 
+  const getAudioAnalyser = useCallback((): AnalyserNode | null => {
+    if (adapterRef.current && typeof adapterRef.current.getAnalyser === 'function') {
+      return adapterRef.current.getAnalyser();
+    }
+    return null;
+  }, []);
+
+  const getAudioElement = useCallback((): HTMLAudioElement | null => {
+    if (adapterRef.current && typeof adapterRef.current.getAudioElement === 'function') {
+      return adapterRef.current.getAudioElement();
+    }
+    return null;
+  }, []);
+
   return (
     <PlaybackContext.Provider
       value={{
@@ -396,6 +412,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         toggleSpatial8D,
         toggleMuffled,
         playCustomTrackList,
+        getAudioAnalyser,
+        getAudioElement,
       }}
     >
       {children}

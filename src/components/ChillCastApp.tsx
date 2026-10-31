@@ -9,6 +9,7 @@ import SpotifyMainContent from '@/components/spotify/SpotifyMainContent';
 import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
 import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
+import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 
 function ChillifyShell() {
   const { togglePlay, currentTrack } = usePlayback();
@@ -105,6 +106,12 @@ function ChillifyShell() {
           </div>
         )}
       </div>
+
+      {/* Floating lyrics overlay when user browses other tabs */}
+      <FloatingLyrics
+        activeView={activeView}
+        onNavigateToLyrics={() => setActiveView('lyrics')}
+      />
 
       {/* 3. Bottom Player Bar */}
       <div className="md:block shrink-0">

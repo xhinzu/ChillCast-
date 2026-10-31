@@ -68,5 +68,11 @@ export interface PlaybackAdapter {
   setSpatial8D?(enabled: boolean): void;
   setMuffled?(enabled: boolean): void;
 
+  /**
+   * Optional Web Audio AnalyserNode for beat-reactive visualizers
+   */
+  getAnalyser?(): AnalyserNode | null;
+  getAudioElement?(): HTMLAudioElement | null;
+
   cleanup(): void;
 }

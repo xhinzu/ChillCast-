@@ -30,6 +30,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
   private spatialAngle = 0;
   private isSpatial8DActive = false;
   private isMuffledActive = false;
+  private analyserNode: AnalyserNode | null = null;
 
   private initDsp() {
     if (this.audioCtx || !this.audio || typeof window === 'undefined') return;
@@ -270,6 +271,24 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
     return this.isLooping;
   }
 
+  public getAnalyser(): AnalyserNode | null {
+    if (!this.analyserNode && this.audioCtx && this.gainNode) {
+      try {
+        this.analyserNode = this.audioCtx.createAnalyser();
+        this.analyserNode.fftSize = 256;
+        this.analyserNode.smoothingTimeConstant = 0.8;
+        this.gainNode.connect(this.analyserNode);
+      } catch (err) {
+        console.warn('Failed to attach AnalyserNode to LocalAudio gainNode:', err);
+      }
+    }
+    return this.analyserNode;
+  }
+
+  public getAudioElement(): HTMLAudioElement | null {
+    return this.audio;
+  }
+
   public override cleanup(): void {
     if (this.spatialIntervalId !== null) {
       clearInterval(this.spatialIntervalId);
@@ -286,6 +305,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       this.muffledFilter = null;
       this.pannerNode = null;
       this.gainNode = null;
+      this.analyserNode = null;
     }
     if (this.audio) {
       this.audio.pause();

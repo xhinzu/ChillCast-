@@ -33,6 +33,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private spatialAngle = 0;
   private isSpatial8DActive = false;
   private isMuffledActive = false;
+  private analyserNode: AnalyserNode | null = null;
 
   private initDsp() {
     if (this.audioCtx || !this.streamAudio || typeof window === 'undefined') return;
@@ -790,6 +791,24 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     }
   }
 
+  public getAnalyser(): AnalyserNode | null {
+    if (!this.analyserNode && this.audioCtx && this.gainNode) {
+      try {
+        this.analyserNode = this.audioCtx.createAnalyser();
+        this.analyserNode.fftSize = 256;
+        this.analyserNode.smoothingTimeConstant = 0.8;
+        this.gainNode.connect(this.analyserNode);
+      } catch (err) {
+        console.warn('Failed to attach AnalyserNode to YouTube gainNode:', err);
+      }
+    }
+    return this.analyserNode;
+  }
+
+  public getAudioElement(): HTMLAudioElement | null {
+    return this.streamAudio;
+  }
+
   public override cleanup(): void {
     this.stopPositionTimer();
     if (this.spatialIntervalId !== null) {
@@ -805,6 +824,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       this.muffledFilter = null;
       this.pannerNode = null;
       this.gainNode = null;
+      this.analyserNode = null;
     }
     if (this.streamAudio) {
       this.streamAudio.pause();

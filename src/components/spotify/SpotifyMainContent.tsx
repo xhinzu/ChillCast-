@@ -9,6 +9,7 @@ import AddSourceModal, { SavedPlaylistItem, CustomPlaylistTrack } from './AddSou
 import { TrackInfo } from '@/types/playback';
 import { ENGLISH_TRACKS, MALAYALAM_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
 import DualVinylMixer from '@/components/mixer/DualVinylMixer';
+import LyricsPage from '@/components/lyrics/LyricsPage';
 import {
   ALL_GENRE_TRENDING_SONGS,
   DEFAULT_STARTER_PLAYLISTS,
@@ -1468,47 +1469,11 @@ export default function SpotifyMainContent({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* VIEW: LYRICS (Work in progress)                               */}
+        {/* VIEW: LYRICS                                                  */}
         {/* ------------------------------------------------------------- */}
         {isLyricsView && (
-          <section
-            aria-label="Lyrics View"
-            className="flex flex-col items-center justify-center min-h-[500px] p-8 text-center bg-gradient-to-b from-[#1c1c1c] to-[#121212] rounded-2xl border border-[#262626] shadow-2xl relative overflow-hidden"
-          >
-            {/* Subtle background glow */}
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
-
-            {/* Icon / Badge */}
-            <div className="relative mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-[#1e1e1e] border border-[#333333] flex items-center justify-center shadow-2xl text-zinc-300">
-                <svg className="w-10 h-10 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="22" />
-                </svg>
-              </div>
-              <span className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                WIP
-              </span>
-            </div>
-
-            <span className="text-xs font-semibold tracking-widest text-[#888888] uppercase mb-2">
-              Chillify Live Lyrics
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3">
-              Work in Progress
-            </h2>
-            <p className="text-sm text-[#888888] max-w-md mx-auto leading-relaxed mb-6">
-              We&apos;re crafting a synchronized real-time lyrics and karaoke experience for your favorite tracks. Stay tuned for upcoming updates!
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setActiveView('home')}
-              className="px-5 py-2.5 rounded-full bg-white hover:bg-neutral-200 text-black text-xs font-bold transition-all shadow-lg hover:scale-105 cursor-pointer"
-            >
-              Back to Home
-            </button>
+          <section aria-label="Lyrics View" className="h-full w-full overflow-hidden">
+            <LyricsPage />
           </section>
         )}
 
