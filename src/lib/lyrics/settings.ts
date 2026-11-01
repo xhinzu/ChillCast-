@@ -29,6 +29,9 @@ export interface LyricsSettings {
   lyricColor: string;
   highlightColor: string;
   secondaryColor: string;
+  chromaEnabled: boolean;
+  chromaSpeed: number;     // 10 to 100 (default 50 = medium)
+  chromaVividness: number; // 20 to 100 (default 80 = vibrant/neon)
   edgeGlowEnabled: boolean;
   edgeGlowMode: EdgeGlowMode;
   edgeGlowThickness: number; // 2 to 14 px
@@ -50,6 +53,9 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   lyricColor: '#ffffff',
   highlightColor: '#ef4444',
   secondaryColor: '#888888',
+  chromaEnabled: false,
+  chromaSpeed: 50,
+  chromaVividness: 80,
   edgeGlowEnabled: true,
   edgeGlowMode: 'music_sync',
   edgeGlowThickness: 4,
@@ -105,11 +111,25 @@ export function loadLyricsSettings(): LyricsSettings {
         ? parsed.cameraMovementEnabled
         : !prefersReducedMotion;
 
+    const chromaEnabled =
+      typeof parsed.chromaEnabled === 'boolean' ? parsed.chromaEnabled : false;
+    const chromaSpeed =
+      typeof parsed.chromaSpeed === 'number'
+        ? Math.max(10, Math.min(100, parsed.chromaSpeed))
+        : 50;
+    const chromaVividness =
+      typeof parsed.chromaVividness === 'number'
+        ? Math.max(20, Math.min(100, parsed.chromaVividness))
+        : 80;
+
     return {
       ...DEFAULT_LYRICS_SETTINGS,
       ...parsed,
       style,
       cameraMovementEnabled,
+      chromaEnabled,
+      chromaSpeed,
+      chromaVividness,
       offsets: { ...parsed.offsets },
     };
   } catch {

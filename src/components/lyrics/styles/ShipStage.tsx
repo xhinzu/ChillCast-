@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface ShipStageProps {
   lines: SyncedLyricLine[];
@@ -11,6 +12,9 @@ interface ShipStageProps {
   activeWordIndex: number;
   showIcons?: boolean;
   cameraMovementEnabled?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 export default function ShipStage({
@@ -19,6 +23,9 @@ export default function ShipStage({
   activeWordIndex,
   showIcons = false,
   cameraMovementEnabled = true,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: ShipStageProps) {
   const worldRef = useRef<HTMLDivElement | null>(null);
 
@@ -101,6 +108,10 @@ export default function ShipStage({
           const emoji =
             showIcons && word.text ? getEmojiForLyricWord(word.text) : null;
 
+          const chroma = chromaEnabled
+            ? getWordChromaInfo(trackId, activeLineIndex, idx, chromaVividness)
+            : null;
+
           return (
             <div
               key={`ship-word-${idx}-${word.text}`}
@@ -108,12 +119,27 @@ export default function ShipStage({
               style={{
                 transform: `translateZ(${tz}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`,
                 opacity,
-                color: isActive ? 'var(--highlight, #ef4444)' : isPast ? 'var(--secondary, #888888)' : 'var(--lyric, #ffffff)',
+                color: chroma
+                  ? chroma.hex
+                  : isActive
+                  ? 'var(--highlight, #ef4444)'
+                  : isPast
+                  ? 'var(--secondary, #888888)'
+                  : 'var(--lyric, #ffffff)',
               }}
             >
               <span
+                style={
+                  isActive && chroma
+                    ? { textShadow: chroma.glowShadow }
+                    : undefined
+                }
                 className={`tracking-tight font-black transition-all duration-200 select-none ${
-                  isActive ? 'text-4xl sm:text-6xl active-glyph-glow' : 'text-2xl sm:text-3xl font-semibold'
+                  isActive
+                    ? chroma
+                      ? 'text-4xl sm:text-6xl'
+                      : 'text-4xl sm:text-6xl active-glyph-glow'
+                    : 'text-2xl sm:text-3xl font-semibold'
                 }`}
               >
                 {word.text}

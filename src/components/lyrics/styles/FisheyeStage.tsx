@@ -3,12 +3,16 @@
 import React from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface FisheyeStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 export default function FisheyeStage({
@@ -16,6 +20,9 @@ export default function FisheyeStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: FisheyeStageProps) {
   const activeLine =
     activeLineIndex >= 0 && activeLineIndex < lines.length
@@ -65,6 +72,10 @@ export default function FisheyeStage({
           const isActive = diff === 0;
           const emoji = showIcons && word.text ? getEmojiForLyricWord(word.text) : null;
 
+          const chroma = chromaEnabled
+            ? getWordChromaInfo(trackId, activeLineIndex, idx, chromaVividness)
+            : null;
+
           return (
             <div
               key={`fisheye-${idx}-${word.text}`}
@@ -73,12 +84,22 @@ export default function FisheyeStage({
                 transform: `translateY(${translateY}px) translateZ(${translateZ}px) rotateX(${rotateX}deg) scale(${scale})`,
                 opacity,
                 zIndex: Math.round(cosine * 100),
+                color: chroma ? chroma.hex : undefined,
               }}
             >
               <span
+                style={
+                  isActive && chroma
+                    ? { textShadow: chroma.glowShadow }
+                    : undefined
+                }
                 className={`font-black tracking-tight transition-all duration-200 select-none py-2 px-4 ${
                   isActive
-                    ? 'text-4xl sm:text-6xl text-[var(--highlight,#ef4444)] active-glyph-glow'
+                    ? chroma
+                      ? 'text-4xl sm:text-6xl'
+                      : 'text-4xl sm:text-6xl text-[var(--highlight,#ef4444)] active-glyph-glow'
+                    : chroma
+                    ? 'text-2xl sm:text-3xl'
                     : 'text-2xl sm:text-3xl text-[var(--lyric,#ffffff)]'
                 }`}
               >

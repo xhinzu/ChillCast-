@@ -1084,6 +1084,9 @@ export default function LyricsPage() {
           onLineClick={handleLineTapToSync}
           isTapToSyncActive={true}
           isEstimated={isEstimated}
+          chromaEnabled={settings.chromaEnabled}
+          chromaVividness={settings.chromaVividness}
+          trackId={currentTrack?.id}
         />
       );
     }
@@ -1095,6 +1098,8 @@ export default function LyricsPage() {
       showIcons: settings.iconsEnabled,
       cameraMovementEnabled: settings.cameraMovementEnabled,
       trackId: currentTrack?.id,
+      chromaEnabled: settings.chromaEnabled,
+      chromaVividness: settings.chromaVividness,
     };
 
     switch (settings.style) {
@@ -1124,6 +1129,9 @@ export default function LyricsPage() {
             onLineClick={handleLineTapToSync}
             isTapToSyncActive={false}
             isEstimated={isEstimated}
+            chromaEnabled={settings.chromaEnabled}
+            chromaVividness={settings.chromaVividness}
+            trackId={currentTrack?.id}
           />
         );
     }
@@ -1186,7 +1194,7 @@ export default function LyricsPage() {
         </div>
       )}
 
-      {/* Edge Glow Visualizer (Lumn-inspired light ring) */}
+      {/* Edge Glow Visualizer (Lumn-inspired light ring / Chroma running RGB) */}
       <EdgeGlow
         enabled={settings.edgeGlowEnabled}
         mode={settings.edgeGlowMode}
@@ -1194,6 +1202,9 @@ export default function LyricsPage() {
         glowSize={settings.edgeGlowSize}
         highlightColor={palette.highlight}
         secondaryColor={palette.secondary}
+        chromaEnabled={settings.chromaEnabled}
+        chromaSpeed={settings.chromaSpeed}
+        chromaVividness={settings.chromaVividness}
       />
 
       {/* Top Header Bar */}

@@ -4,6 +4,7 @@ import React, { useMemo, useRef } from 'react';
 import { SyncedLyricLine, LyricWord } from '@/lib/lyrics/providers/types';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface CameraStageProps {
   lines: SyncedLyricLine[];
@@ -11,6 +12,8 @@ interface CameraStageProps {
   activeWordIndex: number;
   showIcons?: boolean;
   cameraMovementEnabled?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
   trackId?: string;
 }
 
@@ -119,6 +122,8 @@ export default function CameraStage({
   activeWordIndex,
   showIcons = false,
   cameraMovementEnabled = true,
+  chromaEnabled = false,
+  chromaVividness = 80,
   trackId,
 }: CameraStageProps) {
   const worldRef = useRef<HTMLDivElement | null>(null);
@@ -221,6 +226,9 @@ export default function CameraStage({
             const isActive = node.index === safeWordIndex;
             const isPast = node.index < safeWordIndex;
             const emoji = showIcons && isActive ? getEmojiForLyricWord(node.text) : null;
+            const chroma = chromaEnabled
+              ? getWordChromaInfo(trackId, safeLineIndex, node.index, chromaVividness)
+              : null;
 
             return (
               <div
@@ -233,7 +241,9 @@ export default function CameraStage({
                     isActive ? 1.35 : isPast ? 0.85 : 0.95
                   })`,
                   opacity: isActive ? 1.0 : isPast ? 0.35 : 0.45,
-                  color: isActive
+                  color: chroma
+                    ? chroma.hex
+                    : isActive
                     ? 'var(--highlight, #ef4444)'
                     : isPast
                     ? 'var(--secondary, #888888)'
@@ -245,9 +255,16 @@ export default function CameraStage({
                 }}
               >
                 <span
+                  style={
+                    isActive && chroma
+                      ? { textShadow: chroma.glowShadow }
+                      : undefined
+                  }
                   className={`tracking-tight select-none ${
                     isActive
-                      ? 'text-4xl sm:text-6xl font-black active-glyph-glow'
+                      ? chroma
+                        ? 'text-4xl sm:text-6xl font-black'
+                        : 'text-4xl sm:text-6xl font-black active-glyph-glow'
                       : 'text-2xl sm:text-3xl font-semibold'
                   }`}
                 >

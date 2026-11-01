@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { usePlayback } from '@/context/PlaybackContext';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface ClassicStageProps {
   lines: SyncedLyricLine[];
@@ -12,6 +13,9 @@ interface ClassicStageProps {
   onLineClick?: (line: SyncedLyricLine, index: number) => void;
   isTapToSyncActive?: boolean;
   isEstimated?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 export default function ClassicStage({
@@ -22,6 +26,9 @@ export default function ClassicStage({
   onLineClick,
   isTapToSyncActive = false,
   isEstimated = false,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: ClassicStageProps) {
   const { seek } = usePlayback();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -132,7 +139,9 @@ export default function ClassicStage({
           >
             <p
               className={`text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight leading-relaxed transition-colors duration-200 flex flex-wrap gap-x-2 gap-y-1 justify-center sm:justify-start ${
-                isActiveLine
+                chromaEnabled
+                  ? ''
+                  : isActiveLine
                   ? 'text-[var(--lyric,#ffffff)]'
                   : isPastLine
                   ? 'text-[var(--secondary,#888888)]'
@@ -143,11 +152,45 @@ export default function ClassicStage({
                 const isActiveWord = isActiveLine && wIdx === activeWordIndex;
                 const isPastWord = isActiveLine && wIdx < activeWordIndex;
 
+                let wordColor: string | undefined;
+                let textShadow: string | undefined;
+                let opacityVal: number | undefined;
+
+                if (chromaEnabled) {
+                  const info = getWordChromaInfo(trackId, lIdx, wIdx, chromaVividness);
+                  wordColor = info.hex;
+                  if (isActiveWord) {
+                    textShadow = info.glowShadowSm;
+                    opacityVal = 1.0;
+                  } else if (isPastWord) {
+                    opacityVal = 0.85;
+                  } else if (isActiveLine) {
+                    opacityVal = 0.55;
+                  } else if (isPastLine) {
+                    opacityVal = 0.4;
+                  } else {
+                    opacityVal = 0.28;
+                  }
+                }
+
                 return (
                   <span
                     key={`${lIdx}-${wIdx}-${word.text}`}
+                    style={
+                      chromaEnabled
+                        ? {
+                            color: wordColor,
+                            textShadow,
+                            opacity: opacityVal,
+                          }
+                        : undefined
+                    }
                     className={`transition-all duration-150 inline-block rounded-md px-1 py-0.5 ${
-                      isActiveWord
+                      chromaEnabled
+                        ? isActiveWord
+                          ? 'font-black scale-105'
+                          : ''
+                        : isActiveWord
                         ? 'text-[var(--highlight,#ef4444)] font-black scale-105 active-glyph-glow-sm'
                         : isPastWord
                         ? 'text-[var(--lyric,#ffffff)] opacity-95'

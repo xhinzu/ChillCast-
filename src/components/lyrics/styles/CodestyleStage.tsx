@@ -3,12 +3,16 @@
 import React, { useEffect, useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface CodestyleStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 export default function CodestyleStage({
@@ -16,6 +20,9 @@ export default function CodestyleStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: CodestyleStageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const activeLineRef = useRef<HTMLDivElement | null>(null);
@@ -74,8 +81,19 @@ export default function CodestyleStage({
               >
                 {/* Line Number Gutter */}
                 <span
+                  style={
+                    chromaEnabled && isCurrentLine
+                      ? {
+                          color: getWordChromaInfo(trackId, lIdx, Math.max(0, activeWordIndex), chromaVividness).hex,
+                        }
+                      : undefined
+                  }
                   className={`w-7 text-right select-none font-mono text-xs shrink-0 ${
-                    isCurrentLine ? 'text-[var(--highlight,#ef4444)] font-bold' : 'text-zinc-600'
+                    !chromaEnabled && isCurrentLine
+                      ? 'text-[var(--highlight,#ef4444)] font-bold'
+                      : isCurrentLine
+                      ? 'font-bold'
+                      : 'text-zinc-600'
                   }`}
                 >
                   {String(lIdx + 1).padStart(2, '0')}
@@ -90,11 +108,46 @@ export default function CodestyleStage({
                     const emoji =
                       showIcons && w.text ? getEmojiForLyricWord(w.text) : null;
 
+                    const chroma = chromaEnabled
+                      ? getWordChromaInfo(trackId, lIdx, wIdx, chromaVividness)
+                      : null;
+
+                    let wordColor: string | undefined;
+                    let textShadow: string | undefined;
+                    let opacityVal: number | undefined;
+
+                    if (chroma) {
+                      wordColor = chroma.hex;
+                      if (isWordActive) {
+                        textShadow = chroma.glowShadowSm;
+                        opacityVal = 1.0;
+                      } else if (isWordPast) {
+                        opacityVal = 0.55;
+                      } else if (isCurrentLine) {
+                        opacityVal = 0.85;
+                      } else {
+                        opacityVal = 0.45;
+                      }
+                    }
+
                     return (
                       <span
                         key={`code-word-${wIdx}-${w.text}`}
+                        style={
+                          chroma
+                            ? {
+                                color: wordColor,
+                                textShadow,
+                                opacity: opacityVal,
+                              }
+                            : undefined
+                        }
                         className={`inline-flex items-center gap-1 transition-all duration-150 rounded px-1.5 py-0.5 ${
-                          isWordActive
+                          chroma
+                            ? isWordActive
+                              ? 'font-black'
+                              : ''
+                            : isWordActive
                             ? 'text-[var(--highlight,#ef4444)] font-black active-glyph-glow-sm'
                             : isWordPast
                             ? 'text-zinc-500 opacity-60'
@@ -104,11 +157,16 @@ export default function CodestyleStage({
                         }`}
                       >
                         <span>{w.text}</span>
-                        {/* Blinking cursor for active word */}
+                        {/* Blinking cursor for active word (matches word's Chroma color) */}
                         {isWordActive && (
-                          <span className="w-1.5 h-3.5 bg-[var(--highlight,#ef4444)] animate-pulse inline-block" />
+                          <span
+                            style={chroma ? { backgroundColor: chroma.hex } : undefined}
+                            className={`w-1.5 h-3.5 animate-pulse inline-block ${
+                              !chroma ? 'bg-[var(--highlight,#ef4444)]' : ''
+                            }`}
+                          />
                         )}
-                        {/* Inline comment emoji if enabled */}
+                        {/* Inline comment emoji if enabled (not recolored) */}
                         {emoji && isWordActive && (
                           <span className="text-xs bg-black/40 px-1 py-0.2 rounded text-zinc-300 select-none">
                             /* {emoji} */

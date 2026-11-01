@@ -3,12 +3,16 @@
 import React from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface VisualStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 function getWordHash(lineIdx: number, wordIdx: number, text: string): number {
@@ -25,6 +29,9 @@ export default function VisualStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = true,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: VisualStageProps) {
   const activeLine =
     activeLineIndex >= 0 && activeLineIndex < lines.length
@@ -67,18 +74,32 @@ export default function VisualStage({
     wordText.length > 1 &&
     getWordHash(activeLineIndex, activeWordIndex, wordText) % 4 === 0;
 
+  const activeChroma = chromaEnabled
+    ? getWordChromaInfo(trackId, activeLineIndex, activeWordIndex, chromaVividness)
+    : null;
+
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-6 select-none relative overflow-hidden text-center">
-      {/* Drifting previous words (shrinking to ~30% size, low opacity) */}
+      {/* Drifting previous words (shrinking to ~30% size, keeping each word's Chroma hue) */}
       <div className="flex items-center gap-3 mb-6 transition-all duration-300 min-h-[32px] justify-center">
-        {prevWords.map((w, idx) => (
-          <span
-            key={`prev-${idx}-${w}`}
-            className="text-base sm:text-xl font-bold tracking-tight text-[var(--secondary,#888888)] opacity-40 -translate-y-2 transition-all duration-300 transform-gpu"
-          >
-            {w}
-          </span>
-        ))}
+        {prevWords.map((w, idx) => {
+          const prevIdx = Math.max(0, activeWordIndex - prevWords.length + idx);
+          const prevColor = chromaEnabled
+            ? getWordChromaInfo(trackId, activeLineIndex, prevIdx, chromaVividness).hex
+            : undefined;
+
+          return (
+            <span
+              key={`prev-${idx}-${w}`}
+              style={prevColor ? { color: prevColor } : undefined}
+              className={`text-base sm:text-xl font-bold tracking-tight opacity-40 -translate-y-2 transition-all duration-300 transform-gpu ${
+                !prevColor ? 'text-[var(--secondary,#888888)]' : ''
+              }`}
+            >
+              {w}
+            </span>
+          );
+        })}
       </div>
 
       {/* Main Single Active Word with Spring Scale-in and Soft Glyph Glow */}
@@ -86,27 +107,41 @@ export default function VisualStage({
         key={`${activeLineIndex}-${activeWordIndex}-${wordText}`}
         className="relative flex items-center justify-center gap-3 sm:gap-6 animate-spring-scale p-6 -m-6"
       >
-        {/* Optional solid marker box behind text (no box glow) */}
+        {/* Optional solid marker box behind text (uses word's Chroma color and adjusts text contrast) */}
         {hasMarkerBox && (
           <div
-            className="absolute inset-0 -inset-x-6 -inset-y-3 rounded-2xl opacity-20 -z-10 pointer-events-none transition-all duration-200"
+            className="absolute inset-0 -inset-x-6 -inset-y-3 rounded-2xl -z-10 pointer-events-none transition-all duration-200"
             style={{
-              backgroundColor: 'var(--highlight, #ef4444)',
+              backgroundColor: chromaEnabled && activeChroma ? activeChroma.hex : 'var(--highlight, #ef4444)',
+              opacity: chromaEnabled ? 0.35 : 0.2,
             }}
           />
         )}
 
         <span
-          className="font-black tracking-tighter transition-all duration-150 inline-block active-glyph-glow select-none"
+          className={`font-black tracking-tighter transition-all duration-150 inline-block select-none ${
+            !chromaEnabled ? 'active-glyph-glow' : ''
+          }`}
           style={{
             fontSize: 'clamp(48px, 10vw, 120px)',
-            color: hasMarkerBox ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)',
+            color: chromaEnabled && activeChroma
+              ? hasMarkerBox
+                ? activeChroma.isLight
+                  ? '#000000'
+                  : '#ffffff'
+                : activeChroma.hex
+              : hasMarkerBox
+              ? 'var(--highlight, #ef4444)'
+              : 'var(--lyric, #ffffff)',
+            textShadow: chromaEnabled && activeChroma && !hasMarkerBox
+              ? activeChroma.glowShadow
+              : undefined,
           }}
         >
           {wordText || '♪'}
         </span>
 
-        {/* Pop-in Emoji Icon */}
+        {/* Pop-in Emoji Icon (not recolored) */}
         {emoji && (
           <span
             className="inline-block animate-pop-in text-4xl sm:text-6xl md:text-7xl select-none"
@@ -118,13 +153,24 @@ export default function VisualStage({
         )}
       </div>
 
-      {/* Subtle upcoming next word below */}
+      {/* Subtle upcoming next word below (retains its Chroma hue identity at low opacity) */}
       <div className="mt-8 min-h-[28px] transition-all duration-300">
-        {nextWord && (
-          <span className="text-sm sm:text-base font-semibold text-[var(--secondary,#666666)] opacity-25 translate-y-1 inline-block">
-            {nextWord}
-          </span>
-        )}
+        {nextWord && (() => {
+          const nextColor = chromaEnabled
+            ? getWordChromaInfo(trackId, activeLineIndex, activeWordIndex + 1, chromaVividness).hex
+            : undefined;
+
+          return (
+            <span
+              style={nextColor ? { color: nextColor } : undefined}
+              className={`text-sm sm:text-base font-semibold opacity-30 translate-y-1 inline-block ${
+                !nextColor ? 'text-[var(--secondary,#666666)]' : ''
+              }`}
+            >
+              {nextWord}
+            </span>
+          );
+        })()}
       </div>
     </div>
   );

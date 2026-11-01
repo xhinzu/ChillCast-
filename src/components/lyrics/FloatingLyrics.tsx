@@ -6,6 +6,7 @@ import { lrclibProvider } from '@/lib/lyrics/providers/lrclib';
 import { LyricsResult } from '@/lib/lyrics/providers/types';
 import { loadLyricsSettings, LyricsSettings } from '@/lib/lyrics/settings';
 import { useLyricsSync } from '@/hooks/useLyricsSync';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface FloatingLyricsProps {
   activeView: string;
@@ -99,11 +100,28 @@ export default function FloatingLyrics({ activeView, onNavigateToLyrics }: Float
       <div className="flex-1 min-w-0 text-center truncate">
         {currentLine.words.map((w, idx) => {
           const isActive = idx === wordIndex;
+          const chroma = settings.chromaEnabled && currentTrack
+            ? getWordChromaInfo(currentTrack.id, lineIndex, idx, settings.chromaVividness)
+            : null;
+
           return (
             <span
               key={`dock-word-${idx}`}
+              style={
+                chroma
+                  ? {
+                      color: chroma.hex,
+                      opacity: isActive ? 1.0 : 0.65,
+                      textShadow: isActive ? chroma.glowShadowSm : undefined,
+                    }
+                  : undefined
+              }
               className={`text-xs sm:text-sm px-0.5 transition-colors duration-150 ${
-                isActive
+                chroma
+                  ? isActive
+                    ? 'font-extrabold underline underline-offset-4'
+                    : 'font-medium'
+                  : isActive
                   ? 'text-red-400 font-extrabold underline decoration-red-500 underline-offset-4'
                   : 'text-zinc-300 font-medium'
               }`}

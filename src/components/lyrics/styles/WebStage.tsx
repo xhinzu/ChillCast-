@@ -5,6 +5,7 @@ import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateWebLayout } from '@/lib/lyrics/layoutNodes';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface WebStageProps {
   lines: SyncedLyricLine[];
@@ -12,6 +13,9 @@ interface WebStageProps {
   activeWordIndex: number;
   showIcons?: boolean;
   cameraMovementEnabled?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 export default function WebStage({
@@ -20,6 +24,9 @@ export default function WebStage({
   activeWordIndex,
   showIcons = false,
   cameraMovementEnabled = true,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: WebStageProps) {
   const worldRef = useRef<HTMLDivElement | null>(null);
 
@@ -87,13 +94,42 @@ export default function WebStage({
           viewBox="0 0 1000 600"
           className="w-full h-full max-w-5xl max-h-[75vh] object-contain overflow-visible"
         >
+          {/* Chroma Edge Gradients */}
+          {chromaEnabled && (
+            <defs>
+              {layout.edges.map((edge) => {
+                const fromColor = edge.fromIndex >= 0
+                  ? getWordChromaInfo(trackId, activeLineIndex, edge.fromIndex, chromaVividness).hex
+                  : getWordChromaInfo(trackId, activeLineIndex, Math.max(0, activeWordIndex), chromaVividness).hex;
+                const toColor = getWordChromaInfo(trackId, activeLineIndex, edge.toIndex, chromaVividness).hex;
+                return (
+                  <linearGradient
+                    key={`web-grad-${edge.fromIndex}-${edge.toIndex}`}
+                    id={`web-edge-${edge.fromIndex}-${edge.toIndex}`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" stopColor={fromColor} />
+                    <stop offset="100%" stopColor={toColor} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
+          )}
+
           {/* Central Hub Glow */}
           <circle
             cx={centerX}
             cy={centerY}
             r={6}
-            fill="var(--highlight, #ef4444)"
-            className="opacity-70 animate-pulse"
+            fill={
+              chromaEnabled
+                ? getWordChromaInfo(trackId, activeLineIndex, Math.max(0, activeWordIndex), chromaVividness).hex
+                : 'var(--highlight, #ef4444)'
+            }
+            className="opacity-80 animate-pulse"
           />
 
           {/* Web Network Connecting Lines */}
@@ -104,21 +140,23 @@ export default function WebStage({
               const isCompleted =
                 activeWordIndex >= edge.toIndex && edge.fromIndex !== -1;
 
+              const edgeStroke = chromaEnabled
+                ? `url(#web-edge-${edge.fromIndex}-${edge.toIndex})`
+                : isConnectedToActive
+                ? 'var(--highlight, #ef4444)'
+                : isCompleted
+                ? 'var(--secondary, #888888)'
+                : '#333333';
+
               return (
                 <path
                   key={`web-edge-${idx}-${edge.fromIndex}-${edge.toIndex}`}
                   d={edge.pathD}
-                  stroke={
-                    isConnectedToActive
-                      ? 'var(--highlight, #ef4444)'
-                      : isCompleted
-                      ? 'var(--secondary, #888888)'
-                      : '#333333'
-                  }
+                  stroke={edgeStroke}
                   strokeWidth={isConnectedToActive ? 3 : 1}
-                  strokeOpacity={isConnectedToActive ? 1.0 : isCompleted ? 0.4 : 0.12}
+                  strokeOpacity={isConnectedToActive ? 1.0 : isCompleted ? 0.45 : 0.18}
                   style={
-                    isConnectedToActive
+                    isConnectedToActive && !chromaEnabled
                       ? { filter: 'drop-shadow(0 0 6px var(--highlight, #ef4444))' }
                       : undefined
                   }
@@ -137,18 +175,22 @@ export default function WebStage({
               const emoji =
                 showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
 
+              const nodeChroma = chromaEnabled
+                ? getWordChromaInfo(trackId, activeLineIndex, node.index, chromaVividness)
+                : null;
+
               return (
                 <g
                   key={`web-node-${node.index}-${node.word.text}`}
                   transform={`translate(${node.x}, ${node.y})`}
                   className="transition-all duration-300"
-                  opacity={isActive ? 1 : isPast ? 0.35 : 0.15}
+                  opacity={isActive ? 1 : isPast ? 0.45 : 0.22}
                 >
                   {/* Node Point */}
                   <circle
                     r={isActive ? 8 : 4}
-                    fill={isActive ? 'var(--highlight, #ef4444)' : 'currentColor'}
-                    stroke={isActive ? 'var(--highlight, #ef4444)' : 'none'}
+                    fill={nodeChroma ? nodeChroma.hex : isActive ? 'var(--highlight, #ef4444)' : 'currentColor'}
+                    stroke={nodeChroma ? nodeChroma.hex : isActive ? 'var(--highlight, #ef4444)' : 'none'}
                     strokeWidth={isActive ? 2 : 0}
                     className="transition-all duration-200"
                   />
@@ -160,15 +202,20 @@ export default function WebStage({
                     textAnchor={node.x >= centerX ? 'start' : 'end'}
                     fontSize={isActive ? 22 : 15}
                     fontWeight={isActive ? '800' : '600'}
-                    fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
+                    fill={nodeChroma ? nodeChroma.hex : isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
+                    style={
+                      isActive && nodeChroma
+                        ? { filter: `drop-shadow(0 0 6px ${nodeChroma.hex}) drop-shadow(0 0 16px ${nodeChroma.hex}88)` }
+                        : undefined
+                    }
                     className={`select-none tracking-tight transition-all duration-200 ${
-                      isActive ? 'active-glyph-glow' : ''
+                      isActive && !nodeChroma ? 'active-glyph-glow' : ''
                     }`}
                   >
                     {node.word.text}
                   </text>
 
-                  {/* Emoji Icon */}
+                  {/* Emoji Icon (not recolored) */}
                   {emoji && isActive && (
                     <text
                       x={node.x >= centerX ? node.width + 12 : -node.width - 24}

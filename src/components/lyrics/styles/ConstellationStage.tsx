@@ -5,6 +5,7 @@ import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateConstellationLayout } from '@/lib/lyrics/layoutNodes';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface ConstellationStageProps {
   lines: SyncedLyricLine[];
@@ -12,11 +13,25 @@ interface ConstellationStageProps {
   activeWordIndex: number;
   showIcons?: boolean;
   cameraMovementEnabled?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 // 4-pointed SVG star polygon
-function StarIcon({ size = 16, active = false }: { size?: number; active?: boolean }) {
+function StarIcon({
+  size = 16,
+  active = false,
+  color,
+}: {
+  size?: number;
+  active?: boolean;
+  color?: string;
+}) {
   const half = size / 2;
+  const starFill = color || (active ? 'var(--highlight, #ef4444)' : 'currentColor');
+  const starStroke = color ? (active ? color : 'none') : (active ? 'var(--highlight, #ef4444)' : 'none');
+
   return (
     <svg
       width={size}
@@ -26,8 +41,8 @@ function StarIcon({ size = 16, active = false }: { size?: number; active?: boole
     >
       <polygon
         points={`${half},0 ${half * 1.25},${half * 0.75} ${size},${half} ${half * 1.25},${half * 1.25} ${half},${size} ${half * 0.75},${half * 1.25} 0,${half} ${half * 0.75},${half * 0.75}`}
-        fill={active ? 'var(--highlight, #ef4444)' : 'currentColor'}
-        stroke={active ? 'var(--highlight, #ef4444)' : 'none'}
+        fill={starFill}
+        stroke={starStroke}
         strokeWidth={active ? 1.5 : 0}
       />
     </svg>
@@ -40,6 +55,9 @@ export default function ConstellationStage({
   activeWordIndex,
   showIcons = false,
   cameraMovementEnabled = true,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: ConstellationStageProps) {
   const worldRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,6 +128,29 @@ export default function ConstellationStage({
           viewBox="0 0 1000 600"
           className="w-full h-full max-w-5xl max-h-[75vh] object-contain overflow-visible"
         >
+          {/* Edge Color Blending Gradients for Chroma */}
+          {chromaEnabled && (
+            <defs>
+              {layout.edges.map((edge) => {
+                const fromColor = getWordChromaInfo(trackId, activeLineIndex, edge.fromIndex, chromaVividness).hex;
+                const toColor = getWordChromaInfo(trackId, activeLineIndex, edge.toIndex, chromaVividness).hex;
+                return (
+                  <linearGradient
+                    key={`const-grad-${edge.fromIndex}-${edge.toIndex}`}
+                    id={`const-edge-${edge.fromIndex}-${edge.toIndex}`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" stopColor={fromColor} />
+                    <stop offset="100%" stopColor={toColor} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
+          )}
+
           {/* Progressive Connecting Lines */}
           <g className="edges">
             {layout.edges.map((edge, idx) => {
@@ -124,15 +165,21 @@ export default function ConstellationStage({
                 ? edge.length * 0.4
                 : edge.length;
 
+              const edgeStroke = chromaEnabled
+                ? `url(#const-edge-${edge.fromIndex}-${edge.toIndex})`
+                : isCompleted || isCurrent
+                ? 'var(--highlight, #ef4444)'
+                : '#555555';
+
               return (
                 <path
                   key={`edge-${idx}-${edge.fromIndex}-${edge.toIndex}`}
                   d={edge.pathD}
-                  stroke={isCompleted || isCurrent ? 'var(--highlight, #ef4444)' : '#555555'}
-                  strokeWidth={isCurrent ? 2 : 1}
+                  stroke={edgeStroke}
+                  strokeWidth={isCurrent ? 2.5 : 1.2}
                   strokeDasharray={strokeDasharray}
                   strokeDashoffset={strokeDashoffset}
-                  strokeOpacity={isCompleted ? 0.65 : isCurrent ? 0.8 : 0.15}
+                  strokeOpacity={isCompleted ? 0.75 : isCurrent ? 0.95 : 0.25}
                   className="transition-all duration-300"
                   fill="none"
                 />
@@ -145,21 +192,24 @@ export default function ConstellationStage({
             {layout.nodes.map((node) => {
               const isPast = node.index < activeWordIndex;
               const isActive = node.index === activeWordIndex;
-              const isUpcoming = node.index > activeWordIndex;
 
               const emoji =
                 showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
+
+              const nodeChroma = chromaEnabled
+                ? getWordChromaInfo(trackId, activeLineIndex, node.index, chromaVividness)
+                : null;
 
               return (
                 <g
                   key={`node-${node.index}-${node.word.text}`}
                   transform={`translate(${node.x}, ${node.y})`}
                   className="transition-all duration-300"
-                  opacity={isActive ? 1 : isPast ? 0.4 : 0.15}
+                  opacity={isActive ? 1 : isPast ? 0.45 : 0.25}
                 >
                   {/* 4-pointed SVG Star at Node Position */}
                   <g transform="translate(-10, -10)">
-                    <StarIcon size={20} active={isActive} />
+                    <StarIcon size={20} active={isActive} color={nodeChroma?.hex} />
                   </g>
 
                   {/* Word Label */}
@@ -168,15 +218,20 @@ export default function ConstellationStage({
                     y={5}
                     fontSize={isActive ? 24 : 17}
                     fontWeight={isActive ? '800' : '500'}
-                    fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
+                    fill={nodeChroma ? nodeChroma.hex : isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
+                    style={
+                      isActive && nodeChroma
+                        ? { filter: `drop-shadow(0 0 6px ${nodeChroma.hex}) drop-shadow(0 0 16px ${nodeChroma.hex}88)` }
+                        : undefined
+                    }
                     className={`select-none tracking-tight transition-all duration-200 ${
-                      isActive ? 'active-glyph-glow' : ''
+                      isActive && !nodeChroma ? 'active-glyph-glow' : ''
                     }`}
                   >
                     {node.word.text}
                   </text>
 
-                  {/* Optional Icon/Emoji for Active Node */}
+                  {/* Optional Icon/Emoji for Active Node (not recolored) */}
                   {emoji && isActive && (
                     <text x={node.width + 24} y={6} fontSize={18} className="select-none">
                       {emoji}

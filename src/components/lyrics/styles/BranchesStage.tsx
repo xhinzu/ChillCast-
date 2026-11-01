@@ -4,12 +4,16 @@ import React, { useMemo } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateBranchesLayout } from '@/lib/lyrics/layoutNodes';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
+import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 
 interface BranchesStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  chromaEnabled?: boolean;
+  chromaVividness?: number;
+  trackId?: string;
 }
 
 export default function BranchesStage({
@@ -17,6 +21,9 @@ export default function BranchesStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  chromaEnabled = false,
+  chromaVividness = 80,
+  trackId,
 }: BranchesStageProps) {
   const activeLine =
     activeLineIndex >= 0 && activeLineIndex < lines.length
@@ -48,6 +55,29 @@ export default function BranchesStage({
         viewBox="0 0 1000 600"
         className="w-full h-full max-w-5xl max-h-[75vh] object-contain overflow-visible"
       >
+        {/* Edge Color Blending Gradients for Chroma */}
+        {chromaEnabled && (
+          <defs>
+            {layout.edges.map((edge) => {
+              const fromColor = getWordChromaInfo(trackId, activeLineIndex, edge.fromIndex, chromaVividness).hex;
+              const toColor = getWordChromaInfo(trackId, activeLineIndex, edge.toIndex, chromaVividness).hex;
+              return (
+                <linearGradient
+                  key={`branch-grad-${edge.fromIndex}-${edge.toIndex}`}
+                  id={`branch-edge-${edge.fromIndex}-${edge.toIndex}`}
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <stop offset="0%" stopColor={fromColor} />
+                  <stop offset="100%" stopColor={toColor} />
+                </linearGradient>
+              );
+            })}
+          </defs>
+        )}
+
         {/* Curved Git-Graph Branch Connectors */}
         <g className="edges">
           {layout.edges.map((edge, idx) => {
@@ -61,15 +91,21 @@ export default function BranchesStage({
               ? edge.length * 0.4
               : edge.length;
 
+            const edgeStroke = chromaEnabled
+              ? `url(#branch-edge-${edge.fromIndex}-${edge.toIndex})`
+              : isCompleted || isCurrent
+              ? 'var(--highlight, #ef4444)'
+              : '#444444';
+
             return (
               <path
                 key={`branch-edge-${idx}-${edge.fromIndex}-${edge.toIndex}`}
                 d={edge.pathD}
-                stroke={isCompleted || isCurrent ? 'var(--highlight, #ef4444)' : '#444444'}
+                stroke={edgeStroke}
                 strokeWidth={isCurrent ? 3 : 2}
                 strokeDasharray={strokeDasharray}
                 strokeDashoffset={strokeDashoffset}
-                strokeOpacity={isCompleted ? 0.8 : isCurrent ? 0.9 : 0.2}
+                strokeOpacity={isCompleted ? 0.85 : isCurrent ? 0.95 : 0.25}
                 fill="none"
                 className="transition-all duration-300"
               />
@@ -85,19 +121,23 @@ export default function BranchesStage({
             const emoji =
               showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
 
+            const nodeChroma = chromaEnabled
+              ? getWordChromaInfo(trackId, activeLineIndex, node.index, chromaVividness)
+              : null;
+
             return (
               <g
                 key={`branch-node-${node.index}-${node.word.text}`}
                 transform={`translate(${node.x}, ${node.y})`}
                 className="transition-all duration-300"
-                opacity={isActive ? 1 : isPast ? 0.45 : 0.2}
+                opacity={isActive ? 1 : isPast ? 0.5 : 0.25}
               >
-                {/* Active Glowing Pulse Ring */}
+                {/* Active Glowing Pulse Ring (uses node's Chroma color) */}
                 {isActive && (
                   <circle
                     r={18}
                     fill="none"
-                    stroke="var(--highlight, #ef4444)"
+                    stroke={nodeChroma ? nodeChroma.hex : 'var(--highlight, #ef4444)'}
                     strokeWidth={2}
                     className="animate-ping opacity-60"
                   />
@@ -106,8 +146,16 @@ export default function BranchesStage({
                 {/* Main Node Circle */}
                 <circle
                   r={isActive ? 9 : 6}
-                  fill={isActive ? 'var(--highlight, #ef4444)' : isPast ? '#888888' : '#444444'}
-                  stroke={isActive ? 'var(--highlight, #ef4444)' : 'none'}
+                  fill={
+                    nodeChroma
+                      ? nodeChroma.hex
+                      : isActive
+                      ? 'var(--highlight, #ef4444)'
+                      : isPast
+                      ? '#888888'
+                      : '#444444'
+                  }
+                  stroke={nodeChroma ? nodeChroma.hex : isActive ? 'var(--highlight, #ef4444)' : 'none'}
                   strokeWidth={isActive ? 2 : 0}
                   className="transition-all duration-200"
                 />
@@ -119,15 +167,26 @@ export default function BranchesStage({
                   textAnchor="middle"
                   fontSize={isActive ? 22 : 16}
                   fontWeight={isActive ? '800' : '600'}
-                  fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
+                  fill={
+                    nodeChroma
+                      ? nodeChroma.hex
+                      : isActive
+                      ? 'var(--highlight, #ef4444)'
+                      : 'var(--lyric, #ffffff)'
+                  }
+                  style={
+                    isActive && nodeChroma
+                      ? { filter: `drop-shadow(0 0 6px ${nodeChroma.hex}) drop-shadow(0 0 16px ${nodeChroma.hex}88)` }
+                      : undefined
+                  }
                   className={`select-none tracking-tight transition-all duration-200 ${
-                    isActive ? 'active-glyph-glow' : ''
+                    isActive && !nodeChroma ? 'active-glyph-glow' : ''
                   }`}
                 >
                   {node.word.text}
                 </text>
 
-                {/* Pop-in Emoji */}
+                {/* Pop-in Emoji (not recolored) */}
                 {emoji && isActive && (
                   <text
                     x={0}

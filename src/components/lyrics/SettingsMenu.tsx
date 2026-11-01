@@ -183,6 +183,9 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
 
   const handleResetColors = () => {
     updateSettings({
+      chromaEnabled: DEFAULT_LYRICS_SETTINGS.chromaEnabled,
+      chromaSpeed: DEFAULT_LYRICS_SETTINGS.chromaSpeed,
+      chromaVividness: DEFAULT_LYRICS_SETTINGS.chromaVividness,
       lyricColor: DEFAULT_LYRICS_SETTINGS.lyricColor,
       highlightColor: DEFAULT_LYRICS_SETTINGS.highlightColor,
       secondaryColor: DEFAULT_LYRICS_SETTINGS.secondaryColor,
@@ -397,7 +400,7 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
             </div>
           </div>
 
-          {/* 4. COLOR SYSTEM ("Auto Sync") */}
+          {/* 4. COLOR SYSTEM ("Auto Sync" & "Chroma") */}
           <div className="py-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
@@ -412,51 +415,140 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
               </button>
             </div>
 
-            <label className="flex items-center justify-between text-xs cursor-pointer select-none">
-              <div>
-                <span className="text-zinc-300 block">Auto Sync Palette</span>
-                <span className="text-[10px] text-zinc-500">Extract vibrant colors from song artwork</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.autoSyncColor}
-                onChange={(e) => updateSettings({ autoSyncColor: e.target.checked })}
-                className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
-              />
-            </label>
+            {/* Chroma Setting Toggle */}
+            <div className="p-2.5 rounded-xl bg-gradient-to-r from-red-500/10 via-purple-500/10 to-blue-500/10 border border-white/10 space-y-2.5">
+              <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-zinc-200 font-semibold block">Chroma</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-cyan-400 text-black">
+                      RGB
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">
+                    RGB edge glow and a different color for every word
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.chromaEnabled}
+                  onChange={(e) => updateSettings({ chromaEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+                />
+              </label>
 
-            {/* Custom Pickers (greyed out when Auto Sync is on) */}
-            <div
-              className={`grid grid-cols-3 gap-2 pt-1 transition-opacity ${
-                settings.autoSyncColor ? 'opacity-40 pointer-events-none' : 'opacity-100'
-              }`}
-            >
-              <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#181818] border border-[#2a2a2a]">
-                <span className="text-[10px] text-zinc-400">Main Text</span>
+              {/* Sub-controls when Chroma is ON */}
+              {settings.chromaEnabled && (
+                <div className="pt-2 border-t border-white/10 space-y-2 animate-fade-in">
+                  {/* Speed (slow to fast, default medium) */}
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <span className="text-zinc-300">Speed</span>
+                      <span className="text-[10px] text-zinc-400">
+                        {settings.chromaSpeed <= 30
+                          ? 'Slow'
+                          : settings.chromaSpeed <= 70
+                          ? 'Medium'
+                          : 'Fast'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      step="5"
+                      value={settings.chromaSpeed}
+                      onChange={(e) => updateSettings({ chromaSpeed: parseInt(e.target.value, 10) })}
+                      className="w-full h-1.5 bg-[#252525] rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                    <div className="flex justify-between text-[9px] text-zinc-500 px-0.5 mt-0.5">
+                      <span>Slow</span>
+                      <span>Medium</span>
+                      <span>Fast</span>
+                    </div>
+                  </div>
+
+                  {/* Vividness (soft to neon, default ~80%) */}
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <span className="text-zinc-300">Vividness</span>
+                      <span className="text-[10px] text-zinc-400 font-mono">{settings.chromaVividness}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="20"
+                      max="100"
+                      step="5"
+                      value={settings.chromaVividness}
+                      onChange={(e) => updateSettings({ chromaVividness: parseInt(e.target.value, 10) })}
+                      className="w-full h-1.5 bg-[#252525] rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                    <div className="flex justify-between text-[9px] text-zinc-500 px-0.5 mt-0.5">
+                      <span>Soft</span>
+                      <span>Vibrant</span>
+                      <span>Neon</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Auto Sync Palette (Visually marked overridden by Chroma when Chroma is ON) */}
+            <div className="space-y-2">
+              {settings.chromaEnabled && (
+                <div className="text-[10px] text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1 flex items-center gap-1.5">
+                  <span>ℹ️</span>
+                  <span>Palette overridden by Chroma</span>
+                </div>
+              )}
+
+              <label className={`flex items-center justify-between text-xs cursor-pointer select-none transition-opacity ${settings.chromaEnabled ? 'opacity-50' : 'opacity-100'}`}>
+                <div>
+                  <span className="text-zinc-300 block">Auto Sync Palette</span>
+                  <span className="text-[10px] text-zinc-500">Extract vibrant colors from song artwork</span>
+                </div>
                 <input
-                  type="color"
-                  value={settings.lyricColor}
-                  onChange={(e) => updateSettings({ lyricColor: e.target.value })}
-                  className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
+                  type="checkbox"
+                  checked={settings.autoSyncColor}
+                  disabled={settings.chromaEnabled}
+                  onChange={(e) => updateSettings({ autoSyncColor: e.target.checked })}
+                  className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500 disabled:opacity-50"
                 />
-              </div>
-              <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#181818] border border-[#2a2a2a]">
-                <span className="text-[10px] text-zinc-400">Highlight</span>
-                <input
-                  type="color"
-                  value={settings.highlightColor}
-                  onChange={(e) => updateSettings({ highlightColor: e.target.value })}
-                  className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
-                />
-              </div>
-              <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#181818] border border-[#2a2a2a]">
-                <span className="text-[10px] text-zinc-400">Secondary</span>
-                <input
-                  type="color"
-                  value={settings.secondaryColor}
-                  onChange={(e) => updateSettings({ secondaryColor: e.target.value })}
-                  className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
-                />
+              </label>
+
+              {/* Custom Pickers (greyed out when Chroma or Auto Sync is on) */}
+              <div
+                className={`grid grid-cols-3 gap-2 pt-1 transition-opacity ${
+                  settings.chromaEnabled || settings.autoSyncColor ? 'opacity-40 pointer-events-none' : 'opacity-100'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#181818] border border-[#2a2a2a]">
+                  <span className="text-[10px] text-zinc-400">Main Text</span>
+                  <input
+                    type="color"
+                    value={settings.lyricColor}
+                    onChange={(e) => updateSettings({ lyricColor: e.target.value })}
+                    className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#181818] border border-[#2a2a2a]">
+                  <span className="text-[10px] text-zinc-400">Highlight</span>
+                  <input
+                    type="color"
+                    value={settings.highlightColor}
+                    onChange={(e) => updateSettings({ highlightColor: e.target.value })}
+                    className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-[#181818] border border-[#2a2a2a]">
+                  <span className="text-[10px] text-zinc-400">Secondary</span>
+                  <input
+                    type="color"
+                    value={settings.secondaryColor}
+                    onChange={(e) => updateSettings({ secondaryColor: e.target.value })}
+                    className="w-7 h-7 rounded-lg border-0 bg-transparent cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -237,6 +237,21 @@ body {
     0 0 18px color-mix(in srgb, var(--highlight, #ef4444) 40%, transparent);
 }
 
+/* Chroma Running RGB Edge Glow Band */
+@keyframes chroma-rotate {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.chroma-rotating-band {
+  animation: chroma-rotate 8s linear infinite;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-spring-scale,
   .animate-pop-in,
@@ -244,6 +259,10 @@ body {
   .active-glyph-glow-sm {
     animation: none !important;
     transition: none !important;
+  }
+  .chroma-rotating-band {
+    animation: none !important;
+    transform: translate(-50%, -50%) rotate(0deg) !important;
   }
 }
 
