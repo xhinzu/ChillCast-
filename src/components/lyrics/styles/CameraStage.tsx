@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
@@ -24,9 +24,9 @@ interface CameraWordNode {
   y: number;
 }
 
-const WORLD_WIDTH = 2600;
-const WORLD_HEIGHT = 1700;
-const MARGIN = 180;
+const WORLD_WIDTH = 2400;
+const WORLD_HEIGHT = 1600;
+const MARGIN = 200;
 
 function hashString(str: string): number {
   let hash = 0;
@@ -56,6 +56,28 @@ export default function CameraStage({
 }: CameraStageProps) {
   const worldRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [viewportSize, setViewportSize] = useState({ w: 1000, h: 600 });
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setViewportSize({
+          w: containerRef.current.clientWidth || 1000,
+          h: containerRef.current.clientHeight || 600,
+        });
+      }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  // Compute static framing zoom to fit full world canvas when camera motion is OFF
+  const fitZoom = useMemo(() => {
+    const scaleX = viewportSize.w / WORLD_WIDTH;
+    const scaleY = viewportSize.h / WORLD_HEIGHT;
+    return Math.min(scaleX, scaleY) * 0.92;
+  }, [viewportSize]);
 
   // Flatten words across all lines with timing and indices
   const flatWords = useMemo(() => {
@@ -89,12 +111,16 @@ export default function CameraStage({
     return list;
   }, [lines]);
 
-  // Compute active global word index
+  // Compute active global word index (handles line sync fallback when activeWordIndex === -1)
   const activeGlobalIndex = useMemo(() => {
     if (flatWords.length === 0) return 0;
-    const match = flatWords.find(
+
+    let match = flatWords.find(
       (item) => item.lineIndex === activeLineIndex && item.wordIndex === activeWordIndex
     );
+    if (!match && activeLineIndex >= 0) {
+      match = flatWords.find((item) => item.lineIndex === activeLineIndex);
+    }
     return match ? match.globalIndex : 0;
   }, [flatWords, activeLineIndex, activeWordIndex]);
 
@@ -122,7 +148,6 @@ export default function CameraStage({
 
       // Candidate rejection sampling to guarantee spread & minimum distance
       for (let attempt = 0; attempt < 18; attempt++) {
-        // Pick cell from a pseudo-shuffled grid pattern
         const cellIdx = Math.floor(rng() * (cols * rows));
         const c = cellIdx % cols;
         const r = Math.floor(cellIdx / cols);
@@ -139,8 +164,6 @@ export default function CameraStage({
 
         const distFromPrev = i > 0 ? Math.hypot(candX - nodes[i - 1].x, candY - nodes[i - 1].y) : 800;
 
-        // Preference: consecutive words are in noticeably different places (min 450px)
-        // and words close in time do not overlap (min 180px)
         const score = (distFromPrev >= 450 ? 500 : distFromPrev) + Math.min(minDistFromRecent, 300);
         if (score > maxScore) {
           maxScore = score;
@@ -164,7 +187,14 @@ export default function CameraStage({
   }, [flatWords, trackId, lines]);
 
   const activeNode = wordNodes[activeGlobalIndex];
-  const target = activeNode ? { x: activeNode.x, y: activeNode.y } : null;
+
+  // Target relative to world center (1200, 800)
+  const target = activeNode
+    ? {
+        x: activeNode.x - WORLD_WIDTH / 2,
+        y: activeNode.y - WORLD_HEIGHT / 2,
+      }
+    : null;
 
   // Shared camera hook integration
   useCamera({
@@ -172,14 +202,15 @@ export default function CameraStage({
     containerRef,
     target,
     enabled: cameraMovementEnabled,
-    coordinateMode: 'world',
-    worldWidth: WORLD_WIDTH,
-    worldHeight: WORLD_HEIGHT,
+    scalePanWithZoom: true,
     zoomLevel: 1.8,
-    settleTime: 0.6,
     zoomPulseAmount: 0.1,
+    settleTime: 0.6,
     idleDriftAmount: 4,
     wordDuration: activeNode?.duration,
+    neutralX: 0,
+    neutralY: 0,
+    neutralZoom: fitZoom,
   });
 
   if (wordNodes.length === 0) {
@@ -194,18 +225,18 @@ export default function CameraStage({
     <div
       ref={containerRef}
       className="w-full h-full flex items-center justify-center select-none relative overflow-hidden"
-      style={{
-        backgroundColor: 'transparent',
-      }}
     >
-      {/* World Canvas (Transformed by useCamera via Ref) */}
+      {/* World Canvas Centered on Screen (Controlled by useCamera via Ref) */}
       <div
         ref={worldRef}
-        className="absolute top-0 left-0 pointer-events-none transform-gpu"
+        className="absolute left-1/2 top-1/2 transform-gpu pointer-events-none"
         style={{
           width: `${WORLD_WIDTH}px`,
           height: `${WORLD_HEIGHT}px`,
-          transformOrigin: '0 0',
+          marginLeft: `-${WORLD_WIDTH / 2}px`,
+          marginTop: `-${WORLD_HEIGHT / 2}px`,
+          transformOrigin: 'center center',
+          transform: `translate3d(0px, 0px, 0px) scale(${fitZoom})`,
         }}
       >
         {wordNodes.map((node) => {
@@ -214,21 +245,20 @@ export default function CameraStage({
           const isPast = diff < 0 && diff >= -10;
           const isNext = diff === 1;
 
-          // If camera movement is ON, cull distant words for performance
-          // If camera movement is OFF, keep all placed words visible in static framing
+          // When camera movement is ON, cull distant words for performance
+          // When camera movement is OFF, show all words in static framing
           if (cameraMovementEnabled) {
             if (!isActive && !isPast && !isNext) return null;
           }
 
           const emoji = showIcons && isActive ? getEmojiForLyricWord(node.text) : null;
 
-          // Visual styles: active word glows in highlight color; past words dim in secondary color
           const opacity = isActive
             ? 1.0
             : isPast
-            ? Math.max(0.12, 0.65 + diff * 0.055)
+            ? Math.max(0.15, 0.7 + diff * 0.055)
             : isNext
-            ? 0.08
+            ? 0.12
             : 0.25;
 
           const scale = isActive

@@ -28,24 +28,37 @@ export default function ShipStage({
       : null;
 
   const words = activeLine?.words || [];
-  const activeWord = words[activeWordIndex];
+
+  // Safe active word index (fallback to 0 if not yet active or line-synced)
+  const safeWordIndex =
+    activeWordIndex >= 0 && activeWordIndex < words.length
+      ? activeWordIndex
+      : 0;
+
+  const activeWord = words[safeWordIndex];
   const wordDuration =
     activeWord?.end && activeWord?.start
       ? Math.max(0.15, activeWord.end - activeWord.start)
       : 0.5;
 
-  // Camera motion: subtle pan, gentle push/zoom pulse (1.0 -> 1.08 then easing), tiny idle drift
+  // The active word's vertical offset to center it horizontally and vertically on the stage
+  const rowHeight = 64; // px per word row
+  const centerIndex = (words.length - 1) / 2;
+  const targetY = - (safeWordIndex - centerIndex) * rowHeight;
+
+  // Camera motion: gentle zoom pulse (1.00 -> 1.08 then easing), subtle pan centering, tiny idle drift
   useCamera({
     worldRef,
-    target: { x: 0, y: 0 },
+    target: { x: 0, y: -targetY },
     enabled: cameraMovementEnabled,
-    coordinateMode: 'relative',
     transformSuffix: 'rotateX(10deg) rotateY(-4deg)',
     zoomLevel: 1.0,
     zoomPulseAmount: 0.08,
     settleTime: 0.6,
     idleDriftAmount: 3,
     wordDuration,
+    neutralY: targetY, // Keep active word centered even when camera motion is OFF
+    neutralZoom: 1.0,
   });
 
   if (!activeLine || words.length === 0) {
@@ -67,19 +80,16 @@ export default function ShipStage({
       {/* 3D Drifting Wall Container (Controlled by useCamera via Ref) */}
       <div
         ref={worldRef}
-        className="relative w-full h-full flex items-center justify-center transform-gpu"
+        className="relative flex flex-col items-center justify-center transition-all duration-300 ease-out transform-gpu"
         style={{
           transformStyle: 'preserve-3d',
-          transform: 'translate3d(0px, 0px, 0px) scale(1) rotateX(10deg) rotateY(-4deg)',
+          transform: `translate3d(0px, ${targetY}px, 0px) scale(1) rotateX(10deg) rotateY(-4deg)`,
         }}
       >
         {words.map((word, idx) => {
-          const diff = idx - activeWordIndex;
+          const diff = idx - safeWordIndex;
           const isActive = diff === 0;
           const isPast = diff < 0;
-
-          // Vertically center the active word on stage (y = 0 when active)
-          const y = diff * 72;
 
           // 3D placement: active word is front and center; past recede into depth
           const tz = isActive ? 120 : isPast ? Math.max(-450, diff * 90) : -Math.abs(diff) * 75;
@@ -94,12 +104,11 @@ export default function ShipStage({
           return (
             <div
               key={`ship-word-${idx}-${word.text}`}
-              className="absolute left-0 right-0 mx-auto py-3 px-8 text-center flex items-center justify-center gap-3 transition-all duration-300 ease-out transform-gpu pointer-events-none"
+              className="py-3 px-8 my-1 transition-all duration-300 ease-out text-center flex items-center justify-center gap-3 transform-gpu"
               style={{
-                transform: `translateY(${y}px) translateZ(${tz}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`,
+                transform: `translateZ(${tz}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`,
                 opacity,
                 color: isActive ? 'var(--highlight, #ef4444)' : isPast ? 'var(--secondary, #888888)' : 'var(--lyric, #ffffff)',
-                zIndex: isActive ? 20 : isPast ? 10 : 1,
               }}
             >
               <span

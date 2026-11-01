@@ -13,7 +13,7 @@ export interface UseCameraOptions {
   worldRef: React.RefObject<HTMLElement | null>;
   /** Optional ref to outer stage container to measure viewport bounds */
   containerRef?: React.RefObject<HTMLElement | null>;
-  /** Focus target in world or relative coordinates (active word position) */
+  /** Focus target in relative coordinates from world center */
   target: CameraFocusTarget | null;
   /** Whether camera movement is enabled (defaults to true) */
   enabled?: boolean;
@@ -21,7 +21,7 @@ export interface UseCameraOptions {
   settleTime?: number;
   /** How strongly the camera pans toward target (0.0 to 1.0; Constellation uses e.g. 0.12) */
   followStrength?: number;
-  /** Target base zoom level (e.g. 1.0, 1.35, 1.75) */
+  /** Target base zoom level (e.g. 1.0, 1.35, 1.8) */
   zoomLevel?: number;
   /** Amount to pulse zoom on word activation (e.g. 0.08 in Ship) */
   zoomPulseAmount?: number;
@@ -29,13 +29,18 @@ export interface UseCameraOptions {
   idleDriftAmount?: number;
   /** Active word duration in seconds (to dynamically shorten settle time on fast words) */
   wordDuration?: number;
-  /** Coordinate mode: 'relative' (center offset) or 'world' (absolute canvas coordinates) */
-  coordinateMode?: 'relative' | 'world';
-  /** World dimensions for 'world' mode */
-  worldWidth?: number;
-  worldHeight?: number;
   /** Optional extra 3D CSS transform suffix (e.g. for Ship: "rotateX(10deg) rotateY(-4deg)") */
   transformSuffix?: string;
+  /** Whether pan offset scales with zoom (true for Camera style where center offset is magnified by zoom) */
+  scalePanWithZoom?: boolean;
+  /** Static neutral X when camera motion is disabled (default 0) */
+  neutralX?: number;
+  /** Static neutral Y when camera motion is disabled (e.g. Ship centers active word even when static) */
+  neutralY?: number;
+  /** Static neutral zoom when camera motion is disabled (default 1.0) */
+  neutralZoom?: number;
+  /** Optional coordinate mode descriptor */
+  coordinateMode?: 'relative' | 'world';
 }
 
 /**
@@ -68,12 +73,13 @@ export function useCamera({
   zoomPulseAmount = 0,
   idleDriftAmount = 0,
   wordDuration,
-  coordinateMode = 'relative',
-  worldWidth = 2400,
-  worldHeight = 1600,
   transformSuffix = '',
+  scalePanWithZoom = false,
+  neutralX = 0,
+  neutralY = 0,
+  neutralZoom = 1.0,
 }: UseCameraOptions) {
-  // Store latest props in refs to avoid recreating rAF loop
+  // Store latest props in refs to avoid recreation
   const optionsRef = useRef({
     enabled,
     target,
@@ -83,10 +89,11 @@ export function useCamera({
     zoomPulseAmount,
     idleDriftAmount,
     wordDuration,
-    coordinateMode,
-    worldWidth,
-    worldHeight,
     transformSuffix,
+    scalePanWithZoom,
+    neutralX,
+    neutralY,
+    neutralZoom,
   });
 
   optionsRef.current = {
@@ -98,13 +105,14 @@ export function useCamera({
     zoomPulseAmount,
     idleDriftAmount,
     wordDuration,
-    coordinateMode,
-    worldWidth,
-    worldHeight,
     transformSuffix,
+    scalePanWithZoom,
+    neutralX,
+    neutralY,
+    neutralZoom,
   };
 
-  // State refs for physics
+  const initializedRef = useRef(false);
   const currentPosRef = useRef({
     x: 0,
     y: 0,
@@ -119,7 +127,7 @@ export function useCamera({
   const lastTimeRef = useRef<number>(0);
   const isMovingRef = useRef<boolean>(false);
 
-  // Transition handling for toggling ON <-> OFF smoothly in 300ms
+  // Smooth 300ms transition when toggling ON <-> OFF
   const disablingTransitionRef = useRef<{
     active: boolean;
     startTime: number;
@@ -134,7 +142,7 @@ export function useCamera({
     startZoom: 1.0,
   });
 
-  // Track target changes for zoom-pulse and seek acceleration
+  // Track target changes for zoom-pulse and rapid catchup
   useEffect(() => {
     if (!target) return;
 
@@ -142,13 +150,13 @@ export function useCamera({
     if (prev) {
       const dist = Math.hypot(target.x - prev.x, target.y - prev.y);
 
-      // On seeks / sudden large jumps, boost velocity toward target so camera moves swiftly
-      if (dist > 350) {
-        currentPosRef.current.vx *= 0.2;
-        currentPosRef.current.vy *= 0.2;
+      // On seeks or large position changes, accelerate smoothly
+      if (dist > 300) {
+        currentPosRef.current.vx *= 0.3;
+        currentPosRef.current.vy *= 0.3;
       }
 
-      // Add zoom pulse on word change if configured
+      // Add zoom pulse on word activation
       if (zoomPulseAmount > 0 && (prev.x !== target.x || prev.y !== target.y)) {
         currentPosRef.current.zoom = Math.max(
           currentPosRef.current.zoom,
@@ -159,7 +167,7 @@ export function useCamera({
     lastTargetRef.current = target;
   }, [target, zoomPulseAmount, zoomLevel]);
 
-  // Handle enabled toggle transitions (300ms smooth return to neutral framing)
+  // Handle toggling camera movement setting smoothly
   const prevEnabledRef = useRef(enabled);
   useEffect(() => {
     if (prevEnabledRef.current !== enabled) {
@@ -169,10 +177,10 @@ export function useCamera({
 
       if (!enabled) {
         if (prefersReduced) {
-          // Snap immediately to neutral
           disablingTransitionRef.current.active = false;
           if (worldRef.current) {
-            worldRef.current.style.transform = '';
+            const staticTransform = `translate3d(${neutralX.toFixed(2)}px, ${neutralY.toFixed(2)}px, 0px) scale(${neutralZoom.toFixed(4)}) ${transformSuffix}`.trim();
+            worldRef.current.style.transform = staticTransform;
             worldRef.current.style.willChange = 'auto';
           }
           if (rafIdRef.current) {
@@ -180,7 +188,6 @@ export function useCamera({
             rafIdRef.current = null;
           }
         } else {
-          // Animate back to neutral over 300ms
           disablingTransitionRef.current = {
             active: true,
             startTime: performance.now(),
@@ -190,27 +197,26 @@ export function useCamera({
           };
         }
       } else {
-        // Toggled back ON: cancel disabling and resume smoothly from current position
         disablingTransitionRef.current.active = false;
         lastTimeRef.current = performance.now();
       }
       prevEnabledRef.current = enabled;
     }
-  }, [enabled, worldRef]);
+  }, [enabled, worldRef, neutralX, neutralY, neutralZoom, transformSuffix]);
 
   // Main rAF animation loop
   useEffect(() => {
     let isCancelled = false;
 
-    // Check prefers-reduced-motion
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-    // If disabled and not in 300ms disabling transition, apply static framing and do not run loop
+    // If disabled and not in 300ms transition, apply static framing and stop loop
     if (!enabled && !disablingTransitionRef.current.active) {
       if (worldRef.current) {
-        worldRef.current.style.transform = '';
+        const staticTransform = `translate3d(${neutralX.toFixed(2)}px, ${neutralY.toFixed(2)}px, 0px) scale(${neutralZoom.toFixed(4)}) ${transformSuffix}`.trim();
+        worldRef.current.style.transform = staticTransform;
         worldRef.current.style.willChange = 'auto';
       }
       return;
@@ -226,32 +232,19 @@ export function useCamera({
         return;
       }
 
-      // Compute delta time capped at 64ms (avoids spiral on background lag)
       if (lastTimeRef.current === 0) lastTimeRef.current = now;
       const dt = Math.min((now - lastTimeRef.current) / 1000, 0.064);
       lastTimeRef.current = now;
-
-      // Viewport dimensions
-      const container = containerRef?.current || el.parentElement || el;
-      const viewportW = container.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 1000);
-      const viewportH = container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 600);
 
       // Handle 300ms disabling transition
       if (disablingTransitionRef.current.active) {
         const elapsed = now - disablingTransitionRef.current.startTime;
         const progress = Math.min(1.0, elapsed / 300);
-        // Smooth cubic ease out
-        const ease = 1 - Math.pow(1 - progress, 3);
+        const ease = 1 - Math.pow(1 - progress, 3); // cubic ease out
 
-        const neutralX = opts.coordinateMode === 'world' ? opts.worldWidth / 2 : 0;
-        const neutralY = opts.coordinateMode === 'world' ? opts.worldHeight / 2 : 0;
-        const fitScale = opts.coordinateMode === 'world'
-          ? Math.min(viewportW / opts.worldWidth, viewportH / opts.worldHeight) * 0.95
-          : 1.0;
-
-        const curX = disablingTransitionRef.current.startX + (neutralX - disablingTransitionRef.current.startX) * ease;
-        const curY = disablingTransitionRef.current.startY + (neutralY - disablingTransitionRef.current.startY) * ease;
-        const curZoom = disablingTransitionRef.current.startZoom + (fitScale - disablingTransitionRef.current.startZoom) * ease;
+        const curX = disablingTransitionRef.current.startX + (opts.neutralX - disablingTransitionRef.current.startX) * ease;
+        const curY = disablingTransitionRef.current.startY + (opts.neutralY - disablingTransitionRef.current.startY) * ease;
+        const curZoom = disablingTransitionRef.current.startZoom + (opts.neutralZoom - disablingTransitionRef.current.startZoom) * ease;
 
         currentPosRef.current.x = curX;
         currentPosRef.current.y = curY;
@@ -260,22 +253,12 @@ export function useCamera({
         currentPosRef.current.vy = 0;
         currentPosRef.current.vZoom = 0;
 
-        let transform = '';
-        if (opts.coordinateMode === 'world') {
-          const tx = (viewportW - opts.worldWidth * curZoom) / 2;
-          const ty = (viewportH - opts.worldHeight * curZoom) / 2;
-          transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0px) scale(${curZoom.toFixed(4)})`;
-        } else {
-          transform = `translate3d(${curX.toFixed(2)}px, ${curY.toFixed(2)}px, 0px) scale(${curZoom.toFixed(4)}) ${opts.transformSuffix}`.trim();
-        }
-
+        const transform = `translate3d(${curX.toFixed(2)}px, ${curY.toFixed(2)}px, 0px) scale(${curZoom.toFixed(4)}) ${opts.transformSuffix}`.trim();
         el.style.transform = transform;
 
         if (progress >= 1.0) {
           disablingTransitionRef.current.active = false;
-          el.style.transform = opts.coordinateMode === 'world' ? transform : '';
           el.style.willChange = 'auto';
-          // End loop now that disabled state is settled
           return;
         }
 
@@ -283,17 +266,18 @@ export function useCamera({
         return;
       }
 
-      // If camera movement is disabled and reduced motion active:
+      // If disabled and reduced motion:
       if (!opts.enabled || prefersReduced) {
-        el.style.transform = '';
+        const staticTransform = `translate3d(${opts.neutralX.toFixed(2)}px, ${opts.neutralY.toFixed(2)}px, 0px) scale(${opts.neutralZoom.toFixed(4)}) ${opts.transformSuffix}`.trim();
+        el.style.transform = staticTransform;
         el.style.willChange = 'auto';
         return;
       }
 
-      // Compute effective spring settle time (shorten if word duration is fast)
+      // Spring stiffness (omega): dynamically shortens settle time when words are rapid
       let effectiveSettle = opts.settleTime;
       if (opts.wordDuration && opts.wordDuration > 0) {
-        effectiveSettle = Math.max(0.22, Math.min(opts.settleTime, opts.wordDuration * 0.85));
+        effectiveSettle = Math.max(0.25, Math.min(opts.settleTime, opts.wordDuration * 0.85));
       }
       const omega = 4.5 / effectiveSettle;
 
@@ -302,50 +286,48 @@ export function useCamera({
       let driftY = 0;
       if (opts.idleDriftAmount > 0) {
         const driftTime = now * 0.001;
-        driftX = Math.sin(driftTime * 0.7) * opts.idleDriftAmount + Math.cos(driftTime * 1.3) * (opts.idleDriftAmount * 0.4);
-        driftY = Math.cos(driftTime * 0.6) * opts.idleDriftAmount + Math.sin(driftTime * 1.1) * (opts.idleDriftAmount * 0.4);
+        driftX = Math.sin(driftTime * 0.7) * opts.idleDriftAmount + Math.cos(driftTime * 1.3) * (opts.idleDriftAmount * 0.35);
+        driftY = Math.cos(driftTime * 0.6) * opts.idleDriftAmount + Math.sin(driftTime * 1.1) * (opts.idleDriftAmount * 0.35);
       }
 
-      // Target determination based on coordinate mode
-      let targetX = 0;
-      let targetY = 0;
-      let targetZoom = opts.zoomLevel;
+      // Calculate target pan and zoom
+      let targetPanX = 0;
+      let targetPanY = 0;
+      const targetZoom = opts.target?.zoom || opts.zoomLevel;
 
-      if (opts.coordinateMode === 'world') {
-        if (opts.target) {
-          targetX = opts.target.x + driftX;
-          targetY = opts.target.y + driftY;
-          targetZoom = opts.target.zoom || opts.zoomLevel;
+      if (opts.target) {
+        if (opts.scalePanWithZoom) {
+          targetPanX = -opts.target.x * targetZoom + driftX;
+          targetPanY = -opts.target.y * targetZoom + driftY;
         } else {
-          targetX = opts.worldWidth / 2 + driftX;
-          targetY = opts.worldHeight / 2 + driftY;
-          targetZoom = opts.zoomLevel;
+          targetPanX = -opts.target.x * opts.followStrength + driftX;
+          targetPanY = -opts.target.y * opts.followStrength + driftY;
         }
       } else {
-        // 'relative' mode (Ship, Constellation, Web)
-        if (opts.target) {
-          targetX = -opts.target.x * opts.followStrength + driftX;
-          targetY = -opts.target.y * opts.followStrength + driftY;
-          targetZoom = opts.target.zoom || opts.zoomLevel;
-        } else {
-          targetX = driftX;
-          targetY = driftY;
-          targetZoom = opts.zoomLevel;
-        }
+        targetPanX = driftX;
+        targetPanY = driftY;
+      }
+
+      // Initialize directly at target on first frame (prevents flying from 0)
+      if (!initializedRef.current) {
+        currentPosRef.current.x = targetPanX;
+        currentPosRef.current.y = targetPanY;
+        currentPosRef.current.zoom = targetZoom;
+        initializedRef.current = true;
       }
 
       // Integrate critically-damped spring
       const [newX, newVx] = criticallyDampedStep(
         currentPosRef.current.x,
         currentPosRef.current.vx,
-        targetX,
+        targetPanX,
         omega,
         dt
       );
       const [newY, newVy] = criticallyDampedStep(
         currentPosRef.current.y,
         currentPosRef.current.vy,
-        targetY,
+        targetPanY,
         omega,
         dt
       );
@@ -357,32 +339,14 @@ export function useCamera({
         dt
       );
 
-      // Clamp camera so active word NEVER leaves the central 60% of viewport
-      let clampedX = newX;
-      let clampedY = newY;
-
-      if (opts.coordinateMode === 'world' && opts.target) {
-        const maxOffsetW = (viewportW * 0.35) / newZoom;
-        const maxOffsetH = (viewportH * 0.35) / newZoom;
-        const diffX = opts.target.x - clampedX;
-        const diffY = opts.target.y - clampedY;
-
-        if (Math.abs(diffX) > maxOffsetW) {
-          clampedX = opts.target.x - Math.sign(diffX) * maxOffsetW;
-        }
-        if (Math.abs(diffY) > maxOffsetH) {
-          clampedY = opts.target.y - Math.sign(diffY) * maxOffsetH;
-        }
-      }
-
-      currentPosRef.current.x = clampedX;
-      currentPosRef.current.y = clampedY;
+      currentPosRef.current.x = newX;
+      currentPosRef.current.y = newY;
       currentPosRef.current.vx = newVx;
       currentPosRef.current.vy = newVy;
       currentPosRef.current.zoom = newZoom;
       currentPosRef.current.vZoom = newVZoom;
 
-      // Check moving state for will-change optimization
+      // will-change optimization
       const isMoving =
         Math.abs(newVx) > 0.4 ||
         Math.abs(newVy) > 0.4 ||
@@ -394,16 +358,8 @@ export function useCamera({
         el.style.willChange = isMoving ? 'transform' : 'auto';
       }
 
-      // Construct and apply transform directly on ref
-      let transform = '';
-      if (opts.coordinateMode === 'world') {
-        const tx = viewportW / 2 - clampedX * newZoom;
-        const ty = viewportH / 2 - clampedY * newZoom;
-        transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0px) scale(${newZoom.toFixed(4)})`;
-      } else {
-        transform = `translate3d(${clampedX.toFixed(2)}px, ${clampedY.toFixed(2)}px, 0px) scale(${newZoom.toFixed(4)}) ${opts.transformSuffix}`.trim();
-      }
-
+      // Apply transform directly to ref
+      const transform = `translate3d(${newX.toFixed(2)}px, ${newY.toFixed(2)}px, 0px) scale(${newZoom.toFixed(4)}) ${opts.transformSuffix}`.trim();
       el.style.transform = transform;
 
       rafIdRef.current = requestAnimationFrame(loop);
@@ -412,7 +368,7 @@ export function useCamera({
     lastTimeRef.current = performance.now();
     rafIdRef.current = requestAnimationFrame(loop);
 
-    // Pause loop when tab is hidden
+    // Pause when tab is hidden
     const handleVisibility = () => {
       if (document.hidden) {
         if (rafIdRef.current) {
@@ -439,5 +395,5 @@ export function useCamera({
         worldRef.current.style.willChange = 'auto';
       }
     };
-  }, [enabled, worldRef, containerRef]);
+  }, [enabled, worldRef, neutralX, neutralY, neutralZoom, transformSuffix]);
 }
