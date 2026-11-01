@@ -46,8 +46,8 @@ console.log(`  -> durationMismatch: ${result1?.durationMismatch}`);
 console.log(`  -> Result: ${result1?.record.id === 102 && result1?.tier === 1 && !result1?.durationMismatch ? 'PASSED ✅' : 'FAILED ❌'}\n`);
 
 // Test 2: When ONLY the 230s studio version exists and player is 273s (diff = 43s > 8s)
-const result2 = rankCandidates([mockRecords[0]], 'Starboy', 'The Weeknd', 273);
-console.log('Test 2: Video duration 273s (ONLY 230s studio version available)');
+const result2 = rankCandidates([mockRecords[0]], 'Starboy', 'The Weeknd', 273, { strictAcceptance: false });
+console.log('Test 2: Video duration 273s (ONLY 230s studio version available, ranking calculation)');
 console.log(`  -> Selected Record ID: ${result2?.record.id} (duration: ${result2?.record.duration}s)`);
 console.log(`  -> Tier: ${result2?.tier}`);
 console.log(`  -> durationMismatch: ${result2?.durationMismatch}`);

@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { usePlayback } from '@/context/PlaybackContext';
 import { lrclibProvider, ManualLyricsOverride } from '@/lib/lyrics/providers/lrclib';
 import { LyricsResult, SyncedLyricLine, LyricWord } from '@/lib/lyrics/providers/types';
-import { normalizeTrackCandidates, formatCleanDisplayTrack, normalizeString } from '@/lib/lyrics/normalize';
+import { normalizeTrackCandidates, formatCleanDisplayTrack, normalizeString, sanitizeQueryText } from '@/lib/lyrics/normalize';
+import { SearchCandidateItem } from '@/app/api/lyrics/search/route';
 import { parseLrc } from '@/lib/lyrics/parseLrc';
 import { deriveWordTimingsFromLrc } from '@/lib/lyrics/wordTiming';
 import {
@@ -44,6 +45,7 @@ import { isMostlyUppercase, fixSentenceCase, fixLineSentenceCase } from '@/lib/l
 const MANUAL_OVERRIDE_PREFIX = 'chillify_manual_lyrics_override:';
 const COMMUNITY_LYRICS_PREFIX = 'chillify_community_lyrics:';
 const USER_LYRICS_PREFIX = 'chillify_user_lyrics:';
+const CHOSEN_LYRICS_PREFIX = 'chillify_chosen_lyrics:';
 
 interface HeaderActionButtonProps {
   onClick: () => void;
@@ -130,6 +132,11 @@ export default function LyricsPage() {
   const [editArtist, setEditArtist] = useState<string>('');
   const [editTitle, setEditTitle] = useState<string>('');
   const [hasManualOverride, setHasManualOverride] = useState<boolean>(false);
+  const [manualSearchResults, setManualSearchResults] = useState<SearchCandidateItem[]>([]);
+  const [isSearchingManual, setIsSearchingManual] = useState<boolean>(false);
+  const [manualSearchSearched, setManualSearchSearched] = useState<boolean>(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<SearchCandidateItem | null>(null);
+  const [isPageDragging, setIsPageDragging] = useState<boolean>(false);
 
   // Offset Assistant state
   const [showOffsetAssistant, setShowOffsetAssistant] = useState<boolean>(false);
@@ -207,6 +214,10 @@ export default function LyricsPage() {
 
   // Initialize edit fields from stored override or normalized candidate
   useEffect(() => {
+    setManualSearchResults([]);
+    setManualSearchSearched(false);
+    setSelectedCandidate(null);
+
     if (!currentTrack) {
       setEditArtist('');
       setEditTitle('');
@@ -218,17 +229,29 @@ export default function LyricsPage() {
       const stored = localStorage.getItem(`${MANUAL_OVERRIDE_PREFIX}${currentTrack.id}`);
       if (stored) {
         const parsed: ManualLyricsOverride = JSON.parse(stored);
-        setEditArtist(parsed.artist || '');
-        setEditTitle(parsed.title || '');
+        setEditArtist(sanitizeQueryText(parsed.artist || ''));
+        setEditTitle(sanitizeQueryText(parsed.title || ''));
         setHasManualOverride(true);
         return;
+      }
+      const chosenStored = localStorage.getItem(`${CHOSEN_LYRICS_PREFIX}${currentTrack.id}`);
+      if (chosenStored) {
+        const chosen = JSON.parse(chosenStored);
+        if (chosen?.trackName) {
+          setEditArtist(sanitizeQueryText(chosen.artistName || ''));
+          setEditTitle(sanitizeQueryText(chosen.trackName || ''));
+          setHasManualOverride(true);
+          return;
+        }
       }
     } catch {
       // ignore parsing errors
     }
 
-    const candidates = normalizeTrackCandidates(currentTrack.title, currentTrack.artist);
-    const best = candidates[0] || { artist: currentTrack.artist || '', title: currentTrack.title || '' };
+    const cleanTitle = sanitizeQueryText(currentTrack.title);
+    const cleanArtist = sanitizeQueryText(currentTrack.artist || '');
+    const candidates = normalizeTrackCandidates(cleanTitle, cleanArtist);
+    const best = candidates[0] || { artist: cleanArtist, title: cleanTitle };
     setEditArtist(best.artist);
     setEditTitle(best.title);
     setHasManualOverride(false);
@@ -243,7 +266,7 @@ export default function LyricsPage() {
         return;
       }
 
-      // 1. Check user-stored custom / enhanced lyrics first (Part 3 user priority)
+      // Priority 1: User-stored custom / enhanced lyrics file (Source: Your file)
       if (!options?.bypassCache) {
         try {
           const userStored = localStorage.getItem(`${USER_LYRICS_PREFIX}${currentTrack.id}`);
@@ -266,6 +289,30 @@ export default function LyricsPage() {
         } catch {}
       }
 
+      // Priority 2: User's manual choice from search
+      if (!options?.bypassCache) {
+        try {
+          const chosenStored = localStorage.getItem(`${CHOSEN_LYRICS_PREFIX}${currentTrack.id}`);
+          if (chosenStored) {
+            const parsedData = JSON.parse(chosenStored);
+            if (parsedData) {
+              setLyricsResult(parsedData);
+              setIsLoading(false);
+              const hasLyrics =
+                !parsedData.instrumental &&
+                ((parsedData.lines && parsedData.lines.length > 0) || !!parsedData.plainLyrics);
+              window.dispatchEvent(
+                new CustomEvent('chillify_lyrics_status', {
+                  detail: { trackId: currentTrack.id, hasLyrics },
+                })
+              );
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // Priority 3: Automatic providers (LRCLIB etc.)
       setIsLoading(true);
       try {
         const res = await lrclibProvider.getLyrics(
@@ -321,25 +368,123 @@ export default function LyricsPage() {
     }
   }, [currentTrack?.id, playingDuration, fetchLyricsForCurrentTrack]);
 
-  // Handle manual search
-  const handleManualSearch = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!currentTrack || !editTitle.trim()) return;
+  // Clean metadata display info (no duplicated featured artists, clean title & artist)
+  const cleanDisplayInfo = useMemo(() => {
+    if (!currentTrack || !currentTrack.title) return null;
+    return formatCleanDisplayTrack(currentTrack.title, currentTrack.artist);
+  }, [currentTrack]);
 
-    const override: ManualLyricsOverride = {
-      artist: editArtist.trim(),
-      title: editTitle.trim(),
-    };
+  // Lyricsify Assist: Opens search in new tab with rel="noopener noreferrer"
+  const handleFindOnLyricsify = useCallback(() => {
+    const cleanTitle = cleanDisplayInfo?.cleanTitle || sanitizeQueryText(currentTrack?.title || '');
+    const cleanArtist = cleanDisplayInfo?.cleanArtist || sanitizeQueryText(currentTrack?.artist || '');
+    const query = cleanArtist ? `${cleanArtist} ${cleanTitle}` : cleanTitle;
+    const url = `https://www.lyricsify.com/search?q=${encodeURIComponent(query.trim())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [cleanDisplayInfo, currentTrack]);
+
+  // Handle manual candidate search (Part 1: Does NOT auto-apply!)
+  const handleManualSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editTitle.trim()) return;
+
+    setIsSearchingManual(true);
+    setManualSearchSearched(true);
+    setSelectedCandidate(null);
+    setShowFixModal(true);
 
     try {
-      localStorage.setItem(`${MANUAL_OVERRIDE_PREFIX}${currentTrack.id}`, JSON.stringify(override));
-      setHasManualOverride(true);
+      const q = new URLSearchParams({
+        title: editTitle.trim(),
+        artist: editArtist.trim(),
+      });
+      if (playingDuration && playingDuration > 0) {
+        q.set('duration', Math.round(playingDuration).toString());
+      }
+      const res = await fetch(`/api/lyrics/search?${q.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const results: SearchCandidateItem[] = data.results || [];
+        setManualSearchResults(results);
+        if (results.length > 0) {
+          // Highlight best match, but require tap to preview & confirm
+          setSelectedCandidate(results[0]);
+        }
+      } else {
+        setManualSearchResults([]);
+      }
     } catch {
-      // ignore storage error
+      setManualSearchResults([]);
+    } finally {
+      setIsSearchingManual(false);
+    }
+  };
+
+  // Confirm and apply chosen candidate from manual search list
+  const handleApplyChosenCandidate = (candidate: SearchCandidateItem) => {
+    if (!currentTrack) return;
+
+    let chosenResult: LyricsResult;
+
+    if (candidate.instrumental) {
+      chosenResult = {
+        source: 'lrclib',
+        synced: 'none',
+        lines: [],
+        instrumental: true,
+        trackName: candidate.trackName,
+        artistName: candidate.artistName,
+        matchedTitle: candidate.trackName,
+        matchedArtist: candidate.artistName,
+        durationMismatch: false,
+      };
+    } else if (candidate.syncedLyrics && candidate.syncedLyrics.trim()) {
+      const parsed = parseEnhancedLrc(candidate.syncedLyrics, {
+        songDuration: playingDuration || candidate.duration,
+      });
+      const diffSec = candidate.diffSeconds !== undefined ? candidate.diffSeconds : undefined;
+      const isMismatch = diffSec !== undefined && Math.abs(diffSec) > 8;
+
+      chosenResult = {
+        source: 'lrclib',
+        synced: parsed.synced,
+        lines: parsed.lines,
+        plainLyrics: candidate.plainLyrics,
+        rawText: candidate.syncedLyrics,
+        instrumental: false,
+        trackName: candidate.trackName,
+        artistName: candidate.artistName,
+        matchedTitle: candidate.trackName,
+        matchedArtist: candidate.artistName,
+        durationMismatch: isMismatch,
+        diffSeconds: diffSec,
+      };
+    } else {
+      const plainText = (candidate.plainLyrics || '').trim();
+      chosenResult = {
+        source: 'lrclib',
+        synced: 'none',
+        lines: [],
+        plainLyrics: plainText,
+        instrumental: false,
+        trackName: candidate.trackName,
+        artistName: candidate.artistName,
+        matchedTitle: candidate.trackName,
+        matchedArtist: candidate.artistName,
+        durationMismatch: false,
+      };
     }
 
+    try {
+      localStorage.setItem(`${CHOSEN_LYRICS_PREFIX}${currentTrack.id}`, JSON.stringify(chosenResult));
+      setHasManualOverride(true);
+    } catch {
+      // ignore
+    }
+
+    setLyricsResult(chosenResult);
     setShowFixModal(false);
-    fetchLyricsForCurrentTrack({ bypassCache: true, manualOverride: override });
+    setToast({ message: `Applied lyrics for "${candidate.trackName}"` });
   };
 
   // Handle reset to automatic
@@ -348,18 +493,25 @@ export default function LyricsPage() {
 
     try {
       localStorage.removeItem(`${MANUAL_OVERRIDE_PREFIX}${currentTrack.id}`);
+      localStorage.removeItem(`${CHOSEN_LYRICS_PREFIX}${currentTrack.id}`);
       setHasManualOverride(false);
     } catch {
       // ignore
     }
 
-    const candidates = normalizeTrackCandidates(currentTrack.title, currentTrack.artist);
-    const best = candidates[0] || { artist: currentTrack.artist || '', title: currentTrack.title || '' };
+    const cleanTitle = sanitizeQueryText(currentTrack.title);
+    const cleanArtist = sanitizeQueryText(currentTrack.artist || '');
+    const candidates = normalizeTrackCandidates(cleanTitle, cleanArtist);
+    const best = candidates[0] || { artist: cleanArtist, title: cleanTitle };
     setEditArtist(best.artist);
     setEditTitle(best.title);
+    setManualSearchResults([]);
+    setManualSearchSearched(false);
+    setSelectedCandidate(null);
     setShowFixModal(false);
 
     fetchLyricsForCurrentTrack({ bypassCache: true, manualOverride: null });
+    setToast({ message: 'Reset to automatic provider lyrics.' });
   };
 
   // Helper to read .lrc / .txt files in UTF-8 and strip any BOM
@@ -373,6 +525,7 @@ export default function LyricsPage() {
           content = content.slice(1);
         }
         setCustomLyricText(content);
+        setShowAddModal(true);
       }
     };
     reader.onerror = () => {
@@ -387,6 +540,42 @@ export default function LyricsPage() {
     readLrcFile(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  // Paste from clipboard helper (Part 2)
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        setCustomLyricText(text);
+        setFileUploadError(null);
+      } else {
+        setFileUploadError('Clipboard is empty.');
+      }
+    } catch {
+      setFileUploadError('Clipboard access blocked by browser. Please paste text directly with Ctrl+V / Cmd+V.');
+    }
+  };
+
+  // Full-page paste event listener (Part 2: accept paste anywhere on lyrics page)
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return;
+      }
+      const text = e.clipboardData?.getData('text');
+      if (text && text.trim().length > 0) {
+        if (text.includes('[') || text.includes('\n') || text.length > 20) {
+          e.preventDefault();
+          setCustomLyricText(text);
+          setFileUploadError(null);
+          setShowAddModal(true);
+        }
+      }
+    };
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, []);
 
   const handleModalDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -871,16 +1060,12 @@ export default function LyricsPage() {
     return `Source: ${name} (${typeStr})`;
   }, [lyricsResult]);
 
-  // Clean metadata display info (no duplicated featured artists, clean title & artist)
-  const cleanDisplayInfo = useMemo(() => {
-    if (!currentTrack || !currentTrack.title) return null;
-    return formatCleanDisplayTrack(currentTrack.title, currentTrack.artist);
-  }, [currentTrack]);
-
   // Only show "Matched: ..." when matched title/artist differs from the cleaned display
   const showMatchedDiff = useMemo(() => {
     if (!lyricsResult?.matchedTitle || !cleanDisplayInfo) return false;
-    const normMatched = `${normalizeString(lyricsResult.matchedArtist || '')}::${normalizeString(lyricsResult.matchedTitle)}`;
+    const cleanMatchedArtist = sanitizeQueryText(lyricsResult.matchedArtist || '');
+    const cleanMatchedTitle = sanitizeQueryText(lyricsResult.matchedTitle);
+    const normMatched = `${normalizeString(cleanMatchedArtist)}::${normalizeString(cleanMatchedTitle)}`;
     const normClean = `${normalizeString(cleanDisplayInfo.cleanArtist)}::${normalizeString(cleanDisplayInfo.cleanTitle)}`;
     return normMatched !== normClean;
   }, [lyricsResult, cleanDisplayInfo]);
@@ -948,6 +1133,34 @@ export default function LyricsPage() {
     <div
       ref={stageWrapperRef}
       onMouseMove={handleMouseMove}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+          setIsPageDragging(true);
+        }
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsPageDragging(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsPageDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+          readLrcFile(file);
+          setShowAddModal(true);
+        }
+      }}
       className={`w-full flex flex-col bg-black text-white relative select-none overflow-hidden transition-all duration-300 ${
         isFullscreen
           ? 'fixed inset-0 z-50 p-4 sm:p-8 h-screen w-screen'
@@ -964,6 +1177,15 @@ export default function LyricsPage() {
         } as React.CSSProperties
       }
     >
+      {/* Subtle Full-Page Drop Zone Overlay (Part 2) */}
+      {isPageDragging && (
+        <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-md border-2 border-dashed border-emerald-400 flex flex-col items-center justify-center gap-3 animate-fade-in pointer-events-none">
+          <span className="text-4xl animate-bounce">📂</span>
+          <h4 className="text-base sm:text-lg font-bold text-white">Drop .lrc to use for this song</h4>
+          <p className="text-xs text-emerald-300">Enhanced LRC, LRC, and plain text supported</p>
+        </div>
+      )}
+
       {/* Edge Glow Visualizer (Lumn-inspired light ring) */}
       <EdgeGlow
         enabled={settings.edgeGlowEnabled}
@@ -1040,11 +1262,19 @@ export default function LyricsPage() {
             )}
             <p className="text-xs text-[#888888] truncate flex items-center gap-2">
               <span className="truncate">{cleanDisplayInfo?.cleanArtist || currentTrack?.artist || 'Play a track to view live synced lyrics'}</span>
-              {showMatchedDiff && lyricsResult?.matchedTitle && lyricsResult?.matchedArtist && (
-                <span className="text-zinc-500 hidden md:inline truncate">
-                  (Matched: &ldquo;{lyricsResult.matchedArtist} - {lyricsResult.matchedTitle}&rdquo;)
-                </span>
-              )}
+              {showMatchedDiff && lyricsResult?.matchedTitle && lyricsResult?.matchedArtist && (() => {
+                const cleanMatchedArtist = sanitizeQueryText(lyricsResult.matchedArtist);
+                const cleanMatchedTitle = sanitizeQueryText(lyricsResult.matchedTitle);
+                const fullText = `Matched: "${cleanMatchedArtist} - ${cleanMatchedTitle}"`;
+                return (
+                  <span
+                    title={fullText}
+                    className="text-zinc-500 hidden md:inline max-w-[280px] truncate cursor-help"
+                  >
+                    ({fullText})
+                  </span>
+                );
+              })()}
             </p>
           </div>
         </div>
@@ -1159,6 +1389,17 @@ export default function LyricsPage() {
               label="Wrong lyrics?"
               ariaLabel="Search with custom artist and title"
               title="Search with custom artist and title"
+            />
+          )}
+
+          {/* Find on Lyricsify button */}
+          {currentTrack && (
+            <HeaderActionButton
+              onClick={handleFindOnLyricsify}
+              icon="🌐"
+              label="Lyricsify"
+              ariaLabel="Find lyrics on Lyricsify"
+              title="Search and download synced lyrics on Lyricsify"
             />
           )}
 
@@ -1447,22 +1688,23 @@ export default function LyricsPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <button
                     type="submit"
-                    className="flex-1 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all cursor-pointer shadow-md"
+                    disabled={isSearchingManual || !editTitle.trim()}
+                    className="flex-1 min-w-[120px] py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                   >
-                    Search again
+                    <span>🔍</span>
+                    <span>Search lyrics</span>
                   </button>
-                  {hasManualOverride && (
-                    <button
-                      type="button"
-                      onClick={handleResetOverride}
-                      className="px-3 py-2 rounded-xl bg-[#1a1a1a] hover:bg-[#282828] border border-[#333333] text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleFindOnLyricsify}
+                    className="px-3 py-2 rounded-xl bg-[#1e1e1e] hover:bg-[#2c2c2c] border border-[#333333] text-zinc-200 hover:text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>🌐</span>
+                    <span>Find on Lyricsify</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowAddModal(true)}
@@ -1487,107 +1729,270 @@ export default function LyricsPage() {
         </div>
       )}
 
-      {/* Manual Fix Modal */}
+      {/* Manual Fix Modal (Part 1: Does NOT auto-apply! Lists up to 8 candidates with preview) */}
       {showFixModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#141414] border border-[#282828] rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#141414] border border-[#282828] rounded-2xl p-6 max-w-lg w-full shadow-2xl relative max-h-[90vh] flex flex-col">
             <button
               type="button"
               onClick={() => setShowFixModal(false)}
               className="absolute top-4 right-4 text-zinc-400 hover:text-white text-sm cursor-pointer p-1"
+              aria-label="Close dialog"
             >
               ✕
             </button>
-            <h3 className="text-base font-bold text-white mb-1">Correct Lyric Search</h3>
-            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
-              Edit the artist and song title to improve search accuracy. Changes will be saved for this track.
+            <div className="flex items-center justify-between pr-8 mb-1">
+              <h3 className="text-base font-bold text-white">Find Correct Lyrics</h3>
+              <button
+                type="button"
+                onClick={handleFindOnLyricsify}
+                className="px-2.5 py-1 rounded-lg bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Search this song directly on Lyricsify"
+              >
+                <span>🌐</span>
+                <span>Find on Lyricsify</span>
+              </button>
+            </div>
+            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
+              Search LRCLIB candidates, preview before applying, or find on Lyricsify.
             </p>
 
+            {/* Custom lyrics notice if using user file */}
             {lyricsResult?.source === 'user' && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs flex flex-col gap-2">
+              <div className="mb-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs flex items-center justify-between gap-2">
                 <span className="text-emerald-300 font-semibold">
-                  You are currently using custom lyrics for this track.
+                  Currently using your local custom lyrics file.
                 </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowFixModal(false);
-                      handleEditUserLyrics();
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium cursor-pointer"
-                  >
-                    Edit file
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowFixModal(false);
-                      handleReplaceUserLyrics();
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium cursor-pointer"
-                  >
-                    Replace
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowFixModal(false);
-                      handleRemoveUserLyrics();
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-medium cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFixModal(false);
+                    handleEditUserLyrics();
+                  }}
+                  className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-medium cursor-pointer"
+                >
+                  Edit file
+                </button>
               </div>
             )}
 
-            <form onSubmit={handleManualSearch} className="flex flex-col gap-3">
-              <div>
-                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                  Artist
-                </label>
-                <input
-                  type="text"
-                  value={editArtist}
-                  onChange={(e) => setEditArtist(e.target.value)}
-                  placeholder="Artist"
-                  className="w-full px-3 py-2 rounded-xl bg-[#1c1c1c] border border-[#303030] text-sm text-white focus:outline-none focus:border-zinc-400 transition-colors"
-                />
+            <form onSubmit={handleManualSearch} className="flex flex-col gap-2.5 shrink-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Artist
+                  </label>
+                  <input
+                    type="text"
+                    value={editArtist}
+                    onChange={(e) => setEditArtist(e.target.value)}
+                    placeholder="Artist"
+                    className="w-full px-3 py-1.5 rounded-xl bg-[#1c1c1c] border border-[#303030] text-xs text-white focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Song Title"
+                    className="w-full px-3 py-1.5 rounded-xl bg-[#1c1c1c] border border-[#303030] text-xs text-white focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="Song Title"
-                  className="w-full px-3 py-2 rounded-xl bg-[#1c1c1c] border border-[#303030] text-sm text-white focus:outline-none focus:border-zinc-400 transition-colors"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-2 mt-1">
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all cursor-pointer"
+                  disabled={isSearchingManual || !editTitle.trim()}
+                  className="flex-1 py-1.5 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-40 text-black text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow"
                 >
-                  Search again
+                  {isSearchingManual ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      <span>Searching LRCLIB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔍</span>
+                      <span>Search LRCLIB</span>
+                    </>
+                  )}
                 </button>
                 {hasManualOverride && (
                   <button
                     type="button"
                     onClick={handleResetOverride}
-                    className="px-3 py-2 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#383838] text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#383838] text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer"
                   >
                     Reset to auto
                   </button>
                 )}
               </div>
             </form>
+
+            {/* Results List */}
+            <div className="flex-1 overflow-y-auto mt-3 pr-1 flex flex-col gap-2 min-h-0">
+              {isSearchingManual ? (
+                <div className="py-8 text-center text-xs text-zinc-400 flex flex-col items-center gap-2">
+                  <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Searching for candidates...</span>
+                </div>
+              ) : manualSearchResults.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400 px-1">
+                    <span className="font-semibold uppercase tracking-wider text-zinc-300">
+                      Candidates ({manualSearchResults.length})
+                    </span>
+                    <span className="text-[10px] text-zinc-500">Tap to preview, then confirm</span>
+                  </div>
+
+                  {manualSearchResults.map((candidate, idx) => {
+                    const isSelected = selectedCandidate?.id === candidate.id;
+                    const diffText =
+                      candidate.diffSeconds !== undefined
+                        ? candidate.diffSeconds === 0
+                          ? '±0s'
+                          : candidate.diffSeconds > 0
+                          ? `+${candidate.diffSeconds}s`
+                          : `${candidate.diffSeconds}s`
+                        : null;
+
+                    return (
+                      <div
+                        key={candidate.id}
+                        onClick={() => setSelectedCandidate(candidate)}
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
+                          isSelected
+                            ? 'bg-zinc-800/80 border-emerald-500/80 shadow-md ring-1 ring-emerald-500/40'
+                            : 'bg-[#181818] hover:bg-[#202020] border-[#2c2c2c]'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-white truncate">
+                                {candidate.trackName}
+                              </span>
+                              {idx === 0 && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                  Best match
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-400 truncate">
+                              {candidate.artistName}
+                              {candidate.albumName ? ` • ${candidate.albumName}` : ''}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                            {candidate.syncedType === 'word' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                Word-synced
+                              </span>
+                            ) : candidate.syncedType === 'line' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                Synced
+                              </span>
+                            ) : candidate.syncedType === 'instrumental' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                Instrumental
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                Plain
+                              </span>
+                            )}
+
+                            {candidate.duration && (
+                              <span className="text-[10px] font-mono text-zinc-400 bg-black/40 px-1.5 py-0.5 rounded">
+                                {formatDurationClock(candidate.duration)}
+                                {diffText ? ` (${diffText})` : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Selected Preview Box */}
+                        {isSelected && (
+                          <div className="mt-1 pt-2 border-t border-[#333333] flex flex-col gap-1 text-[11px] font-mono text-zinc-300 bg-black/40 p-2 rounded-lg animate-fade-in">
+                            <span className="text-[10px] text-zinc-400 font-sans font-semibold uppercase">
+                              Preview (first 4 lines):
+                            </span>
+                            {candidate.previewLines && candidate.previewLines.length > 0 ? (
+                              candidate.previewLines.map((line, lIdx) => (
+                                <div key={lIdx} className="truncate text-zinc-200">
+                                  {line}
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-zinc-500 italic">No lyrics preview available</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : manualSearchSearched ? (
+                <div className="py-6 text-center text-xs text-zinc-400 flex flex-col items-center gap-2.5">
+                  <span className="text-2xl">🔍</span>
+                  <p className="max-w-xs leading-relaxed">
+                    No matching lyrics found on LRCLIB for this search. You can search directly on Lyricsify, or drop your own .lrc file.
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={handleFindOnLyricsify}
+                      className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"
+                    >
+                      <span>🌐</span>
+                      <span>Find on Lyricsify</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowFixModal(false);
+                        setShowAddModal(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-zinc-300 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      ➕ Upload file
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-6 text-center text-xs text-zinc-500">
+                  Submit artist and title above to view and preview candidate matches.
+                </div>
+              )}
+            </div>
+
+            {/* Footer confirmation */}
+            <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-[#222222] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowFixModal(false)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#1c1c1c] hover:bg-[#262626] text-xs font-semibold text-zinc-300 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              {selectedCandidate && (
+                <button
+                  type="button"
+                  onClick={() => handleApplyChosenCandidate(selectedCandidate)}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold cursor-pointer transition-all shadow-md flex items-center gap-1.5"
+                >
+                  <span>✓</span>
+                  <span>Use these lyrics</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1650,6 +2055,14 @@ export default function LyricsPage() {
                   <span>📂</span>
                   <span>Choose or drop file</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={handlePasteFromClipboard}
+                  className="px-3 py-1.5 rounded-xl bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-xs font-semibold text-zinc-300 hover:text-white cursor-pointer transition-colors flex items-center gap-1.5"
+                >
+                  <span>📋</span>
+                  <span>Paste from clipboard</span>
+                </button>
                 <span className="text-[11px] text-zinc-500 hidden sm:inline">
                   Drag & drop .lrc / .txt supported
                 </span>
@@ -1690,16 +2103,16 @@ export default function LyricsPage() {
             )}
 
             {/* Duration mismatch note with speed fix */}
-            {parsedLrcData?.meta?.lengthSeconds &&
+            {detectedDurationSec > 0 &&
               playingDuration &&
-              Math.abs(parsedLrcData.meta.lengthSeconds - playingDuration) > 3 && (
+              Math.abs(detectedDurationSec - playingDuration) > 3 && (
                 <div className="mb-3 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-base">⚠️</span>
                     <span>
-                      Lyrics timing is for a version that is ~
-                      {Math.abs(Math.round(parsedLrcData.meta.lengthSeconds - playingDuration))}s{' '}
-                      {parsedLrcData.meta.lengthSeconds > playingDuration ? 'longer' : 'shorter'} than the playing track.
+                      Lyrics timing differs from playing track by ~
+                      {Math.abs(Math.round(detectedDurationSec - playingDuration))}s{' '}
+                      ({detectedDurationSec > playingDuration ? 'lyrics are longer' : 'lyrics are shorter'}).
                     </span>
                   </div>
                   <button
@@ -1808,7 +2221,7 @@ export default function LyricsPage() {
                 disabled={!customLyricText.trim() || !parsedLrcData || !!parsedLrcData.error}
                 className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed text-black text-xs font-bold cursor-pointer transition-all shadow-md"
               >
-                Save and Use Lyrics
+                Use these lyrics
               </button>
             </div>
           </div>

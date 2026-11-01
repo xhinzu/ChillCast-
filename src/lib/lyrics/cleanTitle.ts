@@ -1,3 +1,5 @@
+import { sanitizeQueryText } from './normalize';
+
 /**
  * Cleans track titles from noise commonly present in YouTube and uploaded video names
  * (e.g. "(Official Video)", "[Lyrics]", "ft. Bruno Mars", "4K", "| Lofi Chill")
@@ -6,7 +8,7 @@
 export function cleanTitleForLyrics(rawTitle: string): string {
   if (!rawTitle) return '';
 
-  let cleaned = rawTitle;
+  let cleaned = sanitizeQueryText(rawTitle);
 
   // 1. Remove bracketed notes: [Official Music Video], [Lyrics], [Visualizer], [4K], etc.
   cleaned = cleaned.replace(/\[.*?\]/g, '');
@@ -35,7 +37,7 @@ export function cleanTitleForLyrics(rawTitle: string): string {
  */
 export function cleanArtistForLyrics(rawArtist: string): string {
   if (!rawArtist) return '';
-  return rawArtist
+  return sanitizeQueryText(rawArtist)
     .replace(/\s*-\s*Topic$/i, '')
     .replace(/\s*(?:feat\.|ft\.|featuring)\s+.*$/i, '')
     .trim();

@@ -133,6 +133,59 @@ export async function fetchAllLrclibCandidates(
 }
 
 /**
+ * Strict acceptance threshold for auto-applying lyrics:
+ * - Normalized title similarity >= 0.75
+ * - AND (artist similarity >= 0.6 OR the artist appears in the candidate's title/artist string) [when artist is specified]
+ * - AND duration is within 15s of the playing track (when both are known: targetDuration > 0 && rec.duration > 0)
+ */
+export function isCandidateAcceptable(
+  rec: LRCLIBRecord,
+  targetTitle: string,
+  targetArtist: string,
+  targetDuration?: number
+): boolean {
+  if (!rec || !targetTitle) return false;
+
+  // 1. Normalized title similarity >= 0.75
+  const titleSim = tokenSetRatio(rec.trackName || '', targetTitle);
+  if (titleSim < 0.75) {
+    return false;
+  }
+
+  // 2. Artist check (if targetArtist is provided)
+  const normTargetArtist = normalizeString(targetArtist || '');
+  if (normTargetArtist) {
+    const artistSim = tokenSetRatio(rec.artistName || '', targetArtist);
+    const normRecArtist = normalizeString(rec.artistName || '');
+    const normRecTitle = normalizeString(rec.trackName || '');
+    const combinedRec = `${normRecArtist} ${normRecTitle}`;
+
+    const artistAppears =
+      (normRecArtist && (normRecArtist.includes(normTargetArtist) || normTargetArtist.includes(normRecArtist))) ||
+      combinedRec.includes(normTargetArtist);
+
+    if (artistSim < 0.6 && !artistAppears) {
+      return false;
+    }
+  }
+
+  // 3. Duration within 15s (when both are known)
+  if (
+    targetDuration !== undefined &&
+    targetDuration > 0 &&
+    rec.duration !== undefined &&
+    rec.duration > 0
+  ) {
+    const diff = Math.abs(rec.duration - targetDuration);
+    if (diff > 15) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Duration-Aware Candidate Selection (Part B)
  * Tiers:
  * (1) Synced candidates with |duration diff| <= 3s
@@ -145,9 +198,12 @@ export function rankCandidates(
   records: LRCLIBRecord[],
   targetTitle: string,
   targetArtist: string,
-  targetDuration?: number
+  targetDuration?: number,
+  options?: { strictAcceptance?: boolean }
 ): RankedResult | null {
   if (!records || records.length === 0) return null;
+
+  const strict = options?.strictAcceptance ?? true;
 
   interface EvaluatedCandidate {
     record: LRCLIBRecord;
@@ -160,6 +216,10 @@ export function rankCandidates(
   const evaluated: EvaluatedCandidate[] = [];
 
   for (const rec of records) {
+    if (strict && !isCandidateAcceptable(rec, targetTitle, targetArtist, targetDuration)) {
+      continue;
+    }
+
     const titleSim = tokenSetRatio(rec.trackName || '', targetTitle);
     if (titleSim < 0.4) continue; // Reject clearly unrelated songs
 

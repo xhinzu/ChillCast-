@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeTrackCandidates, normalizeString, CandidatePair } from '@/lib/lyrics/normalize';
+import { normalizeTrackCandidates, normalizeString, sanitizeQueryText, CandidatePair } from '@/lib/lyrics/normalize';
 import { searchLrclibWithCandidates, RankedResult } from '@/lib/lyrics/searchLrclib';
 import { fetchLyricsOvh } from '@/lib/lyrics/providers/lyricsOvh';
 import { parseEnhancedLrc } from '@/lib/lyrics/parseEnhancedLrc';
@@ -18,10 +18,10 @@ const NEGATIVE_CACHE_TTL_MS = 10 * 60 * 1000;          // 10 minutes max for not
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const rawTitle = url.searchParams.get('title') || '';
-  const rawArtist = url.searchParams.get('artist') || '';
-  const manualTitle = url.searchParams.get('manualTitle') || '';
-  const manualArtist = url.searchParams.get('manualArtist') || '';
+  const rawTitle = sanitizeQueryText(url.searchParams.get('title') || '');
+  const rawArtist = sanitizeQueryText(url.searchParams.get('artist') || '');
+  const manualTitle = sanitizeQueryText(url.searchParams.get('manualTitle') || '');
+  const manualArtist = sanitizeQueryText(url.searchParams.get('manualArtist') || '');
   const durationStr = url.searchParams.get('duration');
   const trackId = url.searchParams.get('id') || '';
   const bypassCache = url.searchParams.get('bypassCache') === 'true';

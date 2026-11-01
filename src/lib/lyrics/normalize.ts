@@ -26,6 +26,66 @@ const TRAILING_NOISE_REGEX =
 const PROD_BY_REGEX = /\s*(?:\||\/\/|-|–|—)?\s*prod(?:\.|\s+by)\s+[^|()\]}\-_–—]+/gi;
 
 /**
+ * Sanitizes search queries, track titles, and artist strings by removing:
+ * - URLs and protocols (https://, http://, ftp://, etc.)
+ * - Domain-like tokens (m.youtube.com, www., youtube.com, youtu.be, *.com, *.net, *.org, etc.)
+ * - Trailing or standalone " - YouTube", "YouTube", "Topic", "VEVO", "Official", "Video Lyric", "#2" counters
+ * - Hashtags (#shorts, #music, etc.)
+ * - Emojis and miscellaneous pictographs
+ * - Preserves legitimate song and artist names without leaving stray punctuation or empty brackets.
+ */
+export function sanitizeQueryText(input: string): string {
+  if (!input) return '';
+
+  let str = input;
+
+  // 1. Strip URLs with protocols (e.g., https://m.youtube.com/watch?v=...)
+  str = str.replace(/https?:\/\/[^\s]+/gi, ' ');
+  str = str.replace(/ftp:\/\/[^\s]+/gi, ' ');
+
+  // 2. Strip explicit domain names & domain-like tokens
+  // Matches m.youtube.com, www.youtube.com, youtube.com, youtu.be, and general domain patterns
+  str = str.replace(
+    /\b(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be|[a-zA-Z0-9-]+\.(?:com|org|net|edu|gov|io|co|be|tv|ai|me|info|biz|xyz|app|fm|cc|ly))(?:\/[^\s]*)?\b/gi,
+    ' '
+  );
+  // Also catch stray "www." tokens
+  str = str.replace(/\bwww\.[a-zA-Z0-9-]+\b/gi, ' ');
+
+  // 3. Strip "Video Lyric" / "Lyric Video" (with optional counter like "#2" or "2")
+  str = str.replace(/\bvideo\s+lyric(?:s)?(?:\s*#?\d+)?\b/gi, ' ');
+  str = str.replace(/\blyric(?:s)?\s+video(?:\s*#?\d+)?\b/gi, ' ');
+
+  // 4. Strip counters like "#2", "#1", "(#2)", "[#3]"
+  str = str.replace(/(?:^|\s)(?:#\d+|\(#\d+\)|\[#\d+\])(?:\s|$)/g, ' ');
+
+  // 5. Strip hashtags (e.g. #thriller, #shorts, #trending)
+  str = str.replace(/#[a-zA-Z0-9_-]+/g, ' ');
+
+  // 6. Strip emojis and pictographs
+  str = str.replace(/[\u{1F300}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{FE00}-\u{FE0F}]/gu, ' ');
+
+  // 7. Strip trailing or standalone " - YouTube", "YouTube", "VEVO", "Topic"
+  str = str.replace(/\s*(?:[-–—|/]\s*)?youtube(?:\s+music)?(?:\s*[-–—|/])?/gi, ' ');
+  str = str.replace(/\s*-\s*topic\b/gi, ' ');
+  str = str.replace(/\bvevo\b/gi, ' ');
+
+  // 8. Strip standalone "Official Video", "Official Music Video", "Official Audio"
+  str = str.replace(/\bofficial\s+(?:music\s+)?video\b/gi, ' ');
+  str = str.replace(/\bofficial\s+audio\b/gi, ' ');
+
+  // 9. Remove empty bracket pairs left behind: (), [], {}
+  str = str.replace(/\(\s*\)|\[\s*\]|\{\s*\}/g, ' ');
+
+  // 10. Clean up multiple separators and leading/trailing dashes/whitespace
+  str = str.replace(/\s*[-–—|/]+\s*[-–—|/]+\s*/g, ' - ');
+  str = str.replace(/^[\s\-–—|/:]+|[\s\-–—|/:]+$/g, '');
+  str = str.replace(/\s+/g, ' ').trim();
+
+  return str;
+}
+
+/**
  * Splits CamelCase strings while preserving existing spaces.
  * e.g. "TheWeekndVEVO" -> "The Weeknd VEVO", "TravisScott" -> "Travis Scott"
  */
@@ -42,7 +102,7 @@ function splitCamelCase(str: string): string {
 export function cleanChannelName(rawChannel: string): string {
   if (!rawChannel) return '';
 
-  let cleaned = rawChannel.trim();
+  let cleaned = sanitizeQueryText(rawChannel).trim();
 
   // 1. Remove " - Topic" appended by YouTube Music distributor feeds
   cleaned = cleaned.replace(/\s*-\s*Topic$/i, '');
@@ -181,7 +241,7 @@ export function deduplicateArtists(primaryArtists: string[], featuredArtists: st
  * Clean base track title of parenthetical noise tags, video metadata, and producer credits.
  */
 export function cleanTitleTags(rawTitle: string): { title: string; isLive: boolean } {
-  let cleaned = rawTitle;
+  let cleaned = sanitizeQueryText(rawTitle);
   let isLive = false;
 
   if (LIVE_REGEX.test(cleaned)) {
@@ -235,11 +295,15 @@ function areArtistsEquivalent(a1: string, a2: string): boolean {
 export function normalizeTrackCandidates(rawTitle: string, rawArtist?: string): CandidatePair[] {
   if (!rawTitle) return [];
 
+  const sanitizedTitle = sanitizeQueryText(rawTitle);
+  const sanitizedArtist = sanitizeQueryText(rawArtist || '');
+  if (!sanitizedTitle) return [];
+
   const candidates: CandidatePair[] = [];
-  const cleanChannel = cleanChannelName(rawArtist || '');
+  const cleanChannel = cleanChannelName(sanitizedArtist);
 
   // 1. First clean noise tags and extract featured artists
-  const { title: titleWithoutNoise, isLive } = cleanTitleTags(rawTitle);
+  const { title: titleWithoutNoise, isLive } = cleanTitleTags(sanitizedTitle);
   const { cleaned: baseTitle, featured: titleFeatured } = extractFeaturedArtists(titleWithoutNoise);
   const { cleaned: channelCleaned, featured: channelFeatured } = extractFeaturedArtists(cleanChannel);
   const rawFeatured = [...titleFeatured, ...channelFeatured];
@@ -532,8 +596,8 @@ export function formatCleanDisplayTrack(
 } {
   const candidates = normalizeTrackCandidates(rawTitle, rawArtist);
   const best = candidates[0] || {
-    artist: rawArtist || '',
-    title: rawTitle || '',
+    artist: sanitizeQueryText(rawArtist || ''),
+    title: sanitizeQueryText(rawTitle || ''),
     featuredArtists: [],
   };
 
