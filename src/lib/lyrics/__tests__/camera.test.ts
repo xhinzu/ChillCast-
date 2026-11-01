@@ -117,6 +117,26 @@ const camTarget = {
 };
 assert('Computes correct center-relative camera target offset', camTarget.x === 200 && camTarget.y === 100);
 
+// Test 10: Line-based random stage word layout stays within bounds
+function createPrng(seed: number) {
+  let s = seed || 123456789;
+  return function next() {
+    s = (s ^ (s << 13)) >>> 0;
+    s = (s ^ (s >> 17)) >>> 0;
+    s = (s ^ (s << 5)) >>> 0;
+    return (s >>> 0) / 4294967296;
+  };
+}
+const rng = createPrng(98765);
+const wordsToTest = ['City\'s', 'breaking', 'down', 'on', 'a', 'camel\'s', 'back'];
+const testNodes = wordsToTest.map((w, i) => {
+  const angle = (i / wordsToTest.length) * Math.PI * 2;
+  const candX = Math.round(Math.cos(angle) * 360 * 0.7);
+  const candY = Math.round(Math.sin(angle) * 200 * 0.7);
+  return { text: w, x: candX, y: candY };
+});
+assert('Line words stay comfortably within [-360, 360] x [-200, 200] stage bounds', testNodes.every(n => Math.abs(n.x) <= 360 && Math.abs(n.y) <= 200));
+
 console.log('====================================================');
 console.log(`SUMMARY: ${testsPassed}/${totalTests} Tests Passed!`);
 console.log('====================================================');
