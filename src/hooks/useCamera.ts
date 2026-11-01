@@ -1,6 +1,9 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useLayoutEffect } from 'react';
+
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export interface CameraFocusTarget {
   x: number;
@@ -141,6 +144,22 @@ export function useCamera({
     startY: 0,
     startZoom: 1.0,
   });
+
+  // Apply initial transform synchronously before first paint to prevent any 1-frame flash
+  useIsomorphicLayoutEffect(() => {
+    const el = worldRef.current;
+    if (!el) return;
+    if (!initializedRef.current && target) {
+      const initZoom = target.zoom || zoomLevel;
+      const initPanX = scalePanWithZoom ? -target.x * initZoom : -target.x * followStrength;
+      const initPanY = scalePanWithZoom ? -target.y * initZoom : -target.y * followStrength;
+      currentPosRef.current.x = initPanX;
+      currentPosRef.current.y = initPanY;
+      currentPosRef.current.zoom = initZoom;
+      initializedRef.current = true;
+      el.style.transform = `translate3d(${initPanX.toFixed(2)}px, ${initPanY.toFixed(2)}px, 0px) scale(${initZoom.toFixed(4)}) ${transformSuffix}`.trim();
+    }
+  }, [worldRef, target, zoomLevel, scalePanWithZoom, followStrength, transformSuffix]);
 
   // Track target changes for zoom-pulse and rapid catchup
   useEffect(() => {
@@ -309,7 +328,7 @@ export function useCamera({
       }
 
       // Initialize directly at target on first frame (prevents flying from 0)
-      if (!initializedRef.current) {
+      if (!initializedRef.current && opts.target) {
         currentPosRef.current.x = targetPanX;
         currentPosRef.current.y = targetPanY;
         currentPosRef.current.zoom = targetZoom;

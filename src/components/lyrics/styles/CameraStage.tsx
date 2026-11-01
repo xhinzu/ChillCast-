@@ -22,11 +22,12 @@ interface CameraWordNode {
   duration?: number;
   x: number;
   y: number;
+  rotation: number;
 }
 
-const WORLD_WIDTH = 2400;
-const WORLD_HEIGHT = 1600;
-const MARGIN = 200;
+const WORLD_WIDTH = 2600;
+const WORLD_HEIGHT = 1700;
+const MARGIN = 180;
 
 function hashString(str: string): number {
   let hash = 0;
@@ -58,18 +59,20 @@ export default function CameraStage({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState({ w: 1000, h: 600 });
 
+  // Measure container viewport accurately using ResizeObserver
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
     const updateSize = () => {
-      if (containerRef.current) {
-        setViewportSize({
-          w: containerRef.current.clientWidth || 1000,
-          h: containerRef.current.clientHeight || 600,
-        });
-      }
+      setViewportSize({
+        w: el.clientWidth || 1000,
+        h: el.clientHeight || 600,
+      });
     };
     updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   // Compute static framing zoom to fit full world canvas when camera motion is OFF
@@ -79,7 +82,7 @@ export default function CameraStage({
     return Math.min(scaleX, scaleY) * 0.92;
   }, [viewportSize]);
 
-  // Flatten words across all lines with timing and indices
+  // Flatten words across all lines with timing and indices (robust to line-synced lyrics)
   const flatWords = useMemo(() => {
     const list: {
       globalIndex: number;
@@ -92,13 +95,33 @@ export default function CameraStage({
     let gIdx = 0;
     for (let l = 0; l < lines.length; l++) {
       const line = lines[l];
-      if (!line.words || line.words.length === 0) continue;
-      for (let w = 0; w < line.words.length; w++) {
-        const word = line.words[w];
+      let words = line.words;
+
+      // Fallback for line-synced lyrics where words array is empty or not provided
+      if (!words || words.length === 0) {
+        if (line.text && line.text.trim().length > 0) {
+          const parts = line.text.trim().split(/\s+/).filter(Boolean);
+          const lineDuration =
+            line.end && line.start && line.end > line.start
+              ? line.end - line.start
+              : 3.0;
+          const wordDur = lineDuration / Math.max(1, parts.length);
+          words = parts.map((part, pIdx) => ({
+            text: part,
+            start: line.start + pIdx * wordDur,
+            end: line.start + (pIdx + 1) * wordDur,
+          }));
+        }
+      }
+
+      if (!words || words.length === 0) continue;
+
+      for (let w = 0; w < words.length; w++) {
+        const word = words[w];
         const duration =
-          word.end && word.start
+          word.end && word.start && word.end > word.start
             ? Math.max(0.15, word.end - word.start)
-            : 0.5;
+            : 0.45;
         list.push({
           globalIndex: gIdx++,
           lineIndex: l,
@@ -115,71 +138,96 @@ export default function CameraStage({
   const activeGlobalIndex = useMemo(() => {
     if (flatWords.length === 0) return 0;
 
-    let match = flatWords.find(
-      (item) => item.lineIndex === activeLineIndex && item.wordIndex === activeWordIndex
-    );
-    if (!match && activeLineIndex >= 0) {
-      match = flatWords.find((item) => item.lineIndex === activeLineIndex);
+    // 1. Exact match by lineIndex and wordIndex
+    if (activeWordIndex >= 0) {
+      const match = flatWords.find(
+        (item) => item.lineIndex === activeLineIndex && item.wordIndex === activeWordIndex
+      );
+      if (match) return match.globalIndex;
     }
-    return match ? match.globalIndex : 0;
+
+    // 2. Fallback to first word of active line (e.g. line-synced lyrics)
+    if (activeLineIndex >= 0) {
+      const lineMatch = flatWords.find((item) => item.lineIndex === activeLineIndex);
+      if (lineMatch) return lineMatch.globalIndex;
+    }
+
+    return 0;
   }, [flatWords, activeLineIndex, activeWordIndex]);
 
   // Generate deterministic seeded positions across the world canvas
+  // Spawns words at natural, organic random places across the stage with smooth reading flow
   const wordNodes = useMemo<CameraWordNode[]>(() => {
     if (flatWords.length === 0) return [];
 
-    const seedStr = trackId || (lines[0]?.words[0]?.text ?? 'chillcast') + lines.length;
+    const seedStr = trackId || (lines[0]?.text ?? 'chillcast') + flatWords.length;
     const rng = createPrng(hashString(seedStr));
 
     const nodes: CameraWordNode[] = [];
-    const usableW = WORLD_WIDTH - MARGIN * 2;
-    const usableH = WORLD_HEIGHT - MARGIN * 2;
+    const minX = MARGIN;
+    const maxX = WORLD_WIDTH - MARGIN;
+    const minY = MARGIN;
+    const maxY = WORLD_HEIGHT - MARGIN;
 
-    const cols = 8;
-    const rows = 6;
-    const cellW = usableW / cols;
-    const cellH = usableH / rows;
+    let curX = WORLD_WIDTH / 2 + (rng() - 0.5) * 320;
+    let curY = WORLD_HEIGHT / 2 + (rng() - 0.5) * 220;
+    let curAngle = rng() * Math.PI * 2;
 
     for (let i = 0; i < flatWords.length; i++) {
       const word = flatWords[i];
-      let bestX = MARGIN + rng() * usableW;
-      let bestY = MARGIN + rng() * usableH;
-      let maxScore = -1;
+      const isNewLine = i > 0 && word.lineIndex !== flatWords[i - 1].lineIndex;
 
-      // Candidate rejection sampling to guarantee spread & minimum distance
-      for (let attempt = 0; attempt < 18; attempt++) {
-        const cellIdx = Math.floor(rng() * (cols * rows));
-        const c = cellIdx % cols;
-        const r = Math.floor(cellIdx / cols);
+      // Subtle random tilt between -6 and +6 degrees
+      const rotation = Math.round((rng() - 0.5) * 12);
 
-        const candX = MARGIN + c * cellW + rng() * cellW;
-        const candY = MARGIN + r * cellH + rng() * cellH;
+      let bestX = curX;
+      let bestY = curY;
 
-        let minDistFromRecent = Infinity;
-        const recentStart = Math.max(0, i - 12);
-        for (let j = recentStart; j < i; j++) {
-          const d = Math.hypot(candX - nodes[j].x, candY - nodes[j].y);
-          if (d < minDistFromRecent) minDistFromRecent = d;
+      // Try candidate angles to place word at an uncluttered random place
+      for (let attempt = 0; attempt < 24; attempt++) {
+        // Distance from previous word:
+        // Within same line: 150px - 260px (smooth, readable gliding distance)
+        // Between lines: 280px - 440px (fresh leap to a new cluster)
+        const dist = isNewLine ? 280 + rng() * 160 : 150 + rng() * 110;
+
+        // Angle: organic progression with slight angle persistence or fresh direction
+        const angle = isNewLine ? rng() * Math.PI * 2 : curAngle + (rng() - 0.5) * 1.8;
+
+        let candX = curX + Math.cos(angle) * dist;
+        let candY = curY + Math.sin(angle) * dist;
+
+        // Bounce back if nearing canvas edges
+        if (candX < minX || candX > maxX) {
+          candX = Math.max(minX, Math.min(maxX, curX - Math.cos(angle) * dist));
+        }
+        if (candY < minY || candY > maxY) {
+          candY = Math.max(minY, Math.min(maxY, curY - Math.sin(angle) * dist));
         }
 
-        const distFromPrev = i > 0 ? Math.hypot(candX - nodes[i - 1].x, candY - nodes[i - 1].y) : 800;
+        // Check distance to recent words to prevent overlapping
+        let minRecentDist = Infinity;
+        const checkStart = Math.max(0, i - 12);
+        for (let j = checkStart; j < i; j++) {
+          const d = Math.hypot(candX - nodes[j].x, candY - nodes[j].y);
+          if (d < minRecentDist) minRecentDist = d;
+        }
 
-        const score = (distFromPrev >= 450 ? 500 : distFromPrev) + Math.min(minDistFromRecent, 300);
-        if (score > maxScore) {
-          maxScore = score;
+        if (minRecentDist >= 120 || attempt === 23) {
           bestX = candX;
           bestY = candY;
-        }
-
-        if (distFromPrev >= 450 && minDistFromRecent >= 190) {
+          curAngle = angle;
           break;
         }
       }
+
+      curX = bestX;
+      curY = bestY;
 
       nodes.push({
         ...word,
         x: Math.round(bestX),
         y: Math.round(bestY),
+        rotation,
       });
     }
 
@@ -188,7 +236,7 @@ export default function CameraStage({
 
   const activeNode = wordNodes[activeGlobalIndex];
 
-  // Target relative to world center (1200, 800)
+  // Target relative to world center (WORLD_WIDTH / 2, WORLD_HEIGHT / 2)
   const target = activeNode
     ? {
         x: activeNode.x - WORLD_WIDTH / 2,
@@ -196,17 +244,17 @@ export default function CameraStage({
       }
     : null;
 
-  // Shared camera hook integration
+  // Shared camera hook integration: glides and focuses camera directly on active highlighted word
   useCamera({
     worldRef,
     containerRef,
     target,
     enabled: cameraMovementEnabled,
     scalePanWithZoom: true,
-    zoomLevel: 1.8,
+    zoomLevel: 1.75,
     zoomPulseAmount: 0.1,
-    settleTime: 0.6,
-    idleDriftAmount: 4,
+    settleTime: 0.55,
+    idleDriftAmount: 3.5,
     wordDuration: activeNode?.duration,
     neutralX: 0,
     neutralY: 0,
@@ -226,7 +274,7 @@ export default function CameraStage({
       ref={containerRef}
       className="w-full h-full flex items-center justify-center select-none relative overflow-hidden"
     >
-      {/* World Canvas Centered on Screen (Controlled by useCamera via Ref) */}
+      {/* World Canvas Centered on Screen (Controlled exclusively by useCamera via Ref) */}
       <div
         ref={worldRef}
         className="absolute left-1/2 top-1/2 transform-gpu pointer-events-none"
@@ -236,37 +284,43 @@ export default function CameraStage({
           marginLeft: `-${WORLD_WIDTH / 2}px`,
           marginTop: `-${WORLD_HEIGHT / 2}px`,
           transformOrigin: 'center center',
-          transform: `translate3d(0px, 0px, 0px) scale(${fitZoom})`,
+          // Notice: NO inline transform here! useCamera sets el.style.transform directly via rAF
         }}
       >
         {wordNodes.map((node) => {
           const diff = node.globalIndex - activeGlobalIndex;
           const isActive = diff === 0;
-          const isPast = diff < 0 && diff >= -10;
-          const isNext = diff === 1;
+          const isPast = diff < 0;
 
-          // When camera movement is ON, cull distant words for performance
-          // When camera movement is OFF, show all words in static framing
+          // When camera motion is ON, render a generous window of words (-25 to +45)
+          // so words are visibly spawned at random places all around the camera.
+          // When camera motion is OFF, render all words across the full canvas.
           if (cameraMovementEnabled) {
-            if (!isActive && !isPast && !isNext) return null;
+            if (diff < -25 || diff > 45) return null;
           }
 
           const emoji = showIcons && isActive ? getEmojiForLyricWord(node.text) : null;
 
+          // Distinct visual hierarchy:
+          // Active: 1.0 (glowing and prominent)
+          // Upcoming: softly visible at random places across the scene (0.22 - 0.45)
+          // Past: dim fading memory trail (0.15 - 0.60)
           const opacity = isActive
             ? 1.0
             : isPast
-            ? Math.max(0.15, 0.7 + diff * 0.055)
-            : isNext
-            ? 0.12
-            : 0.25;
+            ? Math.max(0.15, 0.6 + diff * 0.02)
+            : diff <= 6
+            ? 0.45
+            : diff <= 18
+            ? 0.35
+            : 0.22;
 
           const scale = isActive
-            ? 1.25
+            ? 1.35
             : isPast
-            ? Math.max(0.7, 0.95 + diff * 0.025)
-            : isNext
-            ? 0.75
+            ? Math.max(0.75, 0.95 + diff * 0.01)
+            : diff <= 6
+            ? 0.95
             : 0.85;
 
           const color = isActive
@@ -278,14 +332,16 @@ export default function CameraStage({
           return (
             <div
               key={`cam-word-${node.globalIndex}-${node.text}`}
-              className="absolute flex items-center justify-center gap-3 transition-opacity duration-200 select-none whitespace-nowrap"
+              className="absolute flex items-center justify-center gap-3 select-none whitespace-nowrap"
               style={{
                 left: `${node.x}px`,
                 top: `${node.y}px`,
-                transform: `translate(-50%, -50%) scale(${scale})`,
+                transform: `translate(-50%, -50%) rotate(${node.rotation}deg) scale(${scale})`,
                 opacity,
                 color,
-                zIndex: isActive ? 20 : isPast ? 10 : 1,
+                zIndex: isActive ? 30 : isPast ? 10 : 20,
+                transition:
+                  'transform 0.28s cubic-bezier(0.2, 0, 0, 1), opacity 0.3s ease-out, color 0.2s ease',
               }}
             >
               <span

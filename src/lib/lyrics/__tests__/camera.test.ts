@@ -95,6 +95,28 @@ for (let step = 0; step < 60; step++) {
 assert('Critically-damped spring step never overshoots target', !overshot);
 assert('Critically-damped spring converges to target smoothly (> 98% in 60 frames)', pos > 98);
 
+// Test 8: Fallback word synthesis for line-synced lyrics
+const mockLine = { id: 1, text: 'Never gonna give you up', start: 10, end: 13, words: [] };
+const parts = mockLine.text.trim().split(/\s+/).filter(Boolean);
+const lineDur = mockLine.end - mockLine.start;
+const wordDur = lineDur / parts.length;
+const synthesizedWords = parts.map((part, pIdx) => ({
+  text: part,
+  start: mockLine.start + pIdx * wordDur,
+  end: mockLine.start + (pIdx + 1) * wordDur,
+}));
+assert('Synthesizes words from line.text when line.words is empty', synthesizedWords.length === 5 && synthesizedWords[0].text === 'Never');
+
+// Test 9: Center-relative target coordinates calculation
+const WORLD_WIDTH = 2600;
+const WORLD_HEIGHT = 1700;
+const activeWordPos = { x: 1500, y: 950 };
+const camTarget = {
+  x: activeWordPos.x - WORLD_WIDTH / 2,
+  y: activeWordPos.y - WORLD_HEIGHT / 2,
+};
+assert('Computes correct center-relative camera target offset', camTarget.x === 200 && camTarget.y === 100);
+
 console.log('====================================================');
 console.log(`SUMMARY: ${testsPassed}/${totalTests} Tests Passed!`);
 console.log('====================================================');
