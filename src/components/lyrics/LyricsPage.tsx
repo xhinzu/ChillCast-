@@ -32,6 +32,7 @@ import ClassicStage from './styles/ClassicStage';
 import VisualStage from './styles/VisualStage';
 import ConstellationStage from './styles/ConstellationStage';
 import ShipStage from './styles/ShipStage';
+import CameraStage from './styles/CameraStage';
 import FisheyeStage from './styles/FisheyeStage';
 import CodestyleStage from './styles/CodestyleStage';
 import BranchesStage from './styles/BranchesStage';
@@ -907,6 +908,8 @@ export default function LyricsPage() {
       activeLineIndex: lineIndex,
       activeWordIndex: wordIndex,
       showIcons: settings.iconsEnabled,
+      cameraMovementEnabled: settings.cameraMovementEnabled,
+      trackId: currentTrack?.id,
     };
 
     switch (settings.style) {
@@ -916,14 +919,12 @@ export default function LyricsPage() {
         return <ConstellationStage {...commonProps} />;
       case 'ship':
         return <ShipStage {...commonProps} />;
+      case 'camera':
+        return <CameraStage {...commonProps} />;
       case 'fisheye':
         return <FisheyeStage {...commonProps} />;
-      case 'fisheye_visual':
-        return <FisheyeStage {...commonProps} showIcons={true} />;
       case 'codestyle':
         return <CodestyleStage {...commonProps} />;
-      case 'codestyle_visual':
-        return <CodestyleStage {...commonProps} showIcons={true} />;
       case 'branches':
         return <BranchesStage {...commonProps} />;
       case 'web':

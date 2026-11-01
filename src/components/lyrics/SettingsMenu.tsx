@@ -23,10 +23,9 @@ const STYLE_LABELS: { id: LyricsStyle; label: string; badge?: string }[] = [
   { id: 'visual', label: 'Visual', badge: 'Word' },
   { id: 'constellation', label: 'Constellation', badge: 'Graph' },
   { id: 'ship', label: 'Ship', badge: '3D Wall' },
+  { id: 'camera', label: 'Camera', badge: 'Dynamic' },
   { id: 'fisheye', label: 'Fisheye', badge: '3D Cylinder' },
-  { id: 'fisheye_visual', label: 'Fisheye Visual', badge: '3D + Icons' },
   { id: 'codestyle', label: 'Codestyle', badge: 'Editor' },
-  { id: 'codestyle_visual', label: 'Codestyle Visual', badge: 'Editor + Icons' },
   { id: 'branches', label: 'Branches', badge: 'Tree' },
   { id: 'web', label: 'Web', badge: 'Radial' },
 ];
@@ -312,6 +311,20 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                 type="checkbox"
                 checked={settings.showOutsideLyricsPage}
                 onChange={(e) => updateSettings({ showOutsideLyricsPage: e.target.checked })}
+                className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+              />
+            </label>
+
+            {/* Camera Movement */}
+            <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+              <div>
+                <span className="text-zinc-300 block">Camera Movement</span>
+                <span className="text-[10px] text-zinc-500">Pan, zoom & focus in supported styles</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.cameraMovementEnabled ?? true}
+                onChange={(e) => updateSettings({ cameraMovementEnabled: e.target.checked })}
                 className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
               />
             </label>

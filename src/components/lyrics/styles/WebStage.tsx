@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateWebLayout } from '@/lib/lyrics/layoutNodes';
 import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
+import { useCamera } from '@/hooks/useCamera';
 
 interface WebStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  cameraMovementEnabled?: boolean;
 }
 
 export default function WebStage({
@@ -17,7 +19,10 @@ export default function WebStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  cameraMovementEnabled = true,
 }: WebStageProps) {
+  const worldRef = useRef<HTMLDivElement | null>(null);
+
   const activeLine =
     activeLineIndex >= 0 && activeLineIndex < lines.length
       ? lines[activeLineIndex]
@@ -30,6 +35,29 @@ export default function WebStage({
     }
     return generateWebLayout(activeLine.words, activeLineIndex, 1000, 600);
   }, [activeLine, activeLineIndex]);
+
+  const activeNode = layout.nodes.find((n) => n.index === activeWordIndex);
+
+  // Camera focuses on active node: pans so active word is near center and zooms in moderately (~1.35x),
+  // smooth spring with ~0.6s settle
+  const target = activeNode
+    ? {
+        x: (activeNode.x - 500) * 0.75,
+        y: (activeNode.y - 300) * 0.75,
+      }
+    : null;
+
+  useCamera({
+    worldRef,
+    target,
+    enabled: cameraMovementEnabled,
+    coordinateMode: 'relative',
+    followStrength: 1.0,
+    settleTime: 0.6,
+    zoomLevel: 1.35,
+    zoomPulseAmount: 0.05,
+    idleDriftAmount: 4,
+  });
 
   if (!activeLine || layout.nodes.length === 0) {
     return (
@@ -47,102 +75,116 @@ export default function WebStage({
       key={`web-line-${activeLineIndex}`}
       className="w-full h-full flex items-center justify-center select-none relative overflow-hidden transition-opacity duration-300"
     >
-      <svg
-        viewBox="0 0 1000 600"
-        className="w-full h-full max-w-5xl max-h-[75vh] object-contain overflow-visible"
+      {/* World Container (Controlled by useCamera via Ref) */}
+      <div
+        ref={worldRef}
+        className="w-full h-full flex items-center justify-center transform-gpu"
+        style={{
+          transformOrigin: 'center center',
+        }}
       >
-        {/* Central Hub Glow */}
-        <circle
-          cx={centerX}
-          cy={centerY}
-          r={6}
-          fill="var(--highlight, #ef4444)"
-          className="opacity-70 animate-pulse"
-        />
+        <svg
+          viewBox="0 0 1000 600"
+          className="w-full h-full max-w-5xl max-h-[75vh] object-contain overflow-visible"
+        >
+          {/* Central Hub Glow */}
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={6}
+            fill="var(--highlight, #ef4444)"
+            className="opacity-70 animate-pulse"
+          />
 
-        {/* Web Network Connecting Lines */}
-        <g className="edges">
-          {layout.edges.map((edge, idx) => {
-            const isConnectedToActive =
-              edge.fromIndex === activeWordIndex || edge.toIndex === activeWordIndex;
-            const isCompleted =
-              activeWordIndex >= edge.toIndex && edge.fromIndex !== -1;
+          {/* Web Network Connecting Lines */}
+          <g className="edges">
+            {layout.edges.map((edge, idx) => {
+              const isConnectedToActive =
+                edge.fromIndex === activeWordIndex || edge.toIndex === activeWordIndex;
+              const isCompleted =
+                activeWordIndex >= edge.toIndex && edge.fromIndex !== -1;
 
-            return (
-              <path
-                key={`web-edge-${idx}-${edge.fromIndex}-${edge.toIndex}`}
-                d={edge.pathD}
-                stroke={
-                  isConnectedToActive
-                    ? 'var(--highlight, #ef4444)'
-                    : isCompleted
-                    ? 'var(--secondary, #888888)'
-                    : '#333333'
-                }
-                strokeWidth={isConnectedToActive ? 2.5 : 1}
-                strokeOpacity={isConnectedToActive ? 0.9 : isCompleted ? 0.4 : 0.15}
-                className="transition-all duration-300"
-                fill="none"
-              />
-            );
-          })}
-        </g>
-
-        {/* Web Nodes (Words in Radial Orbit) */}
-        <g className="nodes">
-          {layout.nodes.map((node) => {
-            const isPast = node.index < activeWordIndex;
-            const isActive = node.index === activeWordIndex;
-            const emoji =
-              showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
-
-            return (
-              <g
-                key={`web-node-${node.index}-${node.word.text}`}
-                transform={`translate(${node.x}, ${node.y})`}
-                className="transition-all duration-300"
-                opacity={isActive ? 1 : isPast ? 0.4 : 0.2}
-              >
-                {/* Node Point */}
-                <circle
-                  r={isActive ? 8 : 4}
-                  fill={isActive ? 'var(--highlight, #ef4444)' : 'currentColor'}
-                  stroke={isActive ? 'var(--highlight, #ef4444)' : 'none'}
-                  strokeWidth={isActive ? 2 : 0}
-                  className="transition-all duration-200"
+              return (
+                <path
+                  key={`web-edge-${idx}-${edge.fromIndex}-${edge.toIndex}`}
+                  d={edge.pathD}
+                  stroke={
+                    isConnectedToActive
+                      ? 'var(--highlight, #ef4444)'
+                      : isCompleted
+                      ? 'var(--secondary, #888888)'
+                      : '#333333'
+                  }
+                  strokeWidth={isConnectedToActive ? 3 : 1}
+                  strokeOpacity={isConnectedToActive ? 1.0 : isCompleted ? 0.4 : 0.12}
+                  style={
+                    isConnectedToActive
+                      ? { filter: 'drop-shadow(0 0 6px var(--highlight, #ef4444))' }
+                      : undefined
+                  }
+                  className="transition-all duration-300"
+                  fill="none"
                 />
+              );
+            })}
+          </g>
 
-                {/* Word Label */}
-                <text
-                  x={node.x >= centerX ? 14 : -14}
-                  y={5}
-                  textAnchor={node.x >= centerX ? 'start' : 'end'}
-                  fontSize={isActive ? 22 : 15}
-                  fontWeight={isActive ? '800' : '600'}
-                  fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
-                  className={`select-none tracking-tight transition-all duration-200 ${
-                    isActive ? 'active-glyph-glow' : ''
-                  }`}
+          {/* Web Nodes (Words in Radial Orbit) */}
+          <g className="nodes">
+            {layout.nodes.map((node) => {
+              const isPast = node.index < activeWordIndex;
+              const isActive = node.index === activeWordIndex;
+              const emoji =
+                showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
+
+              return (
+                <g
+                  key={`web-node-${node.index}-${node.word.text}`}
+                  transform={`translate(${node.x}, ${node.y})`}
+                  className="transition-all duration-300"
+                  opacity={isActive ? 1 : isPast ? 0.35 : 0.15}
                 >
-                  {node.word.text}
-                </text>
+                  {/* Node Point */}
+                  <circle
+                    r={isActive ? 8 : 4}
+                    fill={isActive ? 'var(--highlight, #ef4444)' : 'currentColor'}
+                    stroke={isActive ? 'var(--highlight, #ef4444)' : 'none'}
+                    strokeWidth={isActive ? 2 : 0}
+                    className="transition-all duration-200"
+                  />
 
-                {/* Emoji Icon */}
-                {emoji && isActive && (
+                  {/* Word Label */}
                   <text
-                    x={node.x >= centerX ? node.width + 12 : -node.width - 24}
-                    y={6}
-                    fontSize={20}
-                    className="select-none"
+                    x={node.x >= centerX ? 14 : -14}
+                    y={5}
+                    textAnchor={node.x >= centerX ? 'start' : 'end'}
+                    fontSize={isActive ? 22 : 15}
+                    fontWeight={isActive ? '800' : '600'}
+                    fill={isActive ? 'var(--highlight, #ef4444)' : 'var(--lyric, #ffffff)'}
+                    className={`select-none tracking-tight transition-all duration-200 ${
+                      isActive ? 'active-glyph-glow' : ''
+                    }`}
                   >
-                    {emoji}
+                    {node.word.text}
                   </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
-      </svg>
+
+                  {/* Emoji Icon */}
+                  {emoji && isActive && (
+                    <text
+                      x={node.x >= centerX ? node.width + 12 : -node.width - 24}
+                      y={6}
+                      fontSize={20}
+                      className="select-none"
+                    >
+                      {emoji}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
     </div>
   );
 }

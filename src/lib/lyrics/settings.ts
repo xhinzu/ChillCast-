@@ -3,10 +3,9 @@ export type LyricsStyle =
   | 'visual'
   | 'constellation'
   | 'ship'
+  | 'camera'
   | 'fisheye'
-  | 'fisheye_visual'
   | 'codestyle'
-  | 'codestyle_visual'
   | 'branches'
   | 'web';
 
@@ -35,6 +34,7 @@ export interface LyricsSettings {
   edgeGlowThickness: number; // 2 to 14 px
   edgeGlowSize: number;      // 10 to 60 px
   iconsEnabled: boolean;
+  cameraMovementEnabled: boolean;
   keepAwake: boolean;
   showOutsideLyricsPage: boolean;
   fixAllCaps: boolean;
@@ -55,6 +55,7 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   edgeGlowThickness: 4,
   edgeGlowSize: 28,
   iconsEnabled: true,
+  cameraMovementEnabled: true,
   keepAwake: true,
   showOutsideLyricsPage: false,
   fixAllCaps: false,
@@ -69,9 +70,46 @@ export function loadLyricsSettings(): LyricsSettings {
     const raw = localStorage.getItem(LYRICS_SETTINGS_KEY);
     if (!raw) return DEFAULT_LYRICS_SETTINGS;
     const parsed = JSON.parse(raw);
+
+    // Migration: fisheye_visual -> fisheye, codestyle_visual -> codestyle
+    let style: LyricsStyle = parsed.style;
+    if ((style as string) === 'fisheye_visual') {
+      style = 'fisheye';
+    } else if ((style as string) === 'codestyle_visual') {
+      style = 'codestyle';
+    }
+
+    const validStyles: LyricsStyle[] = [
+      'classic',
+      'visual',
+      'constellation',
+      'ship',
+      'camera',
+      'fisheye',
+      'codestyle',
+      'branches',
+      'web',
+    ];
+    if (!validStyles.includes(style)) {
+      style = 'classic';
+    }
+
+    // Default camera movement to OFF if user prefers reduced motion
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const cameraMovementEnabled =
+      typeof parsed.cameraMovementEnabled === 'boolean'
+        ? parsed.cameraMovementEnabled
+        : !prefersReducedMotion;
+
     return {
       ...DEFAULT_LYRICS_SETTINGS,
       ...parsed,
+      style,
+      cameraMovementEnabled,
       offsets: { ...parsed.offsets },
     };
   } catch {
