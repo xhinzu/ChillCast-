@@ -46,15 +46,24 @@ export default function LiveLyrics() {
         if (userStored) {
           const parsed = JSON.parse(userStored);
           if (parsed && parsed.result) {
+            const rawLrc = parsed.rawText || parsed.result.rawText;
             setLyricsData({
-              syncedLyrics: parsed.rawText || null,
+              syncedLyrics: rawLrc || null,
               plainLyrics: parsed.result.plainLyrics || null,
               instrumental: false,
               trackName: parsed.result.trackName,
               artistName: parsed.result.artistName,
             });
-            if (parsed.rawText) {
-              setLines(parseLrc(parsed.rawText));
+            if (rawLrc) {
+              setLines(parseLrc(rawLrc));
+            } else if (parsed.result.lines && parsed.result.lines.length > 0) {
+              setLines(
+                parsed.result.lines.map((l: any, idx: number) => ({
+                  id: idx + 1,
+                  time: l.start,
+                  text: l.text,
+                }))
+              );
             }
             setIsLoading(false);
             return;
@@ -85,12 +94,24 @@ export default function LiveLyrics() {
           return;
         }
 
-        const data = (await res.json()) as LyricsData;
-        setLyricsData(data);
+        const data = (await res.json()) as LyricsData & { rawText?: string; lines?: { text: string; start: number; end: number }[] };
+        const rawLrc = data.rawText || data.syncedLyrics;
+        setLyricsData({
+          ...data,
+          syncedLyrics: rawLrc || null,
+        });
 
-        if (data.syncedLyrics) {
-          const parsed = parseLrc(data.syncedLyrics);
+        if (rawLrc) {
+          const parsed = parseLrc(rawLrc);
           setLines(parsed);
+        } else if (data.lines && data.lines.length > 0) {
+          setLines(
+            data.lines.map((l, idx) => ({
+              id: idx + 1,
+              time: l.start,
+              text: l.text,
+            }))
+          );
         } else {
           setLines([]);
         }
