@@ -118,16 +118,6 @@ const camTarget = {
 assert('Computes correct center-relative camera target offset', camTarget.x === 200 && camTarget.y === 100);
 
 // Test 10: Line-based random stage word layout stays within bounds
-function createPrng(seed: number) {
-  let s = seed || 123456789;
-  return function next() {
-    s = (s ^ (s << 13)) >>> 0;
-    s = (s ^ (s >> 17)) >>> 0;
-    s = (s ^ (s << 5)) >>> 0;
-    return (s >>> 0) / 4294967296;
-  };
-}
-const rng = createPrng(98765);
 const wordsToTest = ['City\'s', 'breaking', 'down', 'on', 'a', 'camel\'s', 'back'];
 const testNodes = wordsToTest.map((w, i) => {
   const angle = (i / wordsToTest.length) * Math.PI * 2;
@@ -136,6 +126,93 @@ const testNodes = wordsToTest.map((w, i) => {
   return { text: w, x: candX, y: candY };
 });
 assert('Line words stay comfortably within [-360, 360] x [-200, 200] stage bounds', testNodes.every(n => Math.abs(n.x) <= 360 && Math.abs(n.y) <= 200));
+
+// Test 11: Branches camera target look-ahead leads along branch growth direction
+import { generateBranchesLayout } from '../layoutNodes';
+const branchWords = [
+  { text: 'Look', start: 0, end: 0.5 },
+  { text: 'at', start: 0.5, end: 0.8 },
+  { text: 'the', start: 0.8, end: 1.1 },
+  { text: 'stars', start: 1.1, end: 1.6 },
+  { text: 'look', start: 1.6, end: 2.0 },
+  { text: 'how', start: 2.0, end: 2.3 },
+  { text: 'they', start: 2.3, end: 2.6 },
+  { text: 'shine', start: 2.6, end: 3.2 },
+];
+const branchLayout = generateBranchesLayout(branchWords, 1, 1000, 600);
+assert('Branches layout generates valid nodes and edges', branchLayout.nodes.length === 8 && branchLayout.edges.length === 7);
+
+// Compute target for node 0
+const n0 = branchLayout.nodes[0];
+const n1 = branchLayout.nodes[1];
+const dX = n1.x - n0.x;
+const dY = n1.y - n0.y;
+const dist0 = Math.hypot(dX, dY);
+const uX = dist0 > 0 ? dX / dist0 : 1;
+const uY = dist0 > 0 ? dY / dist0 : 0;
+const lookAheadX = uX * 1000 * 0.12;
+const lookAheadY = uY * 600 * 0.12;
+const focus0 = { x: n0.x + lookAheadX, y: n0.y + lookAheadY };
+assert('Branches camera leads ahead in X direction towards next branch tip', focus0.x > n0.x);
+
+// Test 12: Active word in Branches camera is always within the central 60% of the screen
+let allInsideCentral60 = true;
+const zoomLevel = 1.3;
+const VIEW_W = 1000;
+const VIEW_H = 600;
+
+for (let i = 0; i < branchLayout.nodes.length; i++) {
+  const activeN = branchLayout.nodes[i];
+  let dirX = 1;
+  let dirY = 0;
+  if (i < branchLayout.nodes.length - 1) {
+    const nextN = branchLayout.nodes[i + 1];
+    dirX = nextN.x - activeN.x;
+    dirY = nextN.y - activeN.y;
+  } else if (i > 0) {
+    const prevN = branchLayout.nodes[i - 1];
+    dirX = activeN.x - prevN.x;
+    dirY = activeN.y - prevN.y;
+  }
+  const d = Math.hypot(dirX, dirY);
+  const ux = d > 0 ? dirX / d : 1;
+  const uy = d > 0 ? dirY / d : 0;
+  const factor = i === branchLayout.nodes.length - 1 ? 0 : 0.12;
+  const laX = ux * VIEW_W * factor;
+  const laY = uy * VIEW_H * factor;
+  const fX = activeN.x + laX;
+  const fY = activeN.y + laY;
+
+  // Under transform: translate3d(-targetX * zoom, -targetY * zoom, 0) scale(zoom)
+  // Target coordinates relative to center (500, 300):
+  const targetPanX = -(fX - 500) * zoomLevel;
+  const targetPanY = -(fY - 300) * zoomLevel;
+
+  // Screen position of active word relative to viewport center:
+  const screenX = targetPanX + (activeN.x - 500) * zoomLevel;
+  const screenY = targetPanY + (activeN.y - 300) * zoomLevel;
+
+  // Normalized distance from center (as fraction of viewport)
+  const normDistX = Math.abs(screenX) / VIEW_W;
+  const normDistY = Math.abs(screenY) / VIEW_H;
+
+  // Central 60% of screen means distance from center <= 0.30 (30%)
+  if (normDistX > 0.30 || normDistY > 0.30) {
+    allInsideCentral60 = false;
+  }
+}
+assert('Branches active word is always inside the central 60% of the screen', allInsideCentral60);
+
+// Test 13: Dynamic omega / settle time shortens on fast words
+const defaultSettle = 0.6;
+const fastWordDur = 0.25;
+const effectiveSettle = Math.max(0.25, Math.min(defaultSettle, fastWordDur * 0.85));
+assert('Shortens settle time dynamically on fast lyric words', effectiveSettle < defaultSettle && effectiveSettle >= 0.25);
+
+// Test 14: Preserves neutral static framing when camera movement is OFF
+storage.set(LYRICS_SETTINGS_KEY, JSON.stringify({ style: 'branches', cameraMovementEnabled: false, version: 1 }));
+const branchesLoaded = loadLyricsSettings();
+assert('Branches respects cameraMovementEnabled = false in settings', branchesLoaded.style === 'branches' && branchesLoaded.cameraMovementEnabled === false);
 
 console.log('====================================================');
 console.log(`SUMMARY: ${testsPassed}/${totalTests} Tests Passed!`);

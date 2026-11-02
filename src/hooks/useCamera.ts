@@ -44,6 +44,8 @@ export interface UseCameraOptions {
   neutralZoom?: number;
   /** Optional coordinate mode descriptor */
   coordinateMode?: 'relative' | 'world';
+  /** Optional key (e.g. trackId) that snaps camera immediately when changed */
+  resetKey?: string | number;
 }
 
 /**
@@ -67,7 +69,6 @@ function criticallyDampedStep(
 
 export function useCamera({
   worldRef,
-  containerRef,
   target,
   enabled = true,
   settleTime = 0.6,
@@ -81,6 +82,7 @@ export function useCamera({
   neutralX = 0,
   neutralY = 0,
   neutralZoom = 1.0,
+  resetKey,
 }: UseCameraOptions) {
   // Store latest props in refs to avoid recreation
   const optionsRef = useRef({
@@ -97,23 +99,27 @@ export function useCamera({
     neutralX,
     neutralY,
     neutralZoom,
+    resetKey,
   });
 
-  optionsRef.current = {
-    enabled,
-    target,
-    settleTime,
-    followStrength,
-    zoomLevel,
-    zoomPulseAmount,
-    idleDriftAmount,
-    wordDuration,
-    transformSuffix,
-    scalePanWithZoom,
-    neutralX,
-    neutralY,
-    neutralZoom,
-  };
+  useIsomorphicLayoutEffect(() => {
+    optionsRef.current = {
+      enabled,
+      target,
+      settleTime,
+      followStrength,
+      zoomLevel,
+      zoomPulseAmount,
+      idleDriftAmount,
+      wordDuration,
+      transformSuffix,
+      scalePanWithZoom,
+      neutralX,
+      neutralY,
+      neutralZoom,
+      resetKey,
+    };
+  });
 
   const initializedRef = useRef(false);
   const currentPosRef = useRef({
@@ -145,21 +151,44 @@ export function useCamera({
     startZoom: 1.0,
   });
 
+  // Reset camera position immediately when resetKey (e.g. trackId) changes
+  const prevResetKeyRef = useRef(resetKey);
+  useEffect(() => {
+    if (prevResetKeyRef.current !== resetKey) {
+      prevResetKeyRef.current = resetKey;
+      initializedRef.current = false;
+      lastTargetRef.current = null;
+      currentPosRef.current.vx = 0;
+      currentPosRef.current.vy = 0;
+      currentPosRef.current.vZoom = 0;
+    }
+  }, [resetKey]);
+
   // Apply initial transform synchronously before first paint to prevent any 1-frame flash
   useIsomorphicLayoutEffect(() => {
     const el = worldRef.current;
     if (!el) return;
-    if (!initializedRef.current && target) {
-      const initZoom = target.zoom || zoomLevel;
-      const initPanX = scalePanWithZoom ? -target.x * initZoom : -target.x * followStrength;
-      const initPanY = scalePanWithZoom ? -target.y * initZoom : -target.y * followStrength;
-      currentPosRef.current.x = initPanX;
-      currentPosRef.current.y = initPanY;
-      currentPosRef.current.zoom = initZoom;
-      initializedRef.current = true;
-      el.style.transform = `translate3d(${initPanX.toFixed(2)}px, ${initPanY.toFixed(2)}px, 0px) scale(${initZoom.toFixed(4)}) ${transformSuffix}`.trim();
+    if (!initializedRef.current) {
+      if (!enabled) {
+        currentPosRef.current.x = neutralX;
+        currentPosRef.current.y = neutralY;
+        currentPosRef.current.zoom = neutralZoom;
+        initializedRef.current = true;
+        el.style.transform = `translate3d(${neutralX.toFixed(2)}px, ${neutralY.toFixed(2)}px, 0px) scale(${neutralZoom.toFixed(4)}) ${transformSuffix}`.trim();
+        return;
+      }
+      if (target) {
+        const initZoom = target.zoom || zoomLevel;
+        const initPanX = scalePanWithZoom ? -target.x * initZoom : -target.x * followStrength;
+        const initPanY = scalePanWithZoom ? -target.y * initZoom : -target.y * followStrength;
+        currentPosRef.current.x = initPanX;
+        currentPosRef.current.y = initPanY;
+        currentPosRef.current.zoom = initZoom;
+        initializedRef.current = true;
+        el.style.transform = `translate3d(${initPanX.toFixed(2)}px, ${initPanY.toFixed(2)}px, 0px) scale(${initZoom.toFixed(4)}) ${transformSuffix}`.trim();
+      }
     }
-  }, [worldRef, target, zoomLevel, scalePanWithZoom, followStrength, transformSuffix]);
+  }, [worldRef, target, zoomLevel, scalePanWithZoom, followStrength, transformSuffix, enabled, neutralX, neutralY, neutralZoom]);
 
   // Track target changes for zoom-pulse and rapid catchup
   useEffect(() => {
@@ -169,8 +198,16 @@ export function useCamera({
     if (prev) {
       const dist = Math.hypot(target.x - prev.x, target.y - prev.y);
 
-      // On seeks or large position changes, accelerate smoothly
-      if (dist > 300) {
+      // On seeks or large position changes, accelerate smoothly or snap if very large
+      if (dist > 1000) {
+        const targetZoom = target.zoom || zoomLevel;
+        const targetPanX = scalePanWithZoom ? -target.x * targetZoom : -target.x * followStrength;
+        const targetPanY = scalePanWithZoom ? -target.y * targetZoom : -target.y * followStrength;
+        currentPosRef.current.x = targetPanX;
+        currentPosRef.current.y = targetPanY;
+        currentPosRef.current.vx = 0;
+        currentPosRef.current.vy = 0;
+      } else if (dist > 300) {
         currentPosRef.current.vx *= 0.3;
         currentPosRef.current.vy *= 0.3;
       }
@@ -184,7 +221,7 @@ export function useCamera({
       }
     }
     lastTargetRef.current = target;
-  }, [target, zoomPulseAmount, zoomLevel]);
+  }, [target, zoomPulseAmount, zoomLevel, scalePanWithZoom, followStrength]);
 
   // Handle toggling camera movement setting smoothly
   const prevEnabledRef = useRef(enabled);
@@ -226,6 +263,7 @@ export function useCamera({
   // Main rAF animation loop
   useEffect(() => {
     let isCancelled = false;
+    const worldEl = worldRef.current;
 
     const prefersReduced =
       typeof window !== 'undefined' &&
@@ -233,10 +271,10 @@ export function useCamera({
 
     // If disabled and not in 300ms transition, apply static framing and stop loop
     if (!enabled && !disablingTransitionRef.current.active) {
-      if (worldRef.current) {
+      if (worldEl) {
         const staticTransform = `translate3d(${neutralX.toFixed(2)}px, ${neutralY.toFixed(2)}px, 0px) scale(${neutralZoom.toFixed(4)}) ${transformSuffix}`.trim();
-        worldRef.current.style.transform = staticTransform;
-        worldRef.current.style.willChange = 'auto';
+        worldEl.style.transform = staticTransform;
+        worldEl.style.willChange = 'auto';
       }
       return;
     }
@@ -365,12 +403,11 @@ export function useCamera({
       currentPosRef.current.zoom = newZoom;
       currentPosRef.current.vZoom = newVZoom;
 
-      // will-change optimization
+      // will-change optimization: keep text crisp at rest, apply transform will-change only while actively in motion
       const isMoving =
         Math.abs(newVx) > 0.4 ||
         Math.abs(newVy) > 0.4 ||
-        Math.abs(newVZoom) > 0.003 ||
-        opts.idleDriftAmount > 0;
+        Math.abs(newVZoom) > 0.003;
 
       if (isMoving !== isMovingRef.current) {
         isMovingRef.current = isMoving;
@@ -410,8 +447,8 @@ export function useCamera({
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
-      if (worldRef.current) {
-        worldRef.current.style.willChange = 'auto';
+      if (worldEl) {
+        worldEl.style.willChange = 'auto';
       }
     };
   }, [enabled, worldRef, neutralX, neutralY, neutralZoom, transformSuffix]);
