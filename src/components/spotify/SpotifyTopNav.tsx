@@ -40,13 +40,13 @@ export default function SpotifyTopNav({
   };
 
   const [isCoffeeModalOpen, setIsCoffeeModalOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && (window as unknown as { myujikuDesktop?: unknown }).myujikuDesktop) {
-      setIsDesktop(true);
-    }
-  }, []);
+  const [isDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return Boolean(
+      (window as unknown as { chillcastDesktop?: unknown }).chillcastDesktop ||
+        (window as unknown as { myujikuDesktop?: unknown }).myujikuDesktop
+    );
+  });
 
   // Close popup with Escape key
   useEffect(() => {
@@ -71,13 +71,13 @@ export default function SpotifyTopNav({
             setSearchQuery('');
           }}
           className="flex items-center gap-2 cursor-pointer group"
-          title="MyuJiku Home"
+          title="ChillCast Home"
         >
           {/* MyuJiku Mascot Logo */}
           <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
             <Image
               src="/myujiku-logo.png"
-              alt="MyuJiku Logo"
+              alt="ChillCast Logo"
               width={36}
               height={36}
               className="w-full h-full object-contain filter drop-shadow-[0_2px_6px_rgba(255,255,255,0.12)]"
@@ -89,7 +89,7 @@ export default function SpotifyTopNav({
           <div className="relative h-6 sm:h-7 flex items-center transition-transform group-hover:scale-105 shrink-0">
             <Image
               src="/myujiku-text.png"
-              alt="MyuJiku"
+              alt="ChillCast"
               width={78}
               height={30}
               className="h-5 sm:h-6 w-auto object-contain"
@@ -274,7 +274,7 @@ export default function SpotifyTopNav({
                 <CoffeeIcon className="w-3.5 h-3.5 text-amber-300" /> Buy Me a Coffee
               </div>
               <h3 className="text-lg font-bold text-white tracking-tight">
-                Support MyuJiku
+                Support ChillCast
               </h3>
               <p className="text-xs text-[#999999]">
                 Scan with <strong className="text-white font-semibold">FamPay</strong> or any UPI App to buy me a coffee!
@@ -302,7 +302,7 @@ export default function SpotifyTopNav({
                 <span className="px-2 py-0.5 rounded-md bg-[#222222] text-[10px] font-bold text-zinc-300 border border-[#333333]">Paytm</span>
               </div>
               <p className="text-[11px] text-[#777777]">
-                Every coffee helps keep MyuJiku ad-free & hosted. Thank you!
+                Every coffee helps keep ChillCast ad-free & hosted. Thank you!
               </p>
             </div>
           </div>

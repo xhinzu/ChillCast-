@@ -73,10 +73,19 @@ export function findActiveLyricIndex(lines: LyricLine[], currentTime: number): n
   if (lines.length === 0) return -1;
   if (currentTime < lines[0].time) return -1;
 
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (currentTime >= lines[i].time) {
-      return i;
+  let lo = 0;
+  let hi = lines.length - 1;
+  let result = -1;
+
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (lines[mid].time <= currentTime) {
+      result = mid;
+      lo = mid + 1; // look for later line candidate
+    } else {
+      hi = mid - 1;
     }
   }
-  return 0;
+
+  return result >= 0 ? result : 0;
 }

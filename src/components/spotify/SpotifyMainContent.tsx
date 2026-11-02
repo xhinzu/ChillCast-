@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
@@ -461,71 +461,74 @@ export default function SpotifyMainContent({
   };
 
   // Toggle track like
-  const handleToggleTrackLike = (track: {
-    id: string;
-    title: string;
-    artist: string;
-    duration?: string;
-    thumbnail?: string;
-  }) => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
+  const handleToggleTrackLike = useCallback(
+    (track: {
+      id: string;
+      title: string;
+      artist: string;
+      duration?: string;
+      thumbnail?: string;
+    }) => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
 
-      let likedPlaylist = prev.find((p) => p.id === 'liked-songs');
-      if (!likedPlaylist) {
-        likedPlaylist = {
-          id: 'liked-songs',
-          title: 'Liked Songs',
-          subtitle: '0 songs • Liked Songs',
-          type: 'custom',
-          targetUrl: '',
-          icon: 'heart',
-          tracks: [],
-          description: 'Your favorite liked tracks on MyuJiku',
-          createdAt: Date.now(),
-        };
-        prev = [likedPlaylist, ...prev];
-      }
-
-      const prevTracks = likedPlaylist.tracks || [];
-      const alreadyLiked = prevTracks.some((t) => t.id === track.id);
-
-      let newTracks: CustomPlaylistTrack[];
-      if (alreadyLiked) {
-        newTracks = prevTracks.filter((t) => t.id !== track.id);
-        setAddedToast(`Removed "${track.title}" from Liked Songs`);
-      } else {
-        const newTrack: CustomPlaylistTrack = {
-          id: track.id,
-          title: track.title,
-          artist: track.artist,
-          duration: track.duration || '3:30',
-          thumbnail: track.thumbnail || `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`,
-          addedAt: Date.now(),
-        };
-        newTracks = [newTrack, ...prevTracks];
-        setAddedToast(`Added "${track.title}" to Liked Songs`);
-      }
-
-      setTimeout(() => setAddedToast(null), 2500);
-
-      const updated = prev.map((p) => {
-        if (p.id === 'liked-songs') {
-          return {
-            ...p,
-            tracks: newTracks,
-            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
+        let likedPlaylist = prev.find((p) => p.id === 'liked-songs');
+        if (!likedPlaylist) {
+          likedPlaylist = {
+            id: 'liked-songs',
+            title: 'Liked Songs',
+            subtitle: '0 songs • Liked Songs',
+            type: 'custom',
+            targetUrl: '',
+            icon: 'heart',
+            tracks: [],
+            description: 'Your favorite liked tracks on ChillCast',
+            createdAt: Date.now(),
           };
+          prev = [likedPlaylist, ...prev];
         }
-        return p;
-      });
 
-      savePlaylists(updated);
-    } catch {
-      // ignore
-    }
-  };
+        const prevTracks = likedPlaylist.tracks || [];
+        const alreadyLiked = prevTracks.some((t) => t.id === track.id);
+
+        let newTracks: CustomPlaylistTrack[];
+        if (alreadyLiked) {
+          newTracks = prevTracks.filter((t) => t.id !== track.id);
+          setAddedToast(`Removed "${track.title}" from Liked Songs`);
+        } else {
+          const newTrack: CustomPlaylistTrack = {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            duration: track.duration || '3:30',
+            thumbnail: track.thumbnail || `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`,
+            addedAt: Date.now(),
+          };
+          newTracks = [newTrack, ...prevTracks];
+          setAddedToast(`Added "${track.title}" to Liked Songs`);
+        }
+
+        setTimeout(() => setAddedToast(null), 2500);
+
+        const updated = prev.map((p) => {
+          if (p.id === 'liked-songs') {
+            return {
+              ...p,
+              tracks: newTracks,
+              subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
+            };
+          }
+          return p;
+        });
+
+        savePlaylists(updated);
+      } catch {
+        // ignore
+      }
+    },
+    [savePlaylists]
+  );
 
   // Play Trending list starting at index
   const handlePlayTrending = (startIndex = 0) => {
@@ -641,7 +644,7 @@ export default function SpotifyMainContent({
                   </p>
                 )}
                 <div className="flex items-center gap-2 text-xs text-[#888888] mt-1 font-medium">
-                  <span className="text-white font-bold">MyuJiku</span>
+                  <span className="text-white font-bold">ChillCast</span>
                   <span>•</span>
                   <span>{currentPlaylist.tracks?.length || 0} songs</span>
                   <span>•</span>
@@ -851,7 +854,7 @@ export default function SpotifyMainContent({
                   YouTube Results for &ldquo;{searchQuery}&rdquo;
                 </h2>
                 <p className="text-xs text-[#b3b3b3]">
-                  Play official tracks in MyuJiku or add them to your Custom Playlists
+                  Play official tracks in ChillCast or add them to your Custom Playlists
                 </p>
               </div>
 
@@ -1236,7 +1239,7 @@ export default function SpotifyMainContent({
                   {greeting}
                 </h1>
                 <p className="text-xs sm:text-sm text-[#b3b3b3] mt-1">
-                  Welcome to <strong className="text-white">MyuJiku</strong> — your personal ambient lo-fi music sanctuary.
+                  Welcome to <strong className="text-white">ChillCast</strong> — your personal ambient lo-fi music sanctuary.
                 </p>
               </div>
             </div>
@@ -1647,7 +1650,7 @@ export default function SpotifyMainContent({
         {/* Footer Info & Creator Socials */}
         <footer className="pt-8 border-t border-[#242424] flex flex-col sm:flex-row items-center justify-between text-xs text-[#b3b3b3] gap-3">
           <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-start">
-            <span className="font-semibold text-white">MyuJiku</span>
+            <span className="font-semibold text-white">ChillCast</span>
             <span className="text-[#555555]">•</span>
             <span>Creator&apos;s Socials</span>
             <div className="flex items-center gap-2 ml-1">

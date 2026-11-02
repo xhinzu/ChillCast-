@@ -50,12 +50,17 @@ export default function SpotifyBottomPlayer({
     previousTrack,
     toggleSpatial8D,
     toggleMuffled,
+    isShuffle,
+    isRepeat,
+    toggleShuffle,
+    toggleRepeat,
   } = usePlayback();
 
   const { activeCount } = useAmbient();
 
-  const [isShuffle, setIsShuffle] = useState<boolean>(false);
-  const [isRepeat, setIsRepeat] = useState<boolean>(false);
+  // Scrubber dragging state
+  const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
+  const [scrubTime, setScrubTime] = useState<number>(0);
 
   // Playlists state for adding current track
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -110,7 +115,7 @@ export default function SpotifyBottomPlayer({
           targetUrl: '',
           icon: 'heart',
           tracks: [],
-          description: 'Your favorite liked tracks on Chillify',
+          description: 'Your favorite liked tracks on ChillCast',
           createdAt: Date.now(),
         };
         prev = [likedPlaylist, ...prev];
@@ -153,7 +158,8 @@ export default function SpotifyBottomPlayer({
     } catch {}
   };
 
-  const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const displayTime = isScrubbing ? scrubTime : currentTime;
+  const progressPercent = duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0;
   const volumePercent = isMuted ? 0 : volume * 100;
 
   return (
@@ -278,7 +284,7 @@ export default function SpotifyBottomPlayer({
             className="text-xs sm:text-sm font-semibold text-white truncate hover:underline cursor-pointer"
             title={currentTrack?.title || 'No Track Selected'}
           >
-            {currentTrack?.title || 'MyuJiku • Ready'}
+            {currentTrack?.title || 'ChillCast • Ready'}
           </p>
           <p
             className="text-[11px] text-[#888888] truncate hover:underline hover:text-white cursor-pointer transition-colors"
@@ -359,11 +365,11 @@ export default function SpotifyBottomPlayer({
           {/* Shuffle */}
           <button
             type="button"
-            onClick={() => setIsShuffle(!isShuffle)}
+            onClick={toggleShuffle}
             className={`transition-colors cursor-pointer hidden sm:block ${
-              isShuffle ? 'text-white font-bold' : 'text-[#888888] hover:text-white'
+              isShuffle ? 'text-[#1d90f5] font-bold' : 'text-[#888888] hover:text-white'
             }`}
-            title="Enable Shuffle"
+            title={isShuffle ? 'Shuffle is ON (Click to turn OFF)' : 'Enable Shuffle'}
           >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
@@ -435,11 +441,11 @@ export default function SpotifyBottomPlayer({
           {/* Repeat */}
           <button
             type="button"
-            onClick={() => setIsRepeat(!isRepeat)}
+            onClick={toggleRepeat}
             className={`transition-colors cursor-pointer hidden sm:block ${
               isRepeat ? 'text-[#1d90f5]' : 'text-[#b3b3b3] hover:text-white'
             }`}
-            title="Enable Repeat"
+            title={isRepeat ? 'Repeat is ON (Click to turn OFF)' : 'Enable Repeat'}
           >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
@@ -449,7 +455,7 @@ export default function SpotifyBottomPlayer({
 
         {/* Scrubber Timeline */}
         <div className="w-full flex items-center gap-2 text-[11px] font-mono text-[#b3b3b3]">
-          <span className="w-9 text-right">{formatTime(currentTime)}</span>
+          <span className="w-9 text-right">{formatTime(displayTime)}</span>
 
           {/* Spotify Blue Range Scrubber */}
           <div className="relative flex-1 flex items-center group h-3 cursor-pointer">
@@ -464,8 +470,19 @@ export default function SpotifyBottomPlayer({
               min="0"
               max={duration > 0 ? duration : 100}
               step="0.1"
-              value={currentTime}
-              onChange={(e) => seek(parseFloat(e.target.value))}
+              value={displayTime}
+              onPointerDown={() => {
+                setIsScrubbing(true);
+                setScrubTime(currentTime);
+              }}
+              onChange={(e) => {
+                setScrubTime(parseFloat(e.target.value));
+              }}
+              onPointerUp={(e) => {
+                const targetSec = parseFloat((e.target as HTMLInputElement).value);
+                seek(targetSec);
+                setIsScrubbing(false);
+              }}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>

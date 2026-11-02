@@ -29,7 +29,7 @@ export default function CreditsPage() {
             Asset Credits & Legal Licenses
           </h1>
           <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
-            Myujiku features curated concept art, vector illustrations, and line iconography
+            ChillCast features curated concept art, vector illustrations, and line iconography
             designed to elevate synced lyric visualization. All assets are sourced exclusively under
             permissive open-source and Creative Commons licenses allowing use in public web applications.
           </p>

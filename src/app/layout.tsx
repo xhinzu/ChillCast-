@@ -59,7 +59,7 @@ const playfairFont = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "MyuJiku — Ambient Lo-Fi & Music Player",
+  title: "ChillCast — Ambient Lo-Fi & Music Player",
   description: "Personal music sanctuary blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Spotify.",
   icons: {
     icon: "/myujiku-logo.png",

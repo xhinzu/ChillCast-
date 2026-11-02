@@ -123,18 +123,27 @@ export function useLyricsSync({
     const effectiveTime = Math.max(0, currentSpeed * rawClock + currentOffset);
     effectiveTimeRef.current = effectiveTime;
 
-    // 5. Binary search or optimized scan for active line
+
+    // 5. Binary search for active line (O(log n) — safe for 500+ line LRCs)
     let activeLineIdx = -1;
-    for (let i = 0; i < currentLines.length; i++) {
-      const line = currentLines[i];
-      if (effectiveTime >= line.start && effectiveTime < line.end) {
-        activeLineIdx = i;
-        break;
+    {
+      let lo = 0;
+      let hi = currentLines.length - 1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >>> 1;
+        const line = currentLines[mid];
+        if (effectiveTime >= line.start) {
+          // Candidate: keep looking right for a later line
+          activeLineIdx = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
       }
-      if (effectiveTime >= line.start) {
-        activeLineIdx = i;
-      }
+      // If found candidate but we're past its end, keep the candidate
+      // (covers gap between lines — last spoken line stays active until next)
     }
+
 
     // 6. Word-level progression inside active line
     let activeWordIdx = -1;

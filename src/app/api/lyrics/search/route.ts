@@ -195,6 +195,6 @@ export async function GET(req: NextRequest) {
     return b.score - a.score;
   });
 
-  // Return up to 8 candidates
-  return NextResponse.json({ results: evaluated.slice(0, 8) });
+  // Return up to 16 candidates
+  return NextResponse.json({ results: evaluated.slice(0, 16) });
 }

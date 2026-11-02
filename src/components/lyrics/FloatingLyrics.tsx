@@ -90,7 +90,7 @@ export default function FloatingLyrics({ activeView, onNavigateToLyrics }: Float
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onNavigateToLyrics();
       }}
-      className="fixed bottom-[96px] left-1/2 -translate-x-1/2 z-40 max-w-[90vw] sm:max-w-lg px-4 py-2 rounded-full bg-black/85 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center gap-3 cursor-pointer hover:border-white/30 hover:scale-105 transition-all duration-200 group"
+      className="fixed bottom-[132px] md:bottom-[92px] left-1/2 -translate-x-1/2 z-40 max-w-[90vw] sm:max-w-lg px-4 py-2 rounded-full bg-black/85 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center gap-3 cursor-pointer hover:border-white/30 hover:scale-105 transition-all duration-200 group"
       title="Click to view full lyrics stage"
     >
       <div className="w-6 h-6 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center text-xs shrink-0">

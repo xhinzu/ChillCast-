@@ -43,7 +43,7 @@ export default function AddToPlaylistMenu({
       targetUrl: '',
       icon: 'heart',
       tracks: [],
-      description: 'Your favorite liked tracks on MyuJiku',
+      description: 'Your favorite liked tracks on ChillCast',
       createdAt: 0,
     };
     allCustomPlaylists = [virtualLikedPlaylist, ...allCustomPlaylists];

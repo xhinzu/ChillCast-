@@ -29,6 +29,8 @@ interface PlaybackContextValue {
   errorMessage: string | null;
   isSpatial8D: boolean;
   isMuffled: boolean;
+  isShuffle: boolean;
+  isRepeat: boolean;
 
   switchAdapter: (type: AdapterType) => Promise<PlaybackAdapter>;
   play: () => Promise<void>;
@@ -39,6 +41,8 @@ interface PlaybackContextValue {
   toggleMute: () => void;
   nextTrack: () => void;
   previousTrack: () => void;
+  toggleShuffle: () => void;
+  toggleRepeat: () => void;
   loadPlaylist: (urlOrId: string, preferredType?: AdapterType, trackHint?: Partial<TrackInfo>) => Promise<void>;
   loadCustomLocalFile: (file: File) => Promise<void>;
   toggleSpatial8D: () => void;
@@ -61,6 +65,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [currentTime, setCurrentTime] = useState<number>(0);
   const currentTimeRef = useRef<number>(0);
+  const playlistQueueRef = useRef<{ tracks: TrackInfo[]; currentIndex: number }>({
+    tracks: [],
+    currentIndex: 0,
+  });
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolumeState] = useState<number>(0.8);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -68,6 +76,26 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const [isSpatial8D, setIsSpatial8D] = useState<boolean>(false);
   const [isMuffled, setIsMuffled] = useState<boolean>(false);
+
+  const [isShuffle, setIsShuffle] = useState<boolean>(false);
+  const isShuffleRef = useRef<boolean>(false);
+  const toggleShuffle = useCallback(() => {
+    setIsShuffle((prev) => {
+      const next = !prev;
+      isShuffleRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const [isRepeat, setIsRepeat] = useState<boolean>(false);
+  const isRepeatRef = useRef<boolean>(false);
+  const toggleRepeat = useCallback(() => {
+    setIsRepeat((prev) => {
+      const next = !prev;
+      isRepeatRef.current = next;
+      return next;
+    });
+  }, []);
 
   const playCustomTrackListRef = useRef<((tracks: TrackInfo[], startIndex?: number) => Promise<void>) | null>(null);
 
@@ -96,8 +124,18 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       setPlaybackState(state);
       if (state === 'ended') {
         const { tracks, currentIndex } = playlistQueueRef.current;
-        if (tracks.length > 0 && currentIndex + 1 < tracks.length && playCustomTrackListRef.current) {
-          playCustomTrackListRef.current(tracks, currentIndex + 1);
+        if (tracks.length > 0 && playCustomTrackListRef.current) {
+          if (isShuffleRef.current && tracks.length > 1) {
+            let nextIdx = Math.floor(Math.random() * tracks.length);
+            if (nextIdx === currentIndex) {
+              nextIdx = (currentIndex + 1) % tracks.length;
+            }
+            playCustomTrackListRef.current(tracks, nextIdx);
+          } else if (currentIndex + 1 < tracks.length) {
+            playCustomTrackListRef.current(tracks, currentIndex + 1);
+          } else if (isRepeatRef.current) {
+            playCustomTrackListRef.current(tracks, 0);
+          }
         }
       }
     });
@@ -227,11 +265,6 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isMuted, volume]);
 
-  const playlistQueueRef = useRef<{ tracks: TrackInfo[]; currentIndex: number }>({
-    tracks: [],
-    currentIndex: 0,
-  });
-
   const playCustomTrackList = useCallback(
     async (tracks: TrackInfo[], startIndex = 0) => {
       if (!tracks || tracks.length === 0) return;
@@ -267,9 +300,23 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const nextTrack = useCallback(() => {
     const { tracks, currentIndex } = playlistQueueRef.current;
-    if (tracks.length > 0 && currentIndex + 1 < tracks.length) {
-      playCustomTrackList(tracks, currentIndex + 1);
-      return;
+    if (tracks.length > 0) {
+      if (isShuffleRef.current && tracks.length > 1) {
+        let nextIdx = Math.floor(Math.random() * tracks.length);
+        if (nextIdx === currentIndex) {
+          nextIdx = (currentIndex + 1) % tracks.length;
+        }
+        playCustomTrackList(tracks, nextIdx);
+        return;
+      }
+      if (currentIndex + 1 < tracks.length) {
+        playCustomTrackList(tracks, currentIndex + 1);
+        return;
+      }
+      if (isRepeatRef.current) {
+        playCustomTrackList(tracks, 0);
+        return;
+      }
     }
     const adapter = adapterRef.current;
     if (adapter && 'nextTrack' in adapter && typeof (adapter as { nextTrack?: () => void }).nextTrack === 'function') {
@@ -279,9 +326,15 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const previousTrack = useCallback(() => {
     const { tracks, currentIndex } = playlistQueueRef.current;
-    if (tracks.length > 0 && currentIndex > 0) {
-      playCustomTrackList(tracks, currentIndex - 1);
-      return;
+    if (tracks.length > 0) {
+      if (currentIndex > 0) {
+        playCustomTrackList(tracks, currentIndex - 1);
+        return;
+      }
+      if (isRepeatRef.current) {
+        playCustomTrackList(tracks, tracks.length - 1);
+        return;
+      }
     }
     const adapter = adapterRef.current;
     if (adapter && 'previousTrack' in adapter && typeof (adapter as { previousTrack?: () => void }).previousTrack === 'function') {
@@ -291,21 +344,22 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   // Listen to desktop hardware media keys
   useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      (window as unknown as { myujikuDesktop?: { onMediaKey: (cb: (k: string) => void) => () => void } }).myujikuDesktop
-    ) {
-      const desktop = (window as unknown as { myujikuDesktop: { onMediaKey: (cb: (k: string) => void) => () => void } }).myujikuDesktop;
-      const cleanup = desktop.onMediaKey((key: string) => {
-        if (key === 'play-pause') {
-          togglePlay();
-        } else if (key === 'next') {
-          nextTrack();
-        } else if (key === 'prev') {
-          previousTrack();
-        }
-      });
-      return cleanup;
+    if (typeof window !== 'undefined') {
+      const desktop =
+        (window as unknown as { chillcastDesktop?: { onMediaKey: (cb: (k: string) => void) => () => void } }).chillcastDesktop ||
+        (window as unknown as { myujikuDesktop?: { onMediaKey: (cb: (k: string) => void) => () => void } }).myujikuDesktop;
+      if (desktop) {
+        const cleanup = desktop.onMediaKey((key: string) => {
+          if (key === 'play-pause') {
+            togglePlay();
+          } else if (key === 'next') {
+            nextTrack();
+          } else if (key === 'prev') {
+            previousTrack();
+          }
+        });
+        return cleanup;
+      }
     }
   }, [togglePlay, nextTrack, previousTrack]);
 
@@ -339,7 +393,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (adapter) {
-        await adapter.loadPlaylist(urlOrId, trackHint);
+        const loadedTracks = await adapter.loadPlaylist(urlOrId, trackHint);
+        if (Array.isArray(loadedTracks) && loadedTracks.length > 0) {
+          playlistQueueRef.current = { tracks: loadedTracks, currentIndex: 0 };
+        }
         await adapter.play();
       }
     },
@@ -448,6 +505,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         errorMessage,
         isSpatial8D,
         isMuffled,
+        isShuffle,
+        isRepeat,
         switchAdapter,
         play,
         pause,
@@ -457,6 +516,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         toggleMute,
         nextTrack,
         previousTrack,
+        toggleShuffle,
+        toggleRepeat,
         loadPlaylist,
         loadCustomLocalFile,
         toggleSpatial8D,

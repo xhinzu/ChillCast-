@@ -325,15 +325,32 @@ export function parseEnhancedLrc(
       });
     } else {
       // Standard LRC line
+      const cleanText = current.rawText.replace(WORD_TIMESTAMP_REGEX, '').trim() || '♪';
+      const tokens = cleanText.split(/\s+/).filter(Boolean);
+      const tokenCount = Math.max(1, tokens.length);
+
+      // Realistic vocal cadence: ~0.40s per word + character length weight
+      const estimatedVocalDuration = Math.max(
+        1.6,
+        Math.min(9.0, tokenCount * 0.40 + cleanText.length * 0.035)
+      );
+
       let lineEnd: number;
       if (current.endMarkerHint && current.endMarkerHint > lineStart) {
         lineEnd = current.endMarkerHint;
       } else if (nextLineStart !== undefined) {
-        lineEnd = nextLineStart;
+        const gap = nextLineStart - lineStart;
+        // If lines are close together (e.g. verse lines), flow into next line
+        if (gap <= estimatedVocalDuration + 0.8) {
+          lineEnd = nextLineStart;
+        } else {
+          // Instrumental pause between phrases/verses: cap line's active vocal duration
+          lineEnd = lineStart + estimatedVocalDuration;
+        }
       } else {
         lineEnd = options?.songDuration && options.songDuration > lineStart
-          ? Math.min(lineStart + 6.0, options.songDuration)
-          : lineStart + 6.0;
+          ? Math.min(lineStart + estimatedVocalDuration, options.songDuration)
+          : lineStart + estimatedVocalDuration;
       }
 
       if (nextLineStart !== undefined) {
@@ -341,11 +358,7 @@ export function parseEnhancedLrc(
       }
       lineEnd = Math.max(lineStart + 0.1, lineEnd);
 
-      // Clean line text
-      const cleanText = current.rawText.replace(WORD_TIMESTAMP_REGEX, '').trim() || '♪';
-      const tokens = cleanText.split(/\s+/).filter(Boolean);
-
-      // Generate word timings proportionally
+      // Generate word timings proportionally to vocal duration
       const words: LyricWord[] = [];
       const lineDur = Math.max(0.1, lineEnd - lineStart);
       const totalTokens = tokens.length;

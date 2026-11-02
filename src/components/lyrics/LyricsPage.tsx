@@ -19,6 +19,7 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import EdgeGlow from './EdgeGlow';
 import SettingsMenu from './SettingsMenu';
 import SyncEditorModal from './SyncEditorModal';
+import LrcVersionsDropdown from './LrcVersionsDropdown';
 
 import LyricSpeedSlider from './LyricSpeedSlider';
 import {
@@ -142,6 +143,7 @@ export default function LyricsPage() {
   const [manualSearchSearched, setManualSearchSearched] = useState<boolean>(false);
   const [selectedCandidate, setSelectedCandidate] = useState<SearchCandidateItem | null>(null);
   const [isPageDragging, setIsPageDragging] = useState<boolean>(false);
+  const [showVersionsDropdown, setShowVersionsDropdown] = useState<boolean>(false);
 
   // Offset Assistant state
   const [showOffsetAssistant, setShowOffsetAssistant] = useState<boolean>(false);
@@ -382,6 +384,7 @@ export default function LyricsPage() {
     if (!currentTrack || !currentTrack.title) return null;
     return formatCleanDisplayTrack(currentTrack.title, currentTrack.artist);
   }, [currentTrack]);
+
 
   // Lyricsify Assist: Opens search in new tab with rel="noopener noreferrer"
   const handleFindOnLyricsify = useCallback(() => {
@@ -999,6 +1002,41 @@ export default function LyricsPage() {
     );
   }, [isLoading, lyricsResult, displayLines]);
 
+  // Export active lyrics to standard LRC string
+  const getCurrentLrcText = useCallback((): string => {
+    if (lyricsResult?.rawText && lyricsResult.rawText.trim()) {
+      return lyricsResult.rawText;
+    }
+    if (!displayLines || displayLines.length === 0) return '';
+    const header: string[] = [];
+    if (currentTrack?.title) header.push(`[ti:${currentTrack.title}]`);
+    if (currentTrack?.artist) header.push(`[ar:${currentTrack.artist}]`);
+    if (transform.offset !== 0) header.push(`[offset:${Math.round(transform.offset * 1000)}]`);
+    const body = displayLines.map((l) => {
+      const mins = Math.floor(l.start / 60).toString().padStart(2, '0');
+      const secs = Math.floor(l.start % 60).toString().padStart(2, '0');
+      const hundredths = Math.floor((l.start % 1) * 100).toString().padStart(2, '0');
+      return `[${mins}:${secs}.${hundredths}] ${l.text}`;
+    });
+    return [...header, ...body].join('\n');
+  }, [lyricsResult?.rawText, displayLines, currentTrack, transform.offset]);
+
+  // Copy raw LRC text to clipboard with user notification toast
+  const handleCopyLrcText = useCallback((lrcText: string, label = 'LRC') => {
+    if (!lrcText || !lrcText.trim()) {
+      setToast({ message: 'No LRC text available to copy.' });
+      return;
+    }
+    navigator.clipboard.writeText(lrcText).then(
+      () => {
+        setToast({ message: `Copied ${label} to clipboard!` });
+      },
+      () => {
+        setToast({ message: 'Failed to copy to clipboard. Check browser permissions.' });
+      }
+    );
+  }, []);
+
   // Precomputed visual cue timeline for word images (pure function, no per-frame cost)
   const visualTimeline = useMemo(() => {
     return precomputeVisualTimeline(displayLines, {
@@ -1454,14 +1492,15 @@ export default function LyricsPage() {
             />
           )}
 
-          {/* Find on Lyricsify button */}
+          {/* LRC Versions & Copy Dropdown button */}
           {currentTrack && (
             <HeaderActionButton
-              onClick={handleFindOnLyricsify}
-              icon="🌐"
-              label="Lyricsify"
-              ariaLabel="Find lyrics on Lyricsify"
-              title="Search and download synced lyrics on Lyricsify"
+              onClick={() => setShowVersionsDropdown(true)}
+              icon="📑"
+              label="Versions / LRC"
+              ariaLabel="Browse lyrics versions, copy LRC file, or adjust sync"
+              title="Browse synced LRC versions, copy raw LRC, or adjust timing"
+              active={showVersionsDropdown}
             />
           )}
 
@@ -1746,10 +1785,23 @@ export default function LyricsPage() {
                 ✨
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">No lyrics available</h3>
+                <h3 className="text-base font-bold text-white">
+                  {lyricsResult?.error ? 'Could not fetch lyrics' : 'No lyrics available'}
+                </h3>
                 <p className="text-xs text-[#888888] mt-1 leading-relaxed">
-                  Lyrics haven&apos;t been automatically matched for &ldquo;{currentTrack.title}&rdquo;.
+                  {lyricsResult?.error
+                    ? lyricsResult.error
+                    : `Lyrics haven't been automatically matched for “${currentTrack.title}”.`}
                 </p>
+                {lyricsResult?.error && (
+                  <button
+                    type="button"
+                    onClick={() => fetchLyricsForCurrentTrack({ bypassCache: true })}
+                    className="mt-2 text-xs text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                  >
+                    Try again
+                  </button>
+                )}
               </div>
 
               {/* Inline User Correction Form */}
@@ -1834,15 +1886,26 @@ export default function LyricsPage() {
             </button>
             <div className="flex items-center justify-between pr-8 mb-1">
               <h3 className="text-base font-bold text-white">Find Correct Lyrics</h3>
-              <button
-                type="button"
-                onClick={handleFindOnLyricsify}
-                className="px-2.5 py-1 rounded-lg bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Search this song directly on Lyricsify"
-              >
-                <span>🌐</span>
-                <span>Find on Lyricsify</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyLrcText(getCurrentLrcText(), 'current song LRC')}
+                  className="px-2.5 py-1 rounded-lg bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Copy current playing LRC to clipboard"
+                >
+                  <span>📋</span>
+                  <span>Copy Current LRC</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFindOnLyricsify}
+                  className="px-2.5 py-1 rounded-lg bg-[#202020] hover:bg-[#2c2c2c] border border-[#333333] text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Search this song directly on Lyricsify"
+                >
+                  <span>🌐</span>
+                  <span>Lyricsify</span>
+                </button>
+              </div>
             </div>
             <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
               Search LRCLIB candidates, preview before applying, or find on Lyricsify.
@@ -2005,6 +2068,21 @@ export default function LyricsPage() {
                                 {formatDurationClock(candidate.duration)}
                                 {diffText ? ` (${diffText})` : ''}
                               </span>
+                            )}
+
+                            {candidate.syncedLyrics && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyLrcText(candidate.syncedLyrics || '', `LRC for "${candidate.trackName}"`);
+                                }}
+                                className="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[10px] font-semibold text-zinc-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer border border-zinc-700/60"
+                                title="Copy raw .lrc format to clipboard"
+                              >
+                                <span>📋</span>
+                                <span>Copy LRC</span>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -2357,6 +2435,27 @@ export default function LyricsPage() {
           </button>
         </div>
       )}
+
+      {/* LRC Versions & Copy Dropdown Modal */}
+      <LrcVersionsDropdown
+        isOpen={showVersionsDropdown}
+        onClose={() => setShowVersionsDropdown(false)}
+        currentTrack={currentTrack}
+        currentLrcText={getCurrentLrcText()}
+        onCopyLrc={handleCopyLrcText}
+        onApplyCandidate={handleApplyChosenCandidate}
+        currentOffset={transform.offset}
+        onApplyOffset={applyOffset}
+        onOpenPasteModal={() => {
+          setCustomLyricText('');
+          setParsedLrcData(null);
+          setFileUploadError(null);
+          setShowAddModal(true);
+        }}
+        playingDuration={playingDuration}
+        initialTitle={cleanDisplayInfo?.cleanTitle || editTitle}
+        initialArtist={cleanDisplayInfo?.cleanArtist || editArtist}
+      />
 
       {/* Inspect Modal */}
       <InspectModal

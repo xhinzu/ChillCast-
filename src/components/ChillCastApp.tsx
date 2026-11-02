@@ -11,7 +11,7 @@ import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 
-function MyuJikuShell() {
+function ChillCastShell() {
   const { togglePlay, currentTrack } = usePlayback();
   const [activeView, setActiveView] = useState<string>('home');
   const [showVideo, setShowVideo] = useState<boolean>(false);
@@ -151,7 +151,7 @@ export default function ChillCastApp() {
   return (
     <PlaybackProvider>
       <AmbientProvider>
-        <MyuJikuShell />
+        <ChillCastShell />
       </AmbientProvider>
     </PlaybackProvider>
   );

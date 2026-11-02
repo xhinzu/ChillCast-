@@ -130,7 +130,7 @@ export default function SpotifyNowPlayingPanel({
           targetUrl: '',
           icon: 'heart',
           tracks: [],
-          description: 'Your favorite liked tracks on MyuJiku',
+          description: 'Your favorite liked tracks on ChillCast',
           createdAt: Date.now(),
         };
         playlists = [likedList, ...playlists];
@@ -341,7 +341,7 @@ export default function SpotifyNowPlayingPanel({
       {/* 3. Footer Branding (only show when playing) */}
       {currentTrack && (
         <div className="pt-3 border-t border-[#242424] text-center text-[10px] text-[#666666] shrink-0">
-          MyuJiku • Now Playing View
+          ChillCast • Now Playing View
         </div>
       )}
 
