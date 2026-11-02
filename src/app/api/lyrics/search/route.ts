@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sanitizeQueryText, tokenSetRatio, normalizeString } from '@/lib/lyrics/normalize';
+import { sanitizeQueryText, tokenSetRatio, normalizeString, normalizeTrackCandidates } from '@/lib/lyrics/normalize';
 import { LRCLIBRecord } from '@/lib/lyrics/searchLrclib';
 
 export interface SearchCandidateItem {
@@ -15,6 +15,9 @@ export interface SearchCandidateItem {
   instrumental: boolean;
   previewLines: string[];
   score: number;
+  firstTimestamp?: string;
+  firstTimestampSec?: number;
+  isVideoVersion?: boolean;
 }
 
 async function fetchLrclibJson<T>(url: string, timeoutMs = 4500): Promise<T | null> {
@@ -68,10 +71,15 @@ export async function GET(req: NextRequest) {
   const rawTitle = url.searchParams.get('title') || '';
   const rawArtist = url.searchParams.get('artist') || '';
   const durationStr = url.searchParams.get('duration');
-
-  const title = sanitizeQueryText(rawTitle);
-  const artist = sanitizeQueryText(rawArtist);
   const duration = durationStr ? Math.round(parseFloat(durationStr)) : undefined;
+
+  const normCandidates = normalizeTrackCandidates(rawTitle, rawArtist);
+  const primary = normCandidates[0] || {
+    title: sanitizeQueryText(rawTitle),
+    artist: sanitizeQueryText(rawArtist),
+  };
+  const title = primary.title;
+  const artist = primary.artist;
 
   if (!title.trim()) {
     return NextResponse.json({ results: [] });
@@ -92,7 +100,14 @@ export async function GET(req: NextRequest) {
   u2.searchParams.set('q', artist ? `${artist} ${title}` : title);
   searchUrls.push(u2.toString());
 
-  // 3. Fallback search with title only
+  // 3. Raw search query with rawTitle
+  if (rawTitle && rawTitle !== title) {
+    const uRaw = new URL('https://lrclib.net/api/search');
+    uRaw.searchParams.set('q', rawTitle);
+    searchUrls.push(uRaw.toString());
+  }
+
+  // 4. Fallback search with title only
   const u3 = new URL('https://lrclib.net/api/search');
   u3.searchParams.set('q', title);
   searchUrls.push(u3.toString());
@@ -120,6 +135,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
+  const rawTitleParam = url.searchParams.get('title') || '';
+  const isVideoTrack = /\b(?:official\s+(?:music\s+)?video|music\s+video|official\s+mv|mv|video)\b/i.test(rawTitleParam);
+
   // Format, score, and rank candidates
   const evaluated: SearchCandidateItem[] = candidates.map((rec) => {
     const isWordSynced = !!(rec.syncedLyrics && /<\d{2}:\d{2}\.\d{2,3}>/.test(rec.syncedLyrics));
@@ -130,16 +148,39 @@ export async function GET(req: NextRequest) {
     else if (isWordSynced) syncedType = 'word';
     else if (isLineSynced) syncedType = 'line';
 
-    const hasSynced = syncedType === 'word' || syncedType === 'line';
-
     let diffSeconds: number | undefined = undefined;
     if (duration && duration > 0 && rec.duration && rec.duration > 0) {
       diffSeconds = Math.round(rec.duration - duration);
     }
 
-    const titleSim = tokenSetRatio(rec.trackName || '', title);
+    const recIsVideo = /\b(?:official\s+(?:music\s+)?video|music\s+video|official\s+mv|mv|video)\b/i.test(
+      `${rec.trackName || ''} ${rec.albumName || ''}`
+    );
+
+    let firstTimestamp: string | undefined = undefined;
+    let firstTimestampSec: number | undefined = undefined;
+    if (rec.syncedLyrics) {
+      const match = rec.syncedLyrics.match(/\[(\d{2}):(\d{2}(?:\.\d{2,3})?)\]/);
+      if (match) {
+        firstTimestamp = `${match[1]}:${match[2].padStart(2, '0')}`;
+        firstTimestampSec = parseInt(match[1], 10) * 60 + parseFloat(match[2]);
+      }
+    }
+
+    const titleSimClean = tokenSetRatio(rec.trackName || '', title);
+    const titleSimRaw = rawTitleParam ? tokenSetRatio(rec.trackName || '', rawTitleParam) : 0;
+    const titleSim = Math.max(titleSimClean, titleSimRaw);
     const artistSim = artist ? tokenSetRatio(rec.artistName || '', artist) : 0.8;
-    const simScore = titleSim * 0.65 + artistSim * 0.35;
+    let simScore = titleSim * 0.65 + artistSim * 0.35;
+
+    if (isVideoTrack) {
+      if (recIsVideo) simScore += 0.25;
+      if (firstTimestampSec !== undefined && firstTimestampSec < 3.0 && rec.duration && rec.duration > 120) {
+        simScore -= 0.35;
+      }
+    } else {
+      if (recIsVideo) simScore -= 0.15;
+    }
 
     let previewLines: string[] = [];
     if (rec.instrumental) {
@@ -163,6 +204,9 @@ export async function GET(req: NextRequest) {
       instrumental: rec.instrumental,
       previewLines,
       score: Math.round(simScore * 100),
+      firstTimestamp,
+      firstTimestampSec,
+      isVideoVersion: recIsVideo,
     };
   });
 

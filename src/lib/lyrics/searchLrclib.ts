@@ -142,13 +142,15 @@ export function isCandidateAcceptable(
   rec: LRCLIBRecord,
   targetTitle: string,
   targetArtist: string,
-  targetDuration?: number
+  targetDuration?: number,
+  options?: { rawTitle?: string }
 ): boolean {
   if (!rec || !targetTitle) return false;
 
-  // 1. Normalized title similarity >= 0.75
+  // 1. Normalized title similarity >= 0.75 (or against rawTitle)
   const titleSim = tokenSetRatio(rec.trackName || '', targetTitle);
-  if (titleSim < 0.75) {
+  const rawTitleSim = options?.rawTitle ? tokenSetRatio(rec.trackName || '', options.rawTitle) : 0;
+  if (Math.max(titleSim, rawTitleSim) < 0.75) {
     return false;
   }
 
@@ -194,16 +196,26 @@ export function isCandidateAcceptable(
  * (4) Anything else
  * Within a tier: prefer higher title/artist similarity, then smaller duration diff.
  */
+export interface RankCandidatesOptions {
+  strictAcceptance?: boolean;
+  rawTitle?: string;
+  isVideoTrack?: boolean;
+}
+
 export function rankCandidates(
   records: LRCLIBRecord[],
   targetTitle: string,
   targetArtist: string,
   targetDuration?: number,
-  options?: { strictAcceptance?: boolean }
+  options?: RankCandidatesOptions
 ): RankedResult | null {
   if (!records || records.length === 0) return null;
 
   const strict = options?.strictAcceptance ?? true;
+  const rawTitle = options?.rawTitle || '';
+  const isVideoTrack =
+    options?.isVideoTrack ??
+    (rawTitle ? /\b(?:official\s+(?:music\s+)?video|music\s+video|official\s+mv|mv|video)\b/i.test(rawTitle) : false);
 
   interface EvaluatedCandidate {
     record: LRCLIBRecord;
@@ -211,20 +223,51 @@ export function rankCandidates(
     simScore: number;
     diff: number;
     hasSynced: boolean;
+    recIsVideo: boolean;
+    firstLineSeconds: number | null;
   }
 
   const evaluated: EvaluatedCandidate[] = [];
 
   for (const rec of records) {
-    if (strict && !isCandidateAcceptable(rec, targetTitle, targetArtist, targetDuration)) {
+    if (strict && !isCandidateAcceptable(rec, targetTitle, targetArtist, targetDuration, { rawTitle })) {
       continue;
     }
 
-    const titleSim = tokenSetRatio(rec.trackName || '', targetTitle);
+    const titleSimClean = tokenSetRatio(rec.trackName || '', targetTitle);
+    const titleSimRaw = rawTitle ? tokenSetRatio(rec.trackName || '', rawTitle) : 0;
+    const titleSim = Math.max(titleSimClean, titleSimRaw);
     if (titleSim < 0.4) continue; // Reject clearly unrelated songs
 
     const artistSim = targetArtist ? tokenSetRatio(rec.artistName || '', targetArtist) : 0.85;
-    const simScore = titleSim * 0.6 + artistSim * 0.4;
+    let simScore = titleSim * 0.6 + artistSim * 0.4;
+
+    const recIsVideo = /\b(?:official\s+(?:music\s+)?video|music\s+video|official\s+mv|mv|video)\b/i.test(
+      `${rec.trackName || ''} ${rec.albumName || ''}`
+    );
+
+    let firstLineSeconds: number | null = null;
+    if (rec.syncedLyrics) {
+      const match = rec.syncedLyrics.match(/\[(\d{2}):(\d{2}(?:\.\d{2,3})?)\]/);
+      if (match) {
+        firstLineSeconds = parseInt(match[1], 10) * 60 + parseFloat(match[2]);
+      }
+    }
+
+    if (isVideoTrack) {
+      if (recIsVideo) {
+        simScore += 0.25; // Strongly prefer candidate timed to the official video
+      }
+      // Penalize premature start (< 3.0s) for songs with video intros
+      if (firstLineSeconds !== null && firstLineSeconds < 3.0 && rec.duration && rec.duration > 120) {
+        simScore -= 0.35;
+      }
+    } else {
+      // Audio playback: slightly discount video versions when studio audio versions exist
+      if (recIsVideo) {
+        simScore -= 0.15;
+      }
+    }
 
     const hasSynced = !!(rec.syncedLyrics && rec.syncedLyrics.trim());
     const hasPlain = !!(rec.plainLyrics && rec.plainLyrics.trim()) || rec.instrumental;
@@ -252,6 +295,8 @@ export function rankCandidates(
       simScore,
       diff,
       hasSynced,
+      recIsVideo,
+      firstLineSeconds,
     });
   }
 
@@ -272,9 +317,9 @@ export function rankCandidates(
     }
 
     // Within same tier:
-    // If similarity difference is substantial (> 0.15), higher similarity wins
+    // If similarity difference is substantial (> 0.10), higher similarity wins
     const simDiff = Math.abs(a.simScore - b.simScore);
-    if (simDiff > 0.15) {
+    if (simDiff > 0.10) {
       return b.simScore - a.simScore;
     }
 
@@ -314,7 +359,8 @@ export function rankCandidates(
  */
 export async function searchLrclibWithCandidates(
   candidates: CandidatePair[],
-  targetDuration?: number
+  targetDuration?: number,
+  options?: RankCandidatesOptions
 ): Promise<RankedResult | null> {
   const allRecords: LRCLIBRecord[] = [];
   const seenIds = new Set<number>();
@@ -330,7 +376,7 @@ export async function searchLrclibWithCandidates(
 
     // If we already have records from this candidate, check if Tier 1 (<= 3s) is found
     if (allRecords.length > 0) {
-      const best = rankCandidates(allRecords, cand.title, cand.artist, targetDuration);
+      const best = rankCandidates(allRecords, cand.title, cand.artist, targetDuration, options);
       // Return immediately only if Tier 1 (closest duration match <= 3s) is found
       if (best && best.tier === 1) {
         return best;
@@ -345,6 +391,7 @@ export async function searchLrclibWithCandidates(
     allRecords,
     primaryCand?.title || '',
     primaryCand?.artist || '',
-    targetDuration
+    targetDuration,
+    options
   );
 }

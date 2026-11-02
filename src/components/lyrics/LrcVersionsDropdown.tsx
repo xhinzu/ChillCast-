@@ -343,6 +343,11 @@ export default function LrcVersionsDropdown({
                               Best Match
                             </span>
                           )}
+                          {cand.isVideoVersion && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              🎬 Video Version
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-zinc-400 truncate">
                           {cand.artistName}
@@ -351,6 +356,12 @@ export default function LrcVersionsDropdown({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                        {cand.firstTimestamp && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20">
+                            Starts at {cand.firstTimestamp}
+                          </span>
+                        )}
+
                         {cand.syncedType === 'word' ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             Word-Synced

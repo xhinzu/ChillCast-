@@ -18,8 +18,10 @@ const NEGATIVE_CACHE_TTL_MS = 10 * 60 * 1000;          // 10 minutes max for not
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const rawTitle = sanitizeQueryText(url.searchParams.get('title') || '');
-  const rawArtist = sanitizeQueryText(url.searchParams.get('artist') || '');
+  const incomingTitle = url.searchParams.get('title') || '';
+  const incomingArtist = url.searchParams.get('artist') || '';
+  const rawTitle = sanitizeQueryText(incomingTitle);
+  const rawArtist = sanitizeQueryText(incomingArtist);
   const manualTitle = sanitizeQueryText(url.searchParams.get('manualTitle') || '');
   const manualArtist = sanitizeQueryText(url.searchParams.get('manualArtist') || '');
   const durationStr = url.searchParams.get('duration');
@@ -30,6 +32,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Title parameter is required' }, { status: 400 });
   }
 
+  const isVideoTrack = /\b(?:official\s+(?:music\s+)?video|music\s+video|official\s+mv|mv|video)\b/i.test(incomingTitle);
   const duration = durationStr ? Math.round(parseFloat(durationStr)) : undefined;
 
   // Generate candidates using metadata normalization engine
@@ -51,8 +54,9 @@ export async function GET(req: NextRequest) {
   const normKeyTitle = normalizeString(primaryCandidate.title);
 
   const expFlag = process.env.LYRICS_EXPERIMENTAL_PROVIDERS === 'true' ? 'exp1' : 'exp0';
-  const posCacheKey = `pos:${expFlag}:${trackId || 'any'}:${normKeyArtist}::${normKeyTitle}`;
-  const negCacheKey = `neg:${expFlag}:${normKeyArtist}::${normKeyTitle}`;
+  const videoTag = isVideoTrack ? 'vid1' : 'vid0';
+  const posCacheKey = `pos:${expFlag}:${videoTag}:${trackId || 'any'}:${normKeyArtist}::${normKeyTitle}`;
+  const negCacheKey = `neg:${expFlag}:${videoTag}:${normKeyArtist}::${normKeyTitle}`;
 
   // Helper: Try aligning plain lyrics with YouTube caption timing (experimental)
   const tryAlignWithCaptions = async (
@@ -135,7 +139,10 @@ export async function GET(req: NextRequest) {
     // -------------------------------------------------------------
     // Step 1: Multi-candidate search across LRCLIB (with 6-step fallback ladder)
     // -------------------------------------------------------------
-    const lrclibMatch: RankedResult | null = await searchLrclibWithCandidates(candidates, duration);
+    const lrclibMatch: RankedResult | null = await searchLrclibWithCandidates(candidates, duration, {
+      rawTitle: incomingTitle,
+      isVideoTrack,
+    });
 
     if (lrclibMatch) {
       const rec = lrclibMatch.record;
