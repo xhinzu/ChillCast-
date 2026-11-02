@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "npx tsx src/lib/lyrics/visuals/__tests__/visuals.test.ts",
     "electron:dev": "electron .",
     "electron:build": "node scripts/build-desktop.js"
   },

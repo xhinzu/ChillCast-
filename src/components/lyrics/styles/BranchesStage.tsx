@@ -3,15 +3,19 @@
 import React, { useMemo, useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateBranchesLayout } from '@/lib/lyrics/layoutNodes';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
 import { useCamera } from '@/hooks/useCamera';
+import { SvgWordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface BranchesStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   cameraMovementEnabled?: boolean;
   chromaEnabled?: boolean;
   chromaVividness?: number;
@@ -23,6 +27,9 @@ export default function BranchesStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   cameraMovementEnabled = true,
   chromaEnabled = false,
   chromaVividness = 80,
@@ -222,8 +229,6 @@ export default function BranchesStage({
               const isPast = node.index < activeWordIndex;
               const isActive = node.index === activeWordIndex;
               const age = activeWordIndex - node.index;
-              const emoji =
-                showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
 
               const nodeChroma = chromaEnabled
                 ? getWordChromaInfo(trackId, activeLineIndex, node.index, chromaVividness)
@@ -299,17 +304,17 @@ export default function BranchesStage({
                     {node.word.text}
                   </text>
 
-                  {/* Pop-in Emoji (not recolored) */}
-                  {emoji && isActive && (
-                    <text
+                  {/* Word Visual Cue in SVG */}
+                  {isActive && (
+                    <SvgWordVisualCue
+                      cue={visualTimeline?.getCue(activeLineIndex, node.index)}
+                      visualStyle={visualStyle}
+                      enabled={wordImagesEnabled ?? showIcons}
                       x={0}
                       y={node.y > 300 ? 54 : -40}
-                      textAnchor="middle"
-                      fontSize={22}
-                      className="select-none"
-                    >
-                      {emoji}
-                    </text>
+                      size={26}
+                      chromaColor={nodeChroma?.hex}
+                    />
                   )}
                 </g>
               );

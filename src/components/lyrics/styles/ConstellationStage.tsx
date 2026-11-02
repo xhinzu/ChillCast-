@@ -3,15 +3,19 @@
 import React, { useMemo, useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateConstellationLayout } from '@/lib/lyrics/layoutNodes';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { SvgWordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface ConstellationStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   cameraMovementEnabled?: boolean;
   chromaEnabled?: boolean;
   chromaVividness?: number;
@@ -54,6 +58,9 @@ export default function ConstellationStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   cameraMovementEnabled = true,
   chromaEnabled = false,
   chromaVividness = 80,
@@ -193,9 +200,6 @@ export default function ConstellationStage({
               const isPast = node.index < activeWordIndex;
               const isActive = node.index === activeWordIndex;
 
-              const emoji =
-                showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
-
               const nodeChroma = chromaEnabled
                 ? getWordChromaInfo(trackId, activeLineIndex, node.index, chromaVividness)
                 : null;
@@ -231,11 +235,17 @@ export default function ConstellationStage({
                     {node.word.text}
                   </text>
 
-                  {/* Optional Icon/Emoji for Active Node (not recolored) */}
-                  {emoji && isActive && (
-                    <text x={node.width + 24} y={6} fontSize={18} className="select-none">
-                      {emoji}
-                    </text>
+                  {/* Word Visual Cue in SVG */}
+                  {isActive && (
+                    <SvgWordVisualCue
+                      cue={visualTimeline?.getCue(activeLineIndex, node.index)}
+                      visualStyle={visualStyle}
+                      enabled={wordImagesEnabled ?? showIcons}
+                      x={node.width + 30}
+                      y={-1}
+                      size={24}
+                      chromaColor={nodeChroma?.hex}
+                    />
                   )}
                 </g>
               );

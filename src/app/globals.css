@@ -261,13 +261,25 @@ body {
   will-change: transform;
 }
 
+@keyframes fadeInOnly {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-spring-scale,
-  .animate-pop-in,
   .active-glyph-glow,
   .active-glyph-glow-sm {
     animation: none !important;
     transition: none !important;
+  }
+  .animate-pop-in {
+    animation: fadeInOnly 180ms ease-out forwards !important;
+    transform: none !important;
   }
   .chroma-rotating-band {
     animation: none !important;

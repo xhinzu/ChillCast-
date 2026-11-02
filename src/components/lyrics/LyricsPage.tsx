@@ -39,6 +39,9 @@ import CodestyleStage from './styles/CodestyleStage';
 import BranchesStage from './styles/BranchesStage';
 import WebStage from './styles/WebStage';
 
+import { precomputeVisualTimeline } from '@/lib/lyrics/visuals/matcher';
+import { preloadUpcomingCues } from './visuals/WordVisualCue';
+
 import { parseEnhancedLrc, ParseEnhancedLrcResult } from '@/lib/lyrics/parseEnhancedLrc';
 import { isMostlyUppercase, fixSentenceCase, fixLineSentenceCase } from '@/lib/lyrics/textCase';
 
@@ -990,6 +993,22 @@ export default function LyricsPage() {
     );
   }, [isLoading, lyricsResult, displayLines]);
 
+  // Precomputed visual cue timeline for word images (pure function, no per-frame cost)
+  const visualTimeline = useMemo(() => {
+    return precomputeVisualTimeline(displayLines, {
+      frequency: settings.imageFrequency,
+      trackId: currentTrack?.id,
+      visualStyle: settings.visualStyle,
+      enabled: settings.wordImagesEnabled,
+    });
+  }, [
+    displayLines,
+    settings.imageFrequency,
+    currentTrack?.id,
+    settings.visualStyle,
+    settings.wordImagesEnabled,
+  ]);
+
   // Sync Engine Hook (runs on requestAnimationFrame, updates CSS vars on stage)
   const { lineIndex, wordIndex } = useLyricsSync({
     lines: displayLines,
@@ -997,6 +1016,23 @@ export default function LyricsPage() {
     speed: transform.speed,
     stageElementRef: stageWrapperRef,
   });
+
+  // Preload upcoming ~3 cue assets so images appear instantly without delay
+  useEffect(() => {
+    if (!visualTimeline || settings.visualStyle === 'off' || !settings.wordImagesEnabled) return;
+    const upcomingCues: (import('@/lib/lyrics/visuals/types').VisualCue | null)[] = [];
+    for (let l = lineIndex; l <= Math.min(displayLines.length - 1, lineIndex + 2); l++) {
+      const line = displayLines[l];
+      if (!line) continue;
+      const startW = l === lineIndex ? wordIndex + 1 : 0;
+      const count = line.words?.length || 0;
+      for (let w = startW; w < count && upcomingCues.length < 3; w++) {
+        const cue = visualTimeline.getCue(l, w);
+        if (cue) upcomingCues.push(cue);
+      }
+    }
+    preloadUpcomingCues(upcomingCues);
+  }, [lineIndex, wordIndex, visualTimeline, displayLines, settings.visualStyle, settings.wordImagesEnabled]);
 
   // Fullscreen management
   const toggleFullscreen = () => {
@@ -1087,6 +1123,9 @@ export default function LyricsPage() {
           chromaEnabled={settings.chromaEnabled}
           chromaVividness={settings.chromaVividness}
           trackId={currentTrack?.id}
+          wordImagesEnabled={settings.wordImagesEnabled}
+          visualStyle={settings.visualStyle}
+          visualTimeline={visualTimeline}
         />
       );
     }
@@ -1095,7 +1134,10 @@ export default function LyricsPage() {
       lines: displayLines,
       activeLineIndex: lineIndex,
       activeWordIndex: wordIndex,
-      showIcons: settings.iconsEnabled,
+      showIcons: settings.iconsEnabled && settings.wordImagesEnabled,
+      wordImagesEnabled: settings.wordImagesEnabled,
+      visualStyle: settings.visualStyle,
+      visualTimeline,
       cameraMovementEnabled: settings.cameraMovementEnabled,
       trackId: currentTrack?.id,
       chromaEnabled: settings.chromaEnabled,
@@ -1132,6 +1174,9 @@ export default function LyricsPage() {
             chromaEnabled={settings.chromaEnabled}
             chromaVividness={settings.chromaVividness}
             trackId={currentTrack?.id}
+            wordImagesEnabled={settings.wordImagesEnabled}
+            visualStyle={settings.visualStyle}
+            visualTimeline={visualTimeline}
           />
         );
     }

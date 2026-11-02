@@ -2,14 +2,18 @@
 
 import React from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { WordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface VisualStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   chromaEnabled?: boolean;
   chromaVividness?: number;
   trackId?: string;
@@ -29,6 +33,9 @@ export default function VisualStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = true,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   chromaEnabled = false,
   chromaVividness = 80,
   trackId,
@@ -67,7 +74,6 @@ export default function VisualStage({
       : null;
 
   const wordText = activeWord?.text || '';
-  const emoji = showIcons && wordText ? getEmojiForLyricWord(wordText) : null;
 
   // Deterministic 1 in 4 marker box behind active word
   const hasMarkerBox =
@@ -141,16 +147,14 @@ export default function VisualStage({
           {wordText || '♪'}
         </span>
 
-        {/* Pop-in Emoji Icon (not recolored) */}
-        {emoji && (
-          <span
-            className="inline-block animate-pop-in text-4xl sm:text-6xl md:text-7xl select-none"
-            role="img"
-            aria-label="icon"
-          >
-            {emoji}
-          </span>
-        )}
+        {/* Word Visual Cue (Illustrated / Line / Emoji) */}
+        <WordVisualCue
+          cue={visualTimeline?.getCue(activeLineIndex, activeWordIndex)}
+          visualStyle={visualStyle}
+          enabled={wordImagesEnabled ?? showIcons}
+          size={56}
+          chromaColor={activeChroma?.hex}
+        />
       </div>
 
       {/* Subtle upcoming next word below (retains its Chroma hue identity at low opacity) */}

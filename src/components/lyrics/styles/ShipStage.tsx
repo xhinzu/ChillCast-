@@ -2,15 +2,19 @@
 
 import React, { useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { WordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface ShipStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   cameraMovementEnabled?: boolean;
   chromaEnabled?: boolean;
   chromaVividness?: number;
@@ -22,6 +26,9 @@ export default function ShipStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   cameraMovementEnabled = true,
   chromaEnabled = false,
   chromaVividness = 80,
@@ -105,9 +112,6 @@ export default function ShipStage({
           const opacity = isActive ? 1.0 : isPast ? Math.max(0.2, 0.5 + diff * 0.1) : Math.max(0.12, 0.35 - diff * 0.08);
           const scale = isActive ? 1.25 : isPast ? Math.max(0.65, 1 + diff * 0.08) : Math.max(0.7, 1 - diff * 0.06);
 
-          const emoji =
-            showIcons && word.text ? getEmojiForLyricWord(word.text) : null;
-
           const chroma = chromaEnabled
             ? getWordChromaInfo(trackId, activeLineIndex, idx, chromaVividness)
             : null;
@@ -144,10 +148,14 @@ export default function ShipStage({
               >
                 {word.text}
               </span>
-              {emoji && isActive && (
-                <span className="text-3xl sm:text-5xl animate-pop-in select-none">
-                  {emoji}
-                </span>
+              {isActive && (
+                <WordVisualCue
+                  cue={visualTimeline?.getCue(activeLineIndex, idx)}
+                  visualStyle={visualStyle}
+                  enabled={wordImagesEnabled ?? showIcons}
+                  size={44}
+                  chromaColor={chroma?.hex}
+                />
               )}
             </div>
           );

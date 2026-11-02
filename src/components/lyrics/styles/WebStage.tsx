@@ -3,15 +3,19 @@
 import React, { useMemo, useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { generateWebLayout } from '@/lib/lyrics/layoutNodes';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
-import { useCamera } from '@/hooks/useCamera';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { useCamera } from '@/hooks/useCamera';
+import { SvgWordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface WebStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   cameraMovementEnabled?: boolean;
   chromaEnabled?: boolean;
   chromaVividness?: number;
@@ -23,6 +27,9 @@ export default function WebStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   cameraMovementEnabled = true,
   chromaEnabled = false,
   chromaVividness = 80,
@@ -172,8 +179,6 @@ export default function WebStage({
             {layout.nodes.map((node) => {
               const isPast = node.index < activeWordIndex;
               const isActive = node.index === activeWordIndex;
-              const emoji =
-                showIcons && node.word.text ? getEmojiForLyricWord(node.word.text) : null;
 
               const nodeChroma = chromaEnabled
                 ? getWordChromaInfo(trackId, activeLineIndex, node.index, chromaVividness)
@@ -215,16 +220,17 @@ export default function WebStage({
                     {node.word.text}
                   </text>
 
-                  {/* Emoji Icon (not recolored) */}
-                  {emoji && isActive && (
-                    <text
-                      x={node.x >= centerX ? node.width + 12 : -node.width - 24}
-                      y={6}
-                      fontSize={20}
-                      className="select-none"
-                    >
-                      {emoji}
-                    </text>
+                  {/* Word Visual Cue in SVG */}
+                  {isActive && (
+                    <SvgWordVisualCue
+                      cue={visualTimeline?.getCue(activeLineIndex, node.index)}
+                      visualStyle={visualStyle}
+                      enabled={wordImagesEnabled ?? showIcons}
+                      x={node.x >= centerX ? node.width + 24 : -node.width - 24}
+                      y={0}
+                      size={24}
+                      chromaColor={nodeChroma?.hex}
+                    />
                   )}
                 </g>
               );

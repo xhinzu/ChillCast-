@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import { usePlayback } from '@/context/PlaybackContext';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { WordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface ClassicStageProps {
   lines: SyncedLyricLine[];
@@ -13,6 +15,10 @@ interface ClassicStageProps {
   onLineClick?: (line: SyncedLyricLine, index: number) => void;
   isTapToSyncActive?: boolean;
   isEstimated?: boolean;
+  showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   chromaEnabled?: boolean;
   chromaVividness?: number;
   trackId?: string;
@@ -26,6 +32,10 @@ export default function ClassicStage({
   onLineClick,
   isTapToSyncActive = false,
   isEstimated = false,
+  showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   chromaEnabled = false,
   chromaVividness = 80,
   trackId,
@@ -185,7 +195,7 @@ export default function ClassicStage({
                           }
                         : undefined
                     }
-                    className={`transition-all duration-150 inline-block rounded-md px-1 py-0.5 ${
+                    className={`transition-all duration-150 inline-flex items-center gap-1 rounded-md px-1 py-0.5 ${
                       chromaEnabled
                         ? isActiveWord
                           ? 'font-black scale-105'
@@ -199,7 +209,17 @@ export default function ClassicStage({
                         : ''
                     }`}
                   >
-                    {word.text}
+                    <span>{word.text}</span>
+                    {isActiveWord && (
+                      <WordVisualCue
+                        cue={visualTimeline?.getCue(lIdx, wIdx)}
+                        visualStyle={visualStyle}
+                        enabled={wordImagesEnabled ?? showIcons}
+                        size={22}
+                        chromaColor={wordColor}
+                        className="inline-block"
+                      />
+                    )}
                   </span>
                 );
               })}

@@ -2,14 +2,18 @@
 
 import React from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { WordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface FisheyeStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   chromaEnabled?: boolean;
   chromaVividness?: number;
   trackId?: string;
@@ -20,6 +24,9 @@ export default function FisheyeStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   chromaEnabled = false,
   chromaVividness = 80,
   trackId,
@@ -70,7 +77,6 @@ export default function FisheyeStage({
           const opacity = Math.max(0.12, Math.pow(cosine, 2.2));
 
           const isActive = diff === 0;
-          const emoji = showIcons && word.text ? getEmojiForLyricWord(word.text) : null;
 
           const chroma = chromaEnabled
             ? getWordChromaInfo(trackId, activeLineIndex, idx, chromaVividness)
@@ -105,10 +111,14 @@ export default function FisheyeStage({
               >
                 {word.text}
               </span>
-              {emoji && isActive && (
-                <span className="text-3xl sm:text-5xl animate-pop-in select-none">
-                  {emoji}
-                </span>
+              {isActive && (
+                <WordVisualCue
+                  cue={visualTimeline?.getCue(activeLineIndex, idx)}
+                  visualStyle={visualStyle}
+                  enabled={wordImagesEnabled ?? showIcons}
+                  size={42}
+                  chromaColor={chroma?.hex}
+                />
               )}
             </div>
           );

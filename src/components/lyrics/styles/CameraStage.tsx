@@ -2,15 +2,19 @@
 
 import React, { useMemo, useRef } from 'react';
 import { SyncedLyricLine, LyricWord } from '@/lib/lyrics/providers/types';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { useCamera } from '@/hooks/useCamera';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { WordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface CameraStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   cameraMovementEnabled?: boolean;
   chromaEnabled?: boolean;
   chromaVividness?: number;
@@ -121,6 +125,9 @@ export default function CameraStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   cameraMovementEnabled = true,
   chromaEnabled = false,
   chromaVividness = 80,
@@ -225,7 +232,6 @@ export default function CameraStage({
           {wordNodes.map((node) => {
             const isActive = node.index === safeWordIndex;
             const isPast = node.index < safeWordIndex;
-            const emoji = showIcons && isActive ? getEmojiForLyricWord(node.text) : null;
             const chroma = chromaEnabled
               ? getWordChromaInfo(trackId, safeLineIndex, node.index, chromaVividness)
               : null;
@@ -270,10 +276,14 @@ export default function CameraStage({
                 >
                   {node.text}
                 </span>
-                {emoji && isActive && (
-                  <span className="text-3xl sm:text-5xl animate-pop-in select-none">
-                    {emoji}
-                  </span>
+                {isActive && (
+                  <WordVisualCue
+                    cue={visualTimeline?.getCue(safeLineIndex, node.index)}
+                    visualStyle={visualStyle}
+                    enabled={wordImagesEnabled ?? showIcons}
+                    size={48}
+                    chromaColor={chroma?.hex}
+                  />
                 )}
               </div>
             );

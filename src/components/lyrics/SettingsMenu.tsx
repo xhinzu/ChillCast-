@@ -331,20 +331,119 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                 className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
               />
             </label>
+          </div>
 
-            {/* Icons */}
+          {/* 3. VISUALS & WORD IMAGES */}
+          <div className="py-4 border-b border-[#282828] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                Visuals & Word Images
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  updateSettings({
+                    wordImagesEnabled: true,
+                    iconsEnabled: true,
+                    visualStyle: 'illustrated',
+                    imageFrequency: 'normal',
+                  });
+                }}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300 underline cursor-pointer"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Word images toggle */}
             <label className="flex items-center justify-between text-xs cursor-pointer select-none">
               <div>
-                <span className="text-zinc-300 block">Visual Emojis & Icons</span>
-                <span className="text-[10px] text-zinc-500">Keyword-triggered icons in supported styles</span>
+                <span className="text-zinc-300 block">Word images</span>
+                <span className="text-[10px] text-zinc-500">Show illustrated cues or icons for lyric concepts</span>
               </div>
               <input
                 type="checkbox"
-                checked={settings.iconsEnabled}
-                onChange={(e) => updateSettings({ iconsEnabled: e.target.checked })}
+                checked={settings.wordImagesEnabled}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  updateSettings({ wordImagesEnabled: val, iconsEnabled: val });
+                }}
                 className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
               />
             </label>
+
+            {/* Visual style picker */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] text-zinc-400 block font-medium">Visual style</span>
+              <div className="grid grid-cols-4 gap-1">
+                {(['illustrated', 'line', 'emoji', 'off'] as const).map((styleOpt) => {
+                  const isSelected = settings.visualStyle === styleOpt;
+                  const labels: Record<string, string> = {
+                    illustrated: 'Illustrated',
+                    line: 'Line icons',
+                    emoji: 'Emoji',
+                    off: 'Off',
+                  };
+                  return (
+                    <button
+                      key={styleOpt}
+                      type="button"
+                      onClick={() => updateSettings({ visualStyle: styleOpt })}
+                      className={`px-2 py-1.5 rounded text-[11px] font-medium transition-all cursor-pointer text-center ${
+                        isSelected
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/40 font-bold'
+                          : 'bg-[#181818] hover:bg-[#222222] text-zinc-400 border border-transparent'
+                      }`}
+                    >
+                      {labels[styleOpt]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Image frequency picker */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] text-zinc-400 block font-medium">Image frequency</span>
+              <div className="grid grid-cols-3 gap-1">
+                {(['low', 'normal', 'high'] as const).map((freq) => {
+                  const isSelected = settings.imageFrequency === freq;
+                  const labels: Record<string, string> = {
+                    low: 'Low',
+                    normal: 'Normal',
+                    high: 'High',
+                  };
+                  return (
+                    <button
+                      key={freq}
+                      type="button"
+                      onClick={() => updateSettings({ imageFrequency: freq })}
+                      className={`px-2 py-1.5 rounded text-[11px] font-medium transition-all cursor-pointer text-center ${
+                        isSelected
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/40 font-bold'
+                          : 'bg-[#181818] hover:bg-[#222222] text-zinc-400 border border-transparent'
+                      }`}
+                    >
+                      {labels[freq]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Legal Credits Link */}
+            <div className="pt-1 flex items-center justify-between text-[11px]">
+              <span className="text-zinc-500 text-[10px]">Asset Sources & Licenses</span>
+              <a
+                href="/credits"
+                target="_blank"
+                rel="noreferrer"
+                className="text-red-400 hover:text-red-300 hover:underline flex items-center gap-1 font-medium"
+              >
+                <span>Legal Credits</span>
+                <span className="text-xs">↗</span>
+              </a>
+            </div>
           </div>
 
           {/* 3. TYPOGRAPHY */}

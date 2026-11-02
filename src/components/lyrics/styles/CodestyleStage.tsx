@@ -2,14 +2,18 @@
 
 import React, { useEffect, useRef } from 'react';
 import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
-import { getEmojiForLyricWord } from '@/lib/lyrics/emojiMap';
 import { getWordChromaInfo } from '@/lib/lyrics/chroma';
+import { WordVisualCue } from '../visuals/WordVisualCue';
+import { VisualCueTimeline, VisualStyle } from '@/lib/lyrics/visuals/types';
 
 interface CodestyleStageProps {
   lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   showIcons?: boolean;
+  wordImagesEnabled?: boolean;
+  visualStyle?: VisualStyle;
+  visualTimeline?: VisualCueTimeline;
   chromaEnabled?: boolean;
   chromaVividness?: number;
   trackId?: string;
@@ -20,6 +24,9 @@ export default function CodestyleStage({
   activeLineIndex,
   activeWordIndex,
   showIcons = false,
+  wordImagesEnabled = true,
+  visualStyle = 'illustrated',
+  visualTimeline,
   chromaEnabled = false,
   chromaVividness = 80,
   trackId,
@@ -105,9 +112,6 @@ export default function CodestyleStage({
                     const isWordActive = isCurrentLine && wIdx === activeWordIndex;
                     const isWordPast = isPastLine || (isCurrentLine && wIdx < activeWordIndex);
 
-                    const emoji =
-                      showIcons && w.text ? getEmojiForLyricWord(w.text) : null;
-
                     const chroma = chromaEnabled
                       ? getWordChromaInfo(trackId, lIdx, wIdx, chromaVividness)
                       : null;
@@ -166,10 +170,18 @@ export default function CodestyleStage({
                             }`}
                           />
                         )}
-                        {/* Inline comment emoji if enabled (not recolored) */}
-                        {emoji && isWordActive && (
-                          <span className="text-xs bg-black/40 px-1 py-0.2 rounded text-zinc-300 select-none">
-                            /* {emoji} */
+                        {/* Inline comment visual if enabled (not recolored unless line mode) */}
+                        {isWordActive && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-black/40 px-1.5 py-0.5 rounded text-zinc-300 select-none">
+                            <span className="text-[10px] text-zinc-500 font-mono">/*</span>
+                            <WordVisualCue
+                              cue={visualTimeline?.getCue(lIdx, wIdx)}
+                              visualStyle={visualStyle}
+                              enabled={wordImagesEnabled ?? showIcons}
+                              size={16}
+                              chromaColor={chroma?.hex}
+                            />
+                            <span className="text-[10px] text-zinc-500 font-mono">*/</span>
                           </span>
                         )}
                       </span>
