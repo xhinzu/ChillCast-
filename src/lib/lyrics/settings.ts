@@ -22,6 +22,10 @@ export type EdgeGlowMode = 'music_sync' | 'static';
 
 export type VisualStyle = 'illustrated' | 'line' | 'emoji' | 'off';
 export type ImageFrequency = 'low' | 'normal' | 'high';
+export type EffectFrequency = 'low' | 'normal' | 'high';
+export type EffectStrength = 'subtle' | 'normal' | 'strong';
+
+export const DEFAULT_INTENSE_EFFECTS = false;
 
 export interface LyricsSettings {
   version: number;
@@ -43,6 +47,12 @@ export interface LyricsSettings {
   wordImagesEnabled: boolean;
   visualStyle: VisualStyle;
   imageFrequency: ImageFrequency;
+  wordEffectsEnabled: boolean;
+  effectFrequency: EffectFrequency;
+  effectStrength: EffectStrength;
+  screenShakeEnabled: boolean;
+  intenseEffectsEnabled: boolean;
+  naturalColors: boolean;
   cameraMovementEnabled: boolean;
   keepAwake: boolean;
   showOutsideLyricsPage: boolean;
@@ -70,6 +80,12 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   wordImagesEnabled: true,
   visualStyle: 'illustrated',
   imageFrequency: 'normal',
+  wordEffectsEnabled: true,
+  effectFrequency: 'normal',
+  effectStrength: 'normal',
+  screenShakeEnabled: true,
+  intenseEffectsEnabled: DEFAULT_INTENSE_EFFECTS,
+  naturalColors: true,
   cameraMovementEnabled: true,
   keepAwake: true,
   showOutsideLyricsPage: false,
@@ -149,6 +165,36 @@ export function loadLyricsSettings(): LyricsSettings {
       ? parsed.imageFrequency
       : 'normal';
 
+    const wordEffectsEnabled =
+      typeof parsed.wordEffectsEnabled === 'boolean'
+        ? parsed.wordEffectsEnabled
+        : true;
+
+    const validEffectFrequencies: EffectFrequency[] = ['low', 'normal', 'high'];
+    const effectFrequency: EffectFrequency = validEffectFrequencies.includes(parsed.effectFrequency)
+      ? parsed.effectFrequency
+      : 'normal';
+
+    const validEffectStrengths: EffectStrength[] = ['subtle', 'normal', 'strong'];
+    const effectStrength: EffectStrength = validEffectStrengths.includes(parsed.effectStrength)
+      ? parsed.effectStrength
+      : 'normal';
+
+    const screenShakeEnabled =
+      typeof parsed.screenShakeEnabled === 'boolean'
+        ? parsed.screenShakeEnabled
+        : !prefersReducedMotion;
+
+    const intenseEffectsEnabled =
+      typeof parsed.intenseEffectsEnabled === 'boolean'
+        ? parsed.intenseEffectsEnabled
+        : DEFAULT_INTENSE_EFFECTS;
+
+    const naturalColors =
+      typeof parsed.naturalColors === 'boolean'
+        ? parsed.naturalColors
+        : true;
+
     return {
       ...DEFAULT_LYRICS_SETTINGS,
       ...parsed,
@@ -161,6 +207,12 @@ export function loadLyricsSettings(): LyricsSettings {
       wordImagesEnabled,
       visualStyle,
       imageFrequency,
+      wordEffectsEnabled,
+      effectFrequency,
+      effectStrength,
+      screenShakeEnabled,
+      intenseEffectsEnabled,
+      naturalColors,
       offsets: { ...parsed.offsets },
     };
   } catch {

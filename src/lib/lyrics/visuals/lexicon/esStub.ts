@@ -61,7 +61,8 @@ export const SPANISH_STUB_LEXICON: VisualConcept[] = [
     "phrases": [
       "fuego ardiente",
       "en llamas"
-    ]
+    ],
+    "effectId": "skull"
   },
   {
     "id": "es_noche",
@@ -366,7 +367,8 @@ export const SPANISH_STUB_LEXICON: VisualConcept[] = [
     "phrases": [
       "por el camino",
       "en la carretera"
-    ]
+    ],
+    "effectId": "speed"
   },
   {
     "id": "es_concepto_1",

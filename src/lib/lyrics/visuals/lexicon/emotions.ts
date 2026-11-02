@@ -24,7 +24,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "melancholy",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "rain"
   },
   {
     "id": "euphoria",
@@ -48,7 +49,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "euphoria",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "rise"
   },
   {
     "id": "halcyon",
@@ -97,7 +99,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "reverie",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "dream"
   },
   {
     "id": "solitude",
@@ -122,7 +125,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "solitude",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "heartbreak"
   },
   {
     "id": "heart_love",
@@ -147,7 +151,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "heart",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "love"
   },
   {
     "id": "anger_rage",
@@ -173,7 +178,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "inferno",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "fire"
   },
   {
     "id": "fear_terror",
@@ -198,7 +204,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "phantom",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "snow"
   },
   {
     "id": "hope_aspiration",
@@ -222,7 +229,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "spark",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "magic"
   },
   {
     "id": "guilt_regret",
@@ -285,7 +293,8 @@ export const EMOTIONS_LEXICON: VisualConcept[] = [
     "category": "emotions",
     "imageId": "halo",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "love"
   },
   {
     "id": "nostalgia_longing",

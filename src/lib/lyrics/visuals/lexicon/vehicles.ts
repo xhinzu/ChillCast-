@@ -24,7 +24,8 @@ export const VEHICLES_LEXICON: VisualConcept[] = [
     "category": "vehicles",
     "imageId": "ship",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "ghost"
   },
   {
     "id": "car_drive",
@@ -49,7 +50,8 @@ export const VEHICLES_LEXICON: VisualConcept[] = [
     "category": "vehicles",
     "imageId": "car",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "plane_flight",
@@ -73,7 +75,8 @@ export const VEHICLES_LEXICON: VisualConcept[] = [
     "category": "vehicles",
     "imageId": "ship",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "train_rail",
@@ -95,7 +98,8 @@ export const VEHICLES_LEXICON: VisualConcept[] = [
     "category": "vehicles",
     "imageId": "car",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "rocket_space",
@@ -115,7 +119,8 @@ export const VEHICLES_LEXICON: VisualConcept[] = [
     "category": "vehicles",
     "imageId": "spark",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "moon"
   },
   {
     "id": "motorcycle_bike",
@@ -156,7 +161,8 @@ export const VEHICLES_LEXICON: VisualConcept[] = [
     "category": "vehicles",
     "imageId": "ship",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "speed"
   },
   {
     "id": "vehicle_term_1",

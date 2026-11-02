@@ -38,7 +38,8 @@ export const SLANG_LEXICON: VisualConcept[] = [
         "fired me",
         "fire him"
       ]
-    }
+    },
+    "effectId": "fire"
   },
   {
     "id": "slang_bomb",
@@ -68,7 +69,8 @@ export const SLANG_LEXICON: VisualConcept[] = [
         "girl",
         "track"
       ]
-    }
+    },
+    "effectId": "bomb"
   },
   {
     "id": "slang_shot",
@@ -100,7 +102,8 @@ export const SLANG_LEXICON: VisualConcept[] = [
         "liquor",
         "bottle"
       ]
-    }
+    },
+    "effectId": "crash"
   },
   {
     "id": "slang_drip",
@@ -123,7 +126,8 @@ export const SLANG_LEXICON: VisualConcept[] = [
     "category": "slang",
     "imageId": "diamond",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "wind"
   },
   {
     "id": "slang_flex",
@@ -162,7 +166,8 @@ export const SLANG_LEXICON: VisualConcept[] = [
     "category": "slang",
     "imageId": "phantom",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "ghost"
   },
   {
     "id": "slang_vibe",
@@ -240,7 +245,8 @@ export const SLANG_LEXICON: VisualConcept[] = [
     "category": "slang",
     "imageId": "opulence",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "slang_term_1",

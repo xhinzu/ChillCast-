@@ -25,7 +25,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "tempest",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "rain"
   },
   {
     "id": "lightning_bolt",
@@ -46,7 +47,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "lightning",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "lightning"
   },
   {
     "id": "solstice_sun",
@@ -70,7 +72,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "solstice",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "twilight_dusk",
@@ -93,7 +96,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "twilight",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "thunder_roar",
@@ -114,7 +118,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "tempest",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "lightning"
   },
   {
     "id": "snow_blizzard",
@@ -139,7 +144,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "tempest",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "snow"
   },
   {
     "id": "hail_sleet",
@@ -178,7 +184,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "twilight",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "cloud"
   },
   {
     "id": "breeze_wind",
@@ -201,7 +208,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "solstice",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "wind"
   },
   {
     "id": "cloud_overcast",
@@ -223,7 +231,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "tempest",
     "weight": 5,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "scream"
   },
   {
     "id": "heatwave_blaze",
@@ -261,7 +270,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "solstice",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "whirlwind_tornado",
@@ -311,7 +321,8 @@ export const WEATHER_LEXICON: VisualConcept[] = [
     "category": "weather",
     "imageId": "solstice",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "shatter"
   },
   {
     "id": "weather_term_1",

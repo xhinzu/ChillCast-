@@ -30,7 +30,8 @@ export const RELATIONSHIPS_LEXICON: VisualConcept[] = [
         "baby carriage",
         "baby diapers"
       ]
-    }
+    },
+    "effectId": "love"
   },
   {
     "id": "kiss_embrace",
@@ -54,7 +55,8 @@ export const RELATIONSHIPS_LEXICON: VisualConcept[] = [
     "category": "relationships",
     "imageId": "heart",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "breakup_heartbreak",
@@ -78,7 +80,8 @@ export const RELATIONSHIPS_LEXICON: VisualConcept[] = [
     "category": "relationships",
     "imageId": "melancholy",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "shatter"
   },
   {
     "id": "friendship_crew",
@@ -102,7 +105,8 @@ export const RELATIONSHIPS_LEXICON: VisualConcept[] = [
     "category": "relationships",
     "imageId": "halcyon",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "clock"
   },
   {
     "id": "devotion_loyalty",
@@ -147,7 +151,8 @@ export const RELATIONSHIPS_LEXICON: VisualConcept[] = [
     "category": "relationships",
     "imageId": "rose",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fire"
   },
   {
     "id": "rel_term_1",

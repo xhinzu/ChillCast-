@@ -24,7 +24,8 @@ export const PARTY_NIGHT_LEXICON: VisualConcept[] = [
     "category": "party-night",
     "imageId": "neon",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "heartbeat"
   },
   {
     "id": "party_club",
@@ -50,7 +51,8 @@ export const PARTY_NIGHT_LEXICON: VisualConcept[] = [
     "category": "party-night",
     "imageId": "party",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "dance_groove",
@@ -75,7 +77,8 @@ export const PARTY_NIGHT_LEXICON: VisualConcept[] = [
     "category": "party-night",
     "imageId": "party",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "dance"
   },
   {
     "id": "cheers_toast",
@@ -95,7 +98,8 @@ export const PARTY_NIGHT_LEXICON: VisualConcept[] = [
     "category": "party-night",
     "imageId": "wine",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "mirror"
   },
   {
     "id": "dj_turntable",
@@ -118,7 +122,8 @@ export const PARTY_NIGHT_LEXICON: VisualConcept[] = [
     "category": "party-night",
     "imageId": "echo",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fall"
   },
   {
     "id": "spotlight_stage",
@@ -139,7 +144,8 @@ export const PARTY_NIGHT_LEXICON: VisualConcept[] = [
     "category": "party-night",
     "imageId": "spark",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "partynight_term_1",

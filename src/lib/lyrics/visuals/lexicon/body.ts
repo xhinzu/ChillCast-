@@ -24,7 +24,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "crimson",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "heartbeat"
   },
   {
     "id": "silhouette_shadow",
@@ -46,7 +47,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "silhouette",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "paranoia_watcher",
@@ -79,7 +81,8 @@ export const BODY_LEXICON: VisualConcept[] = [
         "look",
         "see"
       ]
-    }
+    },
+    "effectId": "eye"
   },
   {
     "id": "eyes_vision",
@@ -109,7 +112,8 @@ export const BODY_LEXICON: VisualConcept[] = [
       "excludes": [
         "needle"
       ]
-    }
+    },
+    "effectId": "eye"
   },
   {
     "id": "heart_organ",
@@ -131,7 +135,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "heart",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "heartbeat"
   },
   {
     "id": "lips_kiss",
@@ -155,7 +160,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "heart",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "love"
   },
   {
     "id": "hands_touch",
@@ -204,7 +210,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "melancholy",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "breath_lungs",
@@ -247,7 +254,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "poison",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "skull"
   },
   {
     "id": "wings_flight",
@@ -269,7 +277,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "halo",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "shatter"
   },
   {
     "id": "voice_throat",
@@ -292,7 +301,8 @@ export const BODY_LEXICON: VisualConcept[] = [
     "category": "body",
     "imageId": "echo",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "scream"
   },
   {
     "id": "skin_flesh",

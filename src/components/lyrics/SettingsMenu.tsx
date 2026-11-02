@@ -8,6 +8,7 @@ import {
   LyricsFont,
   saveLyricsSettings,
   DEFAULT_LYRICS_SETTINGS,
+  DEFAULT_INTENSE_EFFECTS,
 } from '@/lib/lyrics/settings';
 import { loadLyricTransform, saveLyricTransform } from '@/lib/lyrics/transform';
 import { Z_INDEX } from '@/constants/zIndex';
@@ -337,7 +338,7 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
           <div className="py-4 border-b border-[#282828] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                Visuals & Word Images
+                Visuals & Word Effects
               </span>
               <button
                 type="button"
@@ -347,6 +348,12 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                     iconsEnabled: true,
                     visualStyle: 'illustrated',
                     imageFrequency: 'normal',
+                    wordEffectsEnabled: true,
+                    effectFrequency: 'normal',
+                    effectStrength: 'normal',
+                    screenShakeEnabled: true,
+                    intenseEffectsEnabled: DEFAULT_INTENSE_EFFECTS,
+                    naturalColors: true,
                   });
                 }}
                 className="text-[10px] text-zinc-500 hover:text-zinc-300 underline cursor-pointer"
@@ -431,14 +438,143 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
               </div>
             </div>
 
-            {/* Legal Credits Link */}
+            {/* --- WORD EFFECTS --- */}
+            <div className="pt-2 border-t border-[#222222] space-y-3">
+              {/* Word effects toggle */}
+              <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+                <div>
+                  <span className="text-zinc-300 block font-medium">Word effects</span>
+                  <span className="text-[10px] text-zinc-500">Short animated visual effects triggered by lyric words</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.wordEffectsEnabled}
+                  onChange={(e) => updateSettings({ wordEffectsEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+                />
+              </label>
+
+              {settings.wordEffectsEnabled && (
+                <>
+                  {/* Effect frequency */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-zinc-400 block font-medium">Effect frequency</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(['low', 'normal', 'high'] as const).map((freq) => {
+                        const isSelected = settings.effectFrequency === freq;
+                        const labels: Record<string, string> = {
+                          low: 'Low',
+                          normal: 'Normal',
+                          high: 'High',
+                        };
+                        return (
+                          <button
+                            key={freq}
+                            type="button"
+                            onClick={() => updateSettings({ effectFrequency: freq })}
+                            className={`px-2 py-1.5 rounded text-[11px] font-medium transition-all cursor-pointer text-center ${
+                              isSelected
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/40 font-bold'
+                                : 'bg-[#181818] hover:bg-[#222222] text-zinc-400 border border-transparent'
+                            }`}
+                          >
+                            {labels[freq]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Effect strength */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-zinc-400 block font-medium">Effect strength</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(['subtle', 'normal', 'strong'] as const).map((str) => {
+                        const isSelected = settings.effectStrength === str;
+                        const labels: Record<string, string> = {
+                          subtle: 'Subtle',
+                          normal: 'Normal',
+                          strong: 'Strong',
+                        };
+                        return (
+                          <button
+                            key={str}
+                            type="button"
+                            onClick={() => updateSettings({ effectStrength: str })}
+                            className={`px-2 py-1.5 rounded text-[11px] font-medium transition-all cursor-pointer text-center ${
+                              isSelected
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/40 font-bold'
+                                : 'bg-[#181818] hover:bg-[#222222] text-zinc-400 border border-transparent'
+                            }`}
+                          >
+                            {labels[str]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Screen shake toggle */}
+                  <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+                    <div>
+                      <span className="text-zinc-300 block">Screen shake</span>
+                      <span className="text-[10px] text-zinc-500">Very slight impact vibrations</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.screenShakeEnabled}
+                      onChange={(e) => updateSettings({ screenShakeEnabled: e.target.checked })}
+                      className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+                    />
+                  </label>
+
+                  {/* Natural colors toggle */}
+                  <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+                    <div>
+                      <span className="text-zinc-300 block">Natural colors</span>
+                      <span className="text-[10px] text-zinc-500">Organic colors for fire & water effects</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.naturalColors}
+                      onChange={(e) => updateSettings({ naturalColors: e.target.checked })}
+                      className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+                    />
+                  </label>
+
+                  {/* Intense effects toggle */}
+                  <label className="flex items-center justify-between text-xs cursor-pointer select-none">
+                    <div>
+                      <span className="text-zinc-300 block">Intense effects</span>
+                      <span className="text-[10px] text-zinc-500">Weapons and darker themes, stylized and non-graphic</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.intenseEffectsEnabled}
+                      onChange={(e) => updateSettings({ intenseEffectsEnabled: e.target.checked })}
+                      className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-red-500 focus:ring-0 cursor-pointer accent-red-500"
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+
+            {/* Links row */}
             <div className="pt-1 flex items-center justify-between text-[11px]">
-              <span className="text-zinc-500 text-[10px]">Asset Sources & Licenses</span>
+              <a
+                href="/dev/effects"
+                target="_blank"
+                rel="noreferrer"
+                className="text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 font-medium text-[10px]"
+              >
+                <span>Effect Gallery</span>
+                <span className="text-xs">↗</span>
+              </a>
               <a
                 href="/credits"
                 target="_blank"
                 rel="noreferrer"
-                className="text-red-400 hover:text-red-300 hover:underline flex items-center gap-1 font-medium"
+                className="text-red-400 hover:text-red-300 hover:underline flex items-center gap-1 font-medium text-[10px]"
               >
                 <span>Legal Credits</span>
                 <span className="text-xs">↗</span>

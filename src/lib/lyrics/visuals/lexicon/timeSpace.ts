@@ -20,7 +20,8 @@ export const TIME_SPACE_LEXICON: VisualConcept[] = [
     "category": "time-space",
     "imageId": "nocturne",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "ephemeral_fleeting",
@@ -92,7 +93,8 @@ export const TIME_SPACE_LEXICON: VisualConcept[] = [
     "category": "time-space",
     "imageId": "eclipse",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "moon"
   },
   {
     "id": "vows_eternity",
@@ -117,7 +119,8 @@ export const TIME_SPACE_LEXICON: VisualConcept[] = [
     "category": "time-space",
     "imageId": "vows",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "clock"
   },
   {
     "id": "aurora_borealis",
@@ -135,7 +138,8 @@ export const TIME_SPACE_LEXICON: VisualConcept[] = [
     "category": "time-space",
     "imageId": "aurora",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "star_celestial",
@@ -159,7 +163,8 @@ export const TIME_SPACE_LEXICON: VisualConcept[] = [
     "category": "time-space",
     "imageId": "spark",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "star"
   },
   {
     "id": "century_ages",
@@ -182,7 +187,8 @@ export const TIME_SPACE_LEXICON: VisualConcept[] = [
     "category": "time-space",
     "imageId": "ephemeral",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "future_destiny",

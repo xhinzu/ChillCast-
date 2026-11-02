@@ -25,7 +25,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "serenade",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "music"
   },
   {
     "id": "requiem_dirge",
@@ -48,7 +49,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "requiem",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "dream"
   },
   {
     "id": "cadence_rhythm",
@@ -71,7 +73,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "cadence",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "heartbeat"
   },
   {
     "id": "ballad_acoustic",
@@ -94,7 +97,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "ballad",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "music"
   },
   {
     "id": "echo_resonance",
@@ -117,7 +121,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "echo",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "sing_vocalist",
@@ -142,7 +147,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "serenade",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "love"
   },
   {
     "id": "drums_beat",
@@ -166,7 +172,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "cadence",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "heartbeat"
   },
   {
     "id": "piano_keys",
@@ -187,7 +194,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "serenade",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "crash"
   },
   {
     "id": "bass_frequencies",
@@ -206,7 +214,8 @@ export const MUSIC_LEXICON: VisualConcept[] = [
     "category": "music",
     "imageId": "echo",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fall"
   },
   {
     "id": "symphony_orchestra",

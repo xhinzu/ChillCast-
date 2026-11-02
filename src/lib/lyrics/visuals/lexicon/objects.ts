@@ -33,7 +33,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
         "betray",
         "stab"
       ]
-    }
+    },
+    "effectId": "love"
   },
   {
     "id": "rust_chains",
@@ -59,7 +60,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "rust",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "shatter"
   },
   {
     "id": "quill_parchment",
@@ -107,7 +109,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "odyssey",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "masquerade_mask",
@@ -152,7 +155,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "silhouette",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "shatter"
   },
   {
     "id": "candle_flame",
@@ -172,7 +176,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "requiem",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "candle"
   },
   {
     "id": "key_lock",
@@ -194,7 +199,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "rust",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "love"
   },
   {
     "id": "phone_call",
@@ -218,7 +224,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "party",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "phone"
   },
   {
     "id": "book_pages",
@@ -241,7 +248,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "quill",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "door"
   },
   {
     "id": "camera_photo",
@@ -285,7 +293,8 @@ export const OBJECTS_LEXICON: VisualConcept[] = [
     "category": "objects",
     "imageId": "ephemeral",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "speed"
   },
   {
     "id": "object_term_1",

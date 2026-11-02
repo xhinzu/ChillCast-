@@ -23,7 +23,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "halo",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "angel"
   },
   {
     "id": "ethereal_spirit",
@@ -45,7 +46,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "ethereal",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "phantom_ghost",
@@ -72,7 +74,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "phantom",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "ghost"
   },
   {
     "id": "inferno_blaze",
@@ -94,7 +97,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "inferno",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "fire"
   },
   {
     "id": "cinder_flame",
@@ -131,7 +135,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
         "fire him",
         "fire her"
       ]
-    }
+    },
+    "effectId": "lightning"
   },
   {
     "id": "embers_ashes",
@@ -154,7 +159,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "embers",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fire"
   },
   {
     "id": "poison_venom",
@@ -178,7 +184,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "poison",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "fall"
   },
   {
     "id": "demon_devil",
@@ -225,7 +232,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "alchemy",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "magic"
   },
   {
     "id": "shadow_realm",
@@ -242,7 +250,8 @@ export const FANTASY_DARK_LEXICON: VisualConcept[] = [
     "category": "fantasy-dark",
     "imageId": "silhouette",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "moon"
   },
   {
     "id": "fantasydark_term_1",

@@ -72,7 +72,8 @@ export const PLACES_LEXICON: VisualConcept[] = [
     "category": "places",
     "imageId": "abyss",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "star"
   },
   {
     "id": "castle_fortress",
@@ -120,7 +121,8 @@ export const PLACES_LEXICON: VisualConcept[] = [
     "category": "places",
     "imageId": "silhouette",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "home_house",
@@ -145,7 +147,8 @@ export const PLACES_LEXICON: VisualConcept[] = [
     "category": "places",
     "imageId": "sanctuary",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "speed"
   },
   {
     "id": "bridge_crossing",
@@ -166,7 +169,8 @@ export const PLACES_LEXICON: VisualConcept[] = [
     "category": "places",
     "imageId": "labyrinth",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fire"
   },
   {
     "id": "garden_eden",
@@ -186,7 +190,8 @@ export const PLACES_LEXICON: VisualConcept[] = [
     "category": "places",
     "imageId": "rose",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "flower"
   },
   {
     "id": "graveyard_cemetery",
@@ -209,7 +214,8 @@ export const PLACES_LEXICON: VisualConcept[] = [
     "category": "places",
     "imageId": "requiem",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "snow"
   },
   {
     "id": "place_term_1",

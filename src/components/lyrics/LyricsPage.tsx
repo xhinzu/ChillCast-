@@ -41,6 +41,8 @@ import WebStage from './styles/WebStage';
 
 import { precomputeVisualTimeline } from '@/lib/lyrics/visuals/matcher';
 import { preloadUpcomingCues } from './visuals/WordVisualCue';
+import InspectModal from './InspectModal';
+import { WordEffectsCanvas, WordEffectsCanvasHandle } from './visuals/WordEffectsCanvas';
 
 import { parseEnhancedLrc, ParseEnhancedLrcResult } from '@/lib/lyrics/parseEnhancedLrc';
 import { isMostlyUppercase, fixSentenceCase, fixLineSentenceCase } from '@/lib/lyrics/textCase';
@@ -160,6 +162,10 @@ export default function LyricsPage() {
   const [modalShareWithEveryone, setModalShareWithEveryone] = useState<boolean>(false);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
   const [hoveredWordTiming, setHoveredWordTiming] = useState<string | null>(null);
+
+  // Word Effects & Inspect State
+  const [showInspectModal, setShowInspectModal] = useState<boolean>(false);
+  const effectsCanvasRef = useRef<WordEffectsCanvasHandle | null>(null);
 
   // Debounced live format detection and parse for custom lyric input (Part 2)
   useEffect(() => {
@@ -1465,6 +1471,17 @@ export default function LyricsPage() {
             onUpdate={(newSettings) => setSettings(newSettings)}
           />
 
+          {/* Inspect Word Effects & Settings */}
+          <button
+            type="button"
+            onClick={() => setShowInspectModal(true)}
+            className="h-9 w-9 rounded-xl bg-[#161616] hover:bg-[#262626] border border-[#282828] text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            title="Inspect Word Effects & Settings"
+            aria-label="Inspect Word Effects & Settings"
+          >
+            🔍
+          </button>
+
           <button
             type="button"
             onClick={toggleFullscreen}
@@ -1698,8 +1715,26 @@ export default function LyricsPage() {
         {currentTrack &&
           !isLoading &&
           !lyricsResult?.instrumental &&
-          displayLines.length > 0 &&
-          renderStyleStage()}
+          displayLines.length > 0 && (
+            <>
+              {renderStyleStage()}
+              <WordEffectsCanvas
+                ref={effectsCanvasRef}
+                lines={displayLines}
+                activeLineIndex={lineIndex}
+                activeWordIndex={wordIndex}
+                visualTimeline={visualTimeline}
+                stageContainerRef={stageWrapperRef}
+                wordEffectsEnabled={settings.wordEffectsEnabled}
+                effectFrequency={settings.effectFrequency}
+                effectStrength={settings.effectStrength}
+                screenShakeEnabled={settings.screenShakeEnabled}
+                intenseEffectsEnabled={settings.intenseEffectsEnabled}
+                naturalColors={settings.naturalColors}
+                chromaEnabled={settings.chromaEnabled}
+              />
+            </>
+          )}
 
         {/* Not Found State with Inline Manual Fix & Add Lyrics */}
         {currentTrack &&
@@ -2322,6 +2357,16 @@ export default function LyricsPage() {
           </button>
         </div>
       )}
+
+      {/* Inspect Modal */}
+      <InspectModal
+        isOpen={showInspectModal}
+        onClose={() => setShowInspectModal(false)}
+        settings={settings}
+        onTriggerEffect={(id, params) => {
+          effectsCanvasRef.current?.triggerEffect(id, params);
+        }}
+      />
     </div>
   );
 }

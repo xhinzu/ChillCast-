@@ -7,6 +7,7 @@ import {
   ImageFrequency,
 } from './types';
 import { ENGLISH_LEXICON } from './lexicon';
+import { getEffectIdForWord } from './effects/catalog';
 
 /**
  * Common filler, pronoun, preposition, and function words that must NEVER
@@ -514,7 +515,7 @@ export function precomputeVisualTimeline(
         wordIndex,
         conceptId: concept.id,
         imageId: concept.imageId,
-        effectId: concept.effectId,
+        effectId: concept.effectId || getEffectIdForWord(words[wordIndex].text),
         intensity: concept.intensity,
         wordText: words[wordIndex].text,
         weight: concept.weight,

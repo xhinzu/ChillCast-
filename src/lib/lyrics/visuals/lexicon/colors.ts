@@ -37,7 +37,8 @@ export const COLORS_LEXICON: VisualConcept[] = [
     "category": "colors",
     "imageId": "opulence",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "clock"
   },
   {
     "id": "color_blue",
@@ -59,7 +60,8 @@ export const COLORS_LEXICON: VisualConcept[] = [
     "category": "colors",
     "imageId": "ocean",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "ocean"
   },
   {
     "id": "color_purple",
@@ -79,7 +81,8 @@ export const COLORS_LEXICON: VisualConcept[] = [
     "category": "colors",
     "imageId": "alchemy",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "cloud"
   },
   {
     "id": "color_black",
@@ -99,7 +102,8 @@ export const COLORS_LEXICON: VisualConcept[] = [
     "category": "colors",
     "imageId": "silhouette",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "color_white",
@@ -118,7 +122,8 @@ export const COLORS_LEXICON: VisualConcept[] = [
     "category": "colors",
     "imageId": "halcyon",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "crash"
   },
   {
     "id": "color_green",
@@ -154,7 +159,8 @@ export const COLORS_LEXICON: VisualConcept[] = [
     "category": "colors",
     "imageId": "diamond",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "color_term_1",

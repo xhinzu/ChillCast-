@@ -23,7 +23,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "siren",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "ocean"
   },
   {
     "id": "venom_serpent",
@@ -50,7 +51,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "venom",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "poison"
   },
   {
     "id": "wolf_pack",
@@ -72,7 +74,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "phantom",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "lion_king",
@@ -94,7 +97,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "opulence",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "scream"
   },
   {
     "id": "dove_bird",
@@ -115,7 +119,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "halcyon",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "crash"
   },
   {
     "id": "raven_crow",
@@ -155,7 +160,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "rose",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fire"
   },
   {
     "id": "dragon_myth",
@@ -196,7 +202,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "ship",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "phoenix_rebirth",
@@ -212,7 +219,8 @@ export const ANIMALS_LEXICON: VisualConcept[] = [
     "category": "animals",
     "imageId": "inferno",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "rise"
   },
   {
     "id": "animal_term_1",

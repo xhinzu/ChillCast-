@@ -47,7 +47,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "lullaby",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "dream"
   },
   {
     "id": "fly_soar",
@@ -72,7 +73,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "halo",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "wind"
   },
   {
     "id": "fall_drop",
@@ -99,7 +101,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "abyss",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "speed"
   },
   {
     "id": "run_escape",
@@ -125,7 +128,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "car",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "speed"
   },
   {
     "id": "rise_ascend",
@@ -149,7 +153,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "spark",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rise"
   },
   {
     "id": "break_shatter",
@@ -174,7 +179,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "dagger",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "crash"
   },
   {
     "id": "burn_ignite",
@@ -196,7 +202,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "inferno",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "fire"
   },
   {
     "id": "drown_submerge",
@@ -218,7 +225,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "ocean",
     "weight": 8,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "rain"
   },
   {
     "id": "fade_vanish",
@@ -265,7 +273,8 @@ export const ACTIONS_LEXICON: VisualConcept[] = [
     "category": "actions",
     "imageId": "halcyon",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "clock"
   },
   {
     "id": "action_term_1",

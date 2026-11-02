@@ -23,7 +23,8 @@ export const FOOD_DRINK_LEXICON: VisualConcept[] = [
     "category": "food-drink",
     "imageId": "alchemy",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "magic"
   },
   {
     "id": "wine_toast",
@@ -49,7 +50,8 @@ export const FOOD_DRINK_LEXICON: VisualConcept[] = [
     "category": "food-drink",
     "imageId": "wine",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "mirror"
   },
   {
     "id": "cocktail_liquor",
@@ -94,7 +96,8 @@ export const FOOD_DRINK_LEXICON: VisualConcept[] = [
         "bottle",
         "ice"
       ]
-    }
+    },
+    "effectId": "fire"
   },
   {
     "id": "coffee_cafe",
@@ -116,7 +119,8 @@ export const FOOD_DRINK_LEXICON: VisualConcept[] = [
     "category": "food-drink",
     "imageId": "alchemy",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rise"
   },
   {
     "id": "tea_ceremony",
@@ -136,7 +140,8 @@ export const FOOD_DRINK_LEXICON: VisualConcept[] = [
     "category": "food-drink",
     "imageId": "halcyon",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rise"
   },
   {
     "id": "sweet_honey",
@@ -225,7 +230,8 @@ export const FOOD_DRINK_LEXICON: VisualConcept[] = [
     "category": "food-drink",
     "imageId": "wine",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "moon"
   },
   {
     "id": "food_term_1",

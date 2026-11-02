@@ -24,7 +24,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "rose",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "flower"
   },
   {
     "id": "chrysanthemum",
@@ -50,7 +51,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "chrysanthemum",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "flower"
   },
   {
     "id": "thorns",
@@ -77,7 +79,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "thorns",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "ocean_wave",
@@ -106,7 +109,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "ocean",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "ocean"
   },
   {
     "id": "petrichor",
@@ -133,7 +137,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "petrichor",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "cascade",
@@ -158,7 +163,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "cascade",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fall"
   },
   {
     "id": "forest_trees",
@@ -212,7 +218,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "thorns",
     "weight": 5,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "fall"
   },
   {
     "id": "mountain_peak",
@@ -266,7 +273,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "rose",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "sun"
   },
   {
     "id": "desert_dunes",
@@ -315,7 +323,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "cascade",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "speed"
   },
   {
     "id": "island_shore",
@@ -363,7 +372,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "rose",
     "weight": 6,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "rain"
   },
   {
     "id": "stone_earth",
@@ -388,7 +398,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "cascade",
     "weight": 5,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "spin"
   },
   {
     "id": "coral_reef",
@@ -495,7 +506,8 @@ export const NATURE_LEXICON: VisualConcept[] = [
     "category": "nature",
     "imageId": "inferno",
     "weight": 9,
-    "intensity": "intense"
+    "intensity": "intense",
+    "effectId": "rise"
   },
   {
     "id": "breeze_woods",

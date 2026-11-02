@@ -6,8 +6,70 @@ if (!fs.existsSync(targetDir)) {
   fs.mkdirSync(targetDir, { recursive: true });
 }
 
+const WORD_EFFECT_MAP = {
+  bomb: ['bomb', 'explode', 'blast', 'boom', 'bang', 'detonate'],
+  lightning: ['thunder', 'lightning', 'electric', 'shock', 'spark', 'voltage'],
+  scream: ['scream', 'loud', 'shout', 'roar'],
+  crash: ['crash', 'smash', 'hit', 'punch', 'knock', 'slam'],
+  shatter: ['break', 'broken', 'shatter', 'crack', 'crush'],
+  heartbeat: ['heartbeat', 'pulse', 'beat'],
+  fire: ['fire', 'flame', 'burn', 'blaze', 'inferno', 'hot', 'ember', 'ashes'],
+  sun: ['sun', 'shine', 'bright', 'glow', 'light'],
+  star: ['star', 'sparkle', 'glitter', 'diamond', 'shiny'],
+  magic: ['magic', 'spell', 'wish', 'charm', 'alchemy'],
+  candle: ['candle', 'lantern'],
+  rain: ['rain', 'drizzle', 'storm', 'tears', 'cry', 'sorrow'],
+  ocean: ['ocean', 'wave', 'sea', 'flood', 'drown', 'tide'],
+  snow: ['snow', 'ice', 'cold', 'freeze', 'winter', 'frost'],
+  wind: ['wind', 'breeze', 'storm winds', 'fly', 'feather'],
+  cloud: ['cloud', 'smoke', 'fog', 'high', 'haze'],
+  moon: ['moon', 'night', 'midnight', 'dark'],
+  rainbow: ['rainbow'],
+  love: ['love', 'heart', 'kiss', 'romance'],
+  heartbreak: ['heartbreak', 'lonely', 'alone', 'miss', 'goodbye'],
+  angel: ['angel', 'halo', 'heaven'],
+  ghost: ['ghost', 'phantom', 'spirit', 'haunt'],
+  dream: ['dream', 'sleep', 'lullaby'],
+  confetti: ['laugh', 'smile', 'joy', 'party', 'celebrate', 'confetti'],
+  speed: ['run', 'fast', 'speed', 'race', 'drive', 'car', 'engine'],
+  fall: ['fall', 'drop', 'down', 'sink'],
+  rise: ['rise', 'up', 'climb', 'soar', 'wings', 'bird'],
+  spin: ['spin', 'circle', 'dizzy', 'round'],
+  dance: ['dance', 'groove', 'swing'],
+  clock: ['time', 'clock', 'hour', 'forever'],
+  echo: ['echo', 'repeat', 'whisper'],
+  shadow: ['shadow', 'silhouette'],
+  coins: ['money', 'cash', 'gold', 'rich', 'coin', 'luxury', 'crown', 'king', 'queen'],
+  phone: ['phone', 'call', 'ring'],
+  glitch: ['glitch', 'error', 'static', 'broken signal'],
+  poison: ['poison', 'toxic', 'venom', 'potion'],
+  flower: ['flower', 'bloom', 'garden', 'petals'],
+  butterfly: ['butterfly', 'bee', 'firefly'],
+  chains: ['chains', 'cage', 'trapped', 'prison'],
+  mirror: ['mirror', 'glass', 'reflection'],
+  eye: ['eye', 'watch', 'see', 'stare'],
+  door: ['door', 'key', 'open', 'lock'],
+  drink: ['drink', 'wine', 'cheers', 'champagne'],
+  music: ['music', 'melody', 'song', 'sing', 'guitar', 'drum'],
+  gun: ['gun', 'shoot', 'shot', 'trigger', 'bullet', 'pistol'],
+  knife: ['knife', 'dagger', 'blade', 'sword', 'cut', 'slash'],
+  blood: ['blood', 'bleed', 'wound'],
+  skull: ['skull', 'grave', 'coffin', 'death', 'dead', 'die', 'kill'],
+  war: ['war', 'battle', 'fight'],
+};
+
 // Helper to write a category module
 function writeCategoryFile(filename, varName, concepts) {
+  for (const c of concepts) {
+    if (!c.effectId) {
+      for (const [effId, words] of Object.entries(WORD_EFFECT_MAP)) {
+        if (words.some((w) => c.words.includes(w) || (c.phrases && c.phrases.some((p) => p.includes(w))))) {
+          c.effectId = effId;
+          break;
+        }
+      }
+    }
+  }
   const content = `import { VisualConcept } from '../types';
 
 export const ${varName}: VisualConcept[] = ${JSON.stringify(concepts, null, 2)};

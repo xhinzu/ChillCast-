@@ -24,7 +24,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "opulence",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "monarch_sovereign",
@@ -55,7 +56,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "monarch",
     "weight": 9,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "ocean"
   },
   {
     "id": "diamond_gems",
@@ -80,7 +82,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "diamond",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "star"
   },
   {
     "id": "gold_wealth",
@@ -106,7 +109,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "opulence",
     "weight": 8,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "love"
   },
   {
     "id": "silver_shine",
@@ -126,7 +130,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "diamond",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "cash_money",
@@ -151,7 +156,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "diamond",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "palace_mansion",
@@ -170,7 +176,8 @@ export const MONEY_LUXURY_LEXICON: VisualConcept[] = [
     "category": "money-luxury",
     "imageId": "monarch",
     "weight": 7,
-    "intensity": "normal"
+    "intensity": "normal",
+    "effectId": "coins"
   },
   {
     "id": "money_term_1",
