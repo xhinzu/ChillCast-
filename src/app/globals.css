@@ -25,6 +25,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Electron Window Dragging */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 /* Chillify Spotify-Style Card (Black & Grey) */
 .spotify-card {
   background-color: #161616;

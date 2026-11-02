@@ -10,6 +10,7 @@ import { TrackInfo } from '@/types/playback';
 import { ENGLISH_TRACKS, MALAYALAM_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
 import DualVinylMixer from '@/components/mixer/DualVinylMixer';
 import LyricsPage from '@/components/lyrics/LyricsPage';
+import { formatCleanDisplayTrack } from '@/lib/lyrics/normalize';
 import {
   ALL_GENRE_TRENDING_SONGS,
   DEFAULT_STARTER_PLAYLISTS,
@@ -256,15 +257,26 @@ export default function SpotifyMainContent({
       const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
       yt?.primeAudioStream?.(video.id);
     }
-    loadPlaylist(video.id, 'youtube');
+    const cleanInfo = formatCleanDisplayTrack(video.title, video.channel);
+    const trackItem: TrackInfo = {
+      id: video.id,
+      title: cleanInfo.cleanTitle || video.title,
+      artist: cleanInfo.cleanArtist || video.channel,
+      duration: parseDurationSeconds(video.duration || '0:00'),
+      artworkUrl: video.thumbnail || `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`,
+      source: 'youtube',
+      sourceUrl: `https://www.youtube.com/watch?v=${video.id}`,
+    };
+    playCustomTrackList([trackItem], 0);
   };
 
   // Add video to an existing or new Custom Playlist
   const handleAddVideoToPlaylist = (playlistId: string, video: YouTubeSearchResult) => {
+    const cleanInfo = formatCleanDisplayTrack(video.title, video.channel);
     const trackItem: CustomPlaylistTrack = {
       id: video.id,
-      title: video.title,
-      artist: video.channel,
+      title: cleanInfo.cleanTitle || video.title,
+      artist: cleanInfo.cleanArtist || video.channel,
       duration: video.duration,
       thumbnail: video.thumbnail,
       addedAt: Date.now(),

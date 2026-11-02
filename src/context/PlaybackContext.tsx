@@ -39,7 +39,7 @@ interface PlaybackContextValue {
   toggleMute: () => void;
   nextTrack: () => void;
   previousTrack: () => void;
-  loadPlaylist: (urlOrId: string, preferredType?: AdapterType) => Promise<void>;
+  loadPlaylist: (urlOrId: string, preferredType?: AdapterType, trackHint?: Partial<TrackInfo>) => Promise<void>;
   loadCustomLocalFile: (file: File) => Promise<void>;
   toggleSpatial8D: () => void;
   toggleMuffled: () => void;
@@ -250,7 +250,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (adapter) {
-        await adapter.loadPlaylist(track.sourceUrl || track.id);
+        if ('loadTrack' in adapter && typeof (adapter as { loadTrack?: (t: TrackInfo) => Promise<void> }).loadTrack === 'function') {
+          await (adapter as { loadTrack: (t: TrackInfo) => Promise<void> }).loadTrack(track);
+        } else {
+          await adapter.loadPlaylist(track.sourceUrl || track.id, track);
+        }
         await adapter.play();
       }
     },
@@ -285,11 +289,31 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, [playCustomTrackList]);
 
+  // Listen to desktop hardware media keys
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window as unknown as { myujikuDesktop?: { onMediaKey: (cb: (k: string) => void) => () => void } }).myujikuDesktop
+    ) {
+      const desktop = (window as unknown as { myujikuDesktop: { onMediaKey: (cb: (k: string) => void) => () => void } }).myujikuDesktop;
+      const cleanup = desktop.onMediaKey((key: string) => {
+        if (key === 'play-pause') {
+          togglePlay();
+        } else if (key === 'next') {
+          nextTrack();
+        } else if (key === 'prev') {
+          previousTrack();
+        }
+      });
+      return cleanup;
+    }
+  }, [togglePlay, nextTrack, previousTrack]);
+
   const loadPlaylist = useCallback(
-    async (urlOrId: string, preferredType?: AdapterType) => {
+    async (urlOrId: string, preferredType?: AdapterType, trackHint?: Partial<TrackInfo>) => {
       setErrorMessage(null);
       setCurrentTime(0);
-      setDuration(0);
+      setDuration(trackHint?.duration || 0);
       playlistQueueRef.current = { tracks: [], currentIndex: 0 };
 
       // Auto-detect or select adapter type
@@ -315,7 +339,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (adapter) {
-        await adapter.loadPlaylist(urlOrId);
+        await adapter.loadPlaylist(urlOrId, trackHint);
         await adapter.play();
       }
     },

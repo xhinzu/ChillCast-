@@ -60,7 +60,7 @@ export default function LiveLyrics() {
             return;
           }
         }
-      } catch {}
+      } catch { }
 
       const params = new URLSearchParams({
         title: currentTrack.title,
@@ -165,11 +165,10 @@ export default function LiveLyrics() {
             <button
               type="button"
               onClick={() => setAutoScroll(!autoScroll)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-medium transition-colors cursor-pointer border ${
-                autoScroll
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-medium transition-colors cursor-pointer border ${autoScroll
                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
                   : 'bg-white/[0.04] text-slate-400 border-white/[0.06]'
-              }`}
+                }`}
               title={autoScroll ? 'Auto-scroll is ON' : 'Auto-scroll is OFF'}
             >
               Auto-Scroll: {autoScroll ? 'ON' : 'OFF'}
@@ -229,13 +228,12 @@ export default function LiveLyrics() {
                       else lineRefs.current.delete(idx);
                     }}
                     onClick={() => handleLineClick(line.time)}
-                    className={`py-1.5 px-3 rounded-xl transition-colors duration-150 cursor-pointer text-sm sm:text-base font-medium ${
-                      isActive
+                    className={`py-1.5 px-3 rounded-xl transition-colors duration-150 cursor-pointer text-sm sm:text-base font-medium ${isActive
                         ? 'text-purple-200 font-bold bg-purple-500/20 shadow-sm shadow-purple-500/20 pl-4 border-l-2 border-purple-400'
                         : isPast
-                        ? 'text-slate-400 hover:text-slate-200 opacity-70'
-                        : 'text-slate-500 hover:text-slate-300 opacity-50'
-                    }`}
+                          ? 'text-slate-400 hover:text-slate-200 opacity-70'
+                          : 'text-slate-500 hover:text-slate-300 opacity-50'
+                      }`}
                   >
                     {line.text}
                   </p>

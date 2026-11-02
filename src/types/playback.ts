@@ -37,7 +37,7 @@ export interface PlaybackAdapter {
   /**
    * Loads a playlist or audio stream by URL or identifier.
    */
-  loadPlaylist(idOrUrl: string): Promise<TrackInfo[]>;
+  loadPlaylist(idOrUrl: string, trackHint?: Partial<TrackInfo>): Promise<TrackInfo[]>;
 
   /**
    * Loads a specific track into playback.

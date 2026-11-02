@@ -293,7 +293,10 @@ async function searchViaYtDlp(
   allowLongTracks: boolean
 ): Promise<YouTubeSearchResult[]> {
   const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-  const ytdlPath = path.join(process.cwd(), binaryName);
+  const ytdlPath =
+    process.env.YT_DLP_PATH && fs.existsSync(process.env.YT_DLP_PATH)
+      ? process.env.YT_DLP_PATH
+      : path.join(process.cwd(), binaryName);
 
   if (!fs.existsSync(ytdlPath)) {
     throw new Error(`yt-dlp binary not found at ${ytdlPath}`);

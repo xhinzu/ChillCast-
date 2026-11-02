@@ -40,6 +40,13 @@ export default function SpotifyTopNav({
   };
 
   const [isCoffeeModalOpen, setIsCoffeeModalOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as unknown as { myujikuDesktop?: unknown }).myujikuDesktop) {
+      setIsDesktop(true);
+    }
+  }, []);
 
   // Close popup with Escape key
   useEffect(() => {
@@ -55,9 +62,9 @@ export default function SpotifyTopNav({
   }, [isCoffeeModalOpen]);
 
   return (
-    <header className="h-14 w-full bg-black flex items-center justify-between px-2.5 sm:px-6 shrink-0 z-40 select-none border-b border-[#1c1c1c]">
+    <header className="h-14 w-full bg-black flex items-center justify-between px-2.5 sm:px-6 shrink-0 z-40 select-none border-b border-[#1c1c1c] titlebar-drag">
       {/* Left: Brand & Navigation arrows */}
-      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0 titlebar-no-drag">
         <div
           onClick={() => {
             setActiveView('home');
@@ -119,7 +126,7 @@ export default function SpotifyTopNav({
       </div>
 
       {/* Center: Functional YouTube Music Search Bar */}
-      <div className="flex-1 max-w-lg mx-2 sm:mx-4">
+      <div className="flex-1 max-w-lg mx-2 sm:mx-4 titlebar-no-drag">
         <div className="relative flex items-center">
           <span className="absolute left-3 sm:left-3.5 text-[#888888] text-sm pointer-events-none">
             <svg
@@ -214,7 +221,7 @@ export default function SpotifyTopNav({
       </div>
 
       {/* Right: Buy Me a Coffee & Status indicator */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className={`flex items-center gap-2 sm:gap-3 shrink-0 titlebar-no-drag transition-all ${isDesktop ? 'sm:mr-36 mr-28' : ''}`}>
         {/* Playback status pulse */}
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161616] border border-[#282828] text-xs text-[#888888]">
           <span

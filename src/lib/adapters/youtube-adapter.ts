@@ -2,6 +2,7 @@ import { BasePlaybackAdapter } from './base-adapter';
 import { AdapterType, TrackInfo } from '@/types/playback';
 import { parseYouTubeInput } from '@/lib/youtube-utils';
 import { YTPlayer, YTPlayerOptions } from '@/types/youtube';
+import { formatCleanDisplayTrack } from '@/lib/lyrics/normalize';
 
 // Default curated chill playlist (Lofi Girl chill beats)
 export const DEFAULT_CHILL_PLAYLIST_ID = 'PL6NdkXsTSxKMU_F2LTuicHw6N67Fm1sWp';
@@ -16,6 +17,10 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private currentVideoId: string | null = null;
   private isApiReady = false;
   private pendingTarget: { type: 'playlist' | 'video'; id: string } | null = null;
+
+  // Seeking guard to prevent YouTube iframe async position lag from overwriting seek time
+  private isSeeking = false;
+  private seekDebounceTimer: number | null = null;
 
   // Stream proxy audio element for Web Audio DSP & embed fallback
   private streamAudio: HTMLAudioElement | null = null;
@@ -188,11 +193,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         this.audioCtx.resume().catch(() => {});
       }
       this.isStreamingActive = true;
-      if (this.player) {
+      if (this.player && !this.isDirectStreamFallback && !this.isSeeking) {
         try {
-          // Synchronize stream currentTime to YouTube player
+          // Synchronize stream currentTime to YouTube player only if valid
           const ytTime = this.player.getCurrentTime();
-          if (typeof ytTime === 'number' && Math.abs((this.streamAudio?.currentTime || 0) - ytTime) > 0.6) {
+          if (typeof ytTime === 'number' && ytTime > 0 && Math.abs((this.streamAudio?.currentTime || 0) - ytTime) > 0.6) {
             if (this.streamAudio) this.streamAudio.currentTime = ytTime;
           }
           this.player.mute();
@@ -378,7 +383,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
           onError: async (e) => {
             // Error 101 / 150 = Embedded playback forbidden by video owner
             // Error 100 = Video removed or not found
-            if (e.data === 101 || e.data === 150 || e.data === 100) {
+            // Error 5 = HTML5 player error
+            // Error 2 = Invalid parameter
+            if (e.data === 101 || e.data === 150 || e.data === 100 || e.data === 5 || e.data === 2) {
               const targetVideoId =
                 this.currentVideoId ||
                 this.pendingTarget?.id ||
@@ -468,19 +475,41 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       const trackChanged = videoId !== this.currentVideoId;
       const durationChanged = dur > 0 && Math.abs(dur - this.duration) > 0.5;
 
+      const currentHasRealTitle =
+        this.currentTrack?.title &&
+        !['YouTube Video', 'YouTube Track', 'YouTube Playlist', 'YouTube Stream'].includes(this.currentTrack.title);
+      const currentHasRealArtist =
+        this.currentTrack?.artist &&
+        !['YouTube Artist', 'YouTube Stream', 'YouTube'].includes(this.currentTrack.artist);
+
       if (trackChanged || durationChanged || !this.currentTrack) {
         this.currentVideoId = videoId;
         if (dur > 0) {
           this.duration = dur;
         }
 
+        let resolvedTitle = this.currentTrack?.title || 'YouTube Track';
+        let resolvedArtist = this.currentTrack?.artist || 'YouTube Artist';
+
+        // Only derive from YouTube iframe videoData if it's a new video or if current title was a placeholder
+        if (trackChanged || !currentHasRealTitle) {
+          if (data?.title && data.title !== '') {
+            const clean = formatCleanDisplayTrack(data.title, data.author);
+            resolvedTitle = clean.cleanTitle || data.title;
+            resolvedArtist = clean.cleanArtist || data.author || resolvedArtist;
+          }
+        } else if (!currentHasRealArtist && data?.author) {
+          const clean = formatCleanDisplayTrack(resolvedTitle, data.author);
+          resolvedArtist = clean.cleanArtist || data.author;
+        }
+
         const track: TrackInfo = {
           id: videoId,
-          title: data?.title && data.title !== '' ? data.title : (this.currentTrack?.title || 'YouTube Track'),
-          artist: data?.author && data.author !== '' ? data.author : (this.currentTrack?.artist || 'YouTube Artist'),
-          album: 'YouTube',
+          title: resolvedTitle,
+          artist: resolvedArtist,
+          album: this.currentTrack?.album || 'YouTube',
           duration: this.duration,
-          artworkUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          artworkUrl: this.currentTrack?.artworkUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           source: 'youtube',
           sourceUrl: `https://www.youtube.com/watch?v=${videoId}`,
         };
@@ -496,8 +525,30 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.stopPositionTimer();
     this.positionInterval = window.setInterval(() => {
       if (this.state === 'playing') {
+        // If actively seeking, do not poll or overwrite position
+        if (this.isSeeking) {
+          return;
+        }
+
+        // When streaming audio is active, it is the true audio source!
+        if (this.isStreamingActive && this.streamAudio && !this.streamAudio.paused) {
+          const current = this.streamAudio.currentTime || 0;
+          this.position = current;
+          this.emitPosition(current);
+          const dur = this.streamAudio.duration;
+          if (dur && !isNaN(dur) && dur > 0 && Math.abs(dur - this.duration) > 0.5) {
+            this.duration = dur;
+            if (this.currentTrack && Math.abs(this.currentTrack.duration - dur) > 0.5) {
+              this.currentTrack = { ...this.currentTrack, duration: dur };
+              this.emitTrack(this.currentTrack);
+            }
+          }
+          return;
+        }
+
         if (this.isDirectStreamFallback && this.streamAudio) {
           const current = this.streamAudio.currentTime || 0;
+          this.position = current;
           this.emitPosition(current);
           const dur = this.streamAudio.duration;
           if (dur && !isNaN(dur) && dur > 0 && Math.abs(dur - this.duration) > 0.5) {
@@ -509,14 +560,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         if (this.player) {
           try {
             const current = this.player.getCurrentTime();
-            this.emitPosition(current);
-
-            // Drift synchronization between YouTube iframe and Web Audio stream
-            if (this.isStreamingActive && this.streamAudio && !this.streamAudio.paused) {
-              const diff = Math.abs(this.streamAudio.currentTime - current);
-              if (diff > 0.8) {
-                this.streamAudio.currentTime = current;
-              }
+            if (typeof current === 'number' && !isNaN(current)) {
+              this.position = current;
+              this.emitPosition(current);
             }
 
             const dur = this.player.getDuration();
@@ -559,28 +605,63 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       if (!this.streamAudio) return false;
 
       this.streamAudioVideoId = videoId;
-      this.streamAudio.src = `/api/youtube/stream?v=${videoId}`;
-      this.streamAudio.load();
+      const targetSrc = `/api/youtube/stream?v=${videoId}`;
+      if (!this.streamAudio.src.includes(targetSrc)) {
+        this.streamAudio.src = targetSrc;
+        this.streamAudio.load();
+      }
 
       this.emitState('buffering');
 
       await new Promise<void>((resolve, reject) => {
         if (!this.streamAudio) return reject(new Error('No streamAudio'));
-        const onCanPlay = () => {
-          cleanup();
-          resolve();
+        if (this.streamAudio.readyState >= 2) {
+          return resolve();
+        }
+
+        let resolved = false;
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            resolve();
+          }
+        }, 4000);
+
+        const onReady = () => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            cleanup();
+            resolve();
+          }
         };
+
         const onError = () => {
-          cleanup();
-          reject(new Error('Audio stream fetch failed'));
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            cleanup();
+            reject(new Error('Audio stream fetch failed'));
+          }
         };
+
         const cleanup = () => {
-          this.streamAudio?.removeEventListener('canplay', onCanPlay);
+          this.streamAudio?.removeEventListener('canplay', onReady);
+          this.streamAudio?.removeEventListener('loadeddata', onReady);
+          this.streamAudio?.removeEventListener('playing', onReady);
           this.streamAudio?.removeEventListener('error', onError);
         };
-        this.streamAudio.addEventListener('canplay', onCanPlay, { once: true });
+
+        this.streamAudio.addEventListener('canplay', onReady, { once: true });
+        this.streamAudio.addEventListener('loadeddata', onReady, { once: true });
+        this.streamAudio.addEventListener('playing', onReady, { once: true });
         this.streamAudio.addEventListener('error', onError, { once: true });
       });
+
+      if (this.position > 0) {
+        try { this.streamAudio.currentTime = this.position; } catch {}
+      }
 
       await this.streamAudio.play();
       this.emitState('playing');
@@ -626,14 +707,14 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     return Promise.resolve();
   }
 
-  public async loadPlaylist(idOrUrl: string): Promise<TrackInfo[]> {
+  public async loadPlaylist(idOrUrl: string, trackHint?: Partial<TrackInfo>): Promise<TrackInfo[]> {
     const parsed = parseYouTubeInput(idOrUrl);
     if (!parsed) {
       this.emitError('Could not parse YouTube link or playlist ID');
       return [];
     }
 
-    this.duration = 0;
+    this.duration = trackHint?.duration || 0;
     this.currentVideoId = null;
 
     if (!this.player) {
@@ -652,14 +733,25 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.emitState('loading');
     await this.applyTarget(parsed);
 
+    // Format clean title and artist if trackHint is provided
+    let title = parsed.type === 'playlist' ? 'YouTube Playlist' : 'YouTube Video';
+    let artist = parsed.type === 'playlist' ? 'YouTube' : 'YouTube Stream';
+
+    if (trackHint?.title) {
+      const clean = formatCleanDisplayTrack(trackHint.title, trackHint.artist);
+      title = clean.cleanTitle || trackHint.title;
+      artist = clean.cleanArtist || trackHint.artist || artist;
+    }
+
     const initialPlaceholder: TrackInfo = {
       id: parsed.id,
-      title: parsed.type === 'playlist' ? 'YouTube Playlist' : 'YouTube Video',
-      artist: 'YouTube Stream',
-      album: parsed.type === 'playlist' ? `Playlist ${parsed.id}` : 'YouTube',
-      duration: 0,
+      title,
+      artist,
+      album: trackHint?.album || (parsed.type === 'playlist' ? `Playlist ${parsed.id}` : 'YouTube'),
+      duration: trackHint?.duration || 0,
       source: 'youtube',
       sourceUrl: idOrUrl,
+      artworkUrl: trackHint?.artworkUrl || `https://img.youtube.com/vi/${parsed.id}/hqdefault.jpg`,
     };
     this.currentTrack = initialPlaceholder;
     this.emitTrack(initialPlaceholder);
@@ -667,11 +759,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public async loadTrack(track: TrackInfo): Promise<void> {
-    if (track.sourceUrl) {
-      await this.loadPlaylist(track.sourceUrl);
-    } else if (track.id) {
-      await this.loadPlaylist(track.id);
-    }
+    await this.loadPlaylist(track.sourceUrl || track.id, track);
   }
 
   public async play(): Promise<void> {
@@ -733,23 +821,34 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public seek(seconds: number): void {
-    if (this.isDirectStreamFallback && this.streamAudio) {
-      this.streamAudio.currentTime = seconds;
-      this.emitPosition(seconds);
-      return;
+    this.isSeeking = true;
+    this.position = seconds;
+    this.emitPosition(seconds);
+
+    if (this.seekDebounceTimer !== null) {
+      window.clearTimeout(this.seekDebounceTimer);
     }
 
-    if (this.player) {
+    if (this.streamAudio) {
       try {
-        this.player.seekTo(seconds, true);
-        this.emitPosition(seconds);
+        this.streamAudio.currentTime = seconds;
       } catch (err) {
-        this.emitError((err as Error).message);
+        console.warn('[YouTubeAdapter] streamAudio seek error:', err);
       }
     }
-    if (this.streamAudio) {
-      this.streamAudio.currentTime = seconds;
+
+    if (this.player && !this.isDirectStreamFallback) {
+      try {
+        this.player.seekTo(seconds, true);
+      } catch (err) {
+        console.warn('[YouTubeAdapter] player seekTo error:', err);
+      }
     }
+
+    this.seekDebounceTimer = window.setTimeout(() => {
+      this.isSeeking = false;
+      this.seekDebounceTimer = null;
+    }, 800);
   }
 
   public nextTrack(): void {
@@ -845,6 +944,10 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public override cleanup(): void {
+    if (this.seekDebounceTimer !== null) {
+      window.clearTimeout(this.seekDebounceTimer);
+      this.seekDebounceTimer = null;
+    }
     this.stopPositionTimer();
     if (this.spatialIntervalId !== null) {
       clearInterval(this.spatialIntervalId);

@@ -25,7 +25,7 @@ export abstract class BasePlaybackAdapter implements PlaybackAdapter {
   private errorListeners = new Set<ErrorCallback>();
 
   abstract initialize(containerElement?: HTMLElement | null): Promise<void>;
-  abstract loadPlaylist(idOrUrl: string): Promise<TrackInfo[]>;
+  abstract loadPlaylist(idOrUrl: string, trackHint?: Partial<TrackInfo>): Promise<TrackInfo[]>;
   abstract loadTrack(track: TrackInfo): Promise<void>;
   abstract play(): Promise<void>;
   abstract pause(): void;
