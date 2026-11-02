@@ -6,13 +6,13 @@ A modern, high-performance web application designed as an **exact replica of the
 
 ##  Features
 
-- ** Live lyrics**:
+-  Live lyric
   
-- ** Ambient Soundscape Mixer**:
+- Ambient Soundscape Mixer
   
-- ** Universal Music Player *
+- Universal Music Player
 
-- **Vinyl Deck Mixer *
+- Vinyl Deck Mixer
 
 
 ##  License
