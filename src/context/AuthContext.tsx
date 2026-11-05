@@ -13,19 +13,26 @@ interface AuthProviderProps {
   children: React.ReactNode;
   initialUser?: User | null;
   initialProfile?: Profile | null;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 }
 
 export function AuthProvider({
   children,
   initialUser = null,
   initialProfile = null,
+  supabaseUrl,
+  supabaseAnonKey,
 }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const supabase = getSupabaseBrowserClient();
-  const isConfigured = Boolean(supabase);
+  const supabase = getSupabaseBrowserClient(supabaseUrl, supabaseAnonKey);
+  const isConfigured = Boolean(
+    (supabaseUrl && supabaseAnonKey) ||
+      (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
 
   // Fetch or refresh current user profile
   const refreshProfile = useCallback(async () => {

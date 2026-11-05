@@ -7,9 +7,12 @@ let clientInstance: SupabaseClient | null = null;
  * Returns a singleton browser Supabase client.
  * Returns null if Supabase environment variables are missing (guest mode).
  */
-export function getSupabaseBrowserClient(): SupabaseClient | null {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export function getSupabaseBrowserClient(
+  overrideUrl?: string,
+  overrideKey?: string
+): SupabaseClient | null {
+  const supabaseUrl = overrideUrl || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = overrideKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;

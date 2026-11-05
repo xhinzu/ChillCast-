@@ -104,7 +104,12 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${interFont.variable} ${nunitoFont.variable} ${newsreaderFont.variable} ${arimoFont.variable} ${nunitoSansFont.variable} ${jostFont.variable} ${playfairFont.variable} h-full antialiased bg-black`}
     >
       <body className="h-screen w-screen overflow-hidden bg-black text-white flex flex-col antialiased">
-        <AuthProvider initialUser={initialUser} initialProfile={initialProfile}>
+        <AuthProvider
+          initialUser={initialUser}
+          initialProfile={initialProfile}
+          supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL}
+          supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        >
           {children}
         </AuthProvider>
       </body>
