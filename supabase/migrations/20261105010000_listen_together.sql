@@ -73,22 +73,22 @@ create policy "Authenticated users can create rooms"
   on public.rooms
   for insert
   to authenticated
-  with check (auth.uid() = host_id);
+  with check (auth.uid()::text = host_id);
 
 drop policy if exists "Hosts can update own rooms" on public.rooms;
 create policy "Hosts can update own rooms"
   on public.rooms
   for update
   to authenticated
-  using (auth.uid() = host_id)
-  with check (auth.uid() = host_id);
+  using (auth.uid()::text = host_id)
+  with check (auth.uid()::text = host_id);
 
 drop policy if exists "Hosts can delete own rooms" on public.rooms;
 create policy "Hosts can delete own rooms"
   on public.rooms
   for delete
   to authenticated
-  using (auth.uid() = host_id);
+  using (auth.uid()::text = host_id);
 
 -- Policies for public.room_queue:
 -- Anyone can view queue items
