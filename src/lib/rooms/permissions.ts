@@ -1,29 +1,63 @@
-import type { RoomData, RoomQueueItem } from '@/types/room';
+import type { RoomData, RoomQueueItem, RoomSettings } from '@/types/room';
 
 /**
  * Checks if a user is authorized to control playback (play, pause, seek, skip).
  */
-export function canControlPlayback(room: RoomData, userId: string): boolean {
-  if (room.host_id === userId) return true;
-  return room.settings.controlPlayback === 'everyone';
+export function canControlPlayback(
+  roomOrSettings: RoomData | RoomSettings,
+  userId: string,
+  hostId?: string
+): boolean {
+  const host = 'host_id' in roomOrSettings ? roomOrSettings.host_id : hostId;
+  const settings = 'settings' in roomOrSettings ? roomOrSettings.settings : roomOrSettings;
+  if (host === userId) return true;
+  return settings.controlPlayback === 'everyone';
 }
 
 /**
  * Checks if a user is authorized to add a song to the queue.
  */
-export function canAddSong(room: RoomData, userId: string): boolean {
-  if (room.settings.locked && room.host_id !== userId) return false;
-  if (room.host_id === userId) return true;
-  return room.settings.addSongs === 'everyone';
+export function canAddSong(
+  roomOrSettings: RoomData | RoomSettings,
+  userId: string,
+  hostId?: string
+): boolean {
+  const host = 'host_id' in roomOrSettings ? roomOrSettings.host_id : hostId;
+  const settings = 'settings' in roomOrSettings ? roomOrSettings.settings : roomOrSettings;
+  if (settings.locked && host !== userId) return false;
+  if (host === userId) return true;
+  return settings.addSongs === 'everyone';
 }
 
 /**
  * Checks if a user can remove or reorder a specific queue item.
  * Allowed for the host or the person who added the item.
  */
-export function canModifyQueueItem(room: RoomData, item: RoomQueueItem, userId: string): boolean {
-  if (room.host_id === userId) return true;
-  return item.added_by.id === userId;
+export function canModifyQueueItem(
+  roomOrCallerId: RoomData | string,
+  itemOrHostId: RoomQueueItem | string,
+  callerOrAdderId?: string
+): boolean {
+  if (typeof roomOrCallerId === 'object' && typeof itemOrHostId === 'object') {
+    const room = roomOrCallerId as RoomData;
+    const item = itemOrHostId as RoomQueueItem;
+    const userId = callerOrAdderId as string;
+    if (room.host_id === userId) return true;
+    return item.added_by.id === userId;
+  }
+  const callerId = roomOrCallerId as string;
+  const hostId = itemOrHostId as string;
+  const addedById = callerOrAdderId as string;
+  if (callerId === hostId) return true;
+  return callerId === addedById;
+}
+
+/**
+ * Calculates number of votes required to pass a vote skip (> 50%).
+ */
+export function getRequiredSkipVotes(totalMembers: number): number {
+  if (totalMembers <= 0) return 1;
+  return Math.floor(totalMembers / 2) + 1;
 }
 
 /**
@@ -49,4 +83,3 @@ export function isValidTrackEndEvent(
   if (currentQueueItemId !== eventQueueItemId) return false;
   return currentVersion === eventVersion;
 }
-

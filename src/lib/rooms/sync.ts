@@ -37,6 +37,33 @@ export function calculateClockOffset(samples: ClockSample[]): number {
 }
 
 /**
+ * Measures clock offset by sampling /api/time (default 5 samples)
+ * and calculating Cristian's algorithm offset with min RTT.
+ */
+export async function measureClockOffset(sampleCount: number = 5): Promise<number> {
+  const samples: ClockSample[] = [];
+  for (let i = 0; i < sampleCount; i++) {
+    const t0 = Date.now();
+    try {
+      const res = await fetch('/api/time', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const t1 = Date.now();
+        if (typeof data.serverTimeMs === 'number') {
+          samples.push({ t0, serverTime: data.serverTimeMs, t1 });
+        }
+      }
+    } catch {
+      // Ignore network hiccup on sample
+    }
+    if (i < sampleCount - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    }
+  }
+  return calculateClockOffset(samples);
+}
+
+/**
  * Calculates current target playback position in milliseconds.
  * If status is 'playing': target = positionMs + (estimatedServerNow - serverTimeMs)
  * If status is 'paused': target = positionMs
@@ -85,4 +112,3 @@ export function shouldSeek(
 
   return { shouldSeek: false, diffMs };
 }
-
