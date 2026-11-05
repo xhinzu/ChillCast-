@@ -357,11 +357,14 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       if (!container) {
         container = document.createElement('div');
         container.id = this.containerId;
-        container.style.position = 'absolute';
-        container.style.width = '1px';
-        container.style.height = '1px';
-        container.style.opacity = '0.01';
+        container.style.position = 'fixed';
+        container.style.bottom = '0';
+        container.style.right = '0';
+        container.style.width = '256px';
+        container.style.height = '144px';
+        container.style.opacity = '0.002';
         container.style.pointerEvents = 'none';
+        container.style.zIndex = '-50';
         document.body.appendChild(container);
       }
 
@@ -369,7 +372,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         height: '100%',
         width: '100%',
         playerVars: {
-          autoplay: 0,
+          autoplay: 1,
           controls: 0,
           playsinline: 1,
           rel: 0,
@@ -479,6 +482,12 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       case 5: // CUED
         this.emitState('paused');
         this.updateCurrentTrackData();
+        if (this.shouldPlayOnReady) {
+          this.shouldPlayOnReady = false;
+          if (typeof this.player?.playVideo === 'function') {
+            this.player.playVideo();
+          }
+        }
         break;
       default:
         break;

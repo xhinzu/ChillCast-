@@ -149,10 +149,11 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
       {/* 5. Permanent YouTube Player Container */}
       <div
         id="chillcast-yt-wrapper"
-        className={`fixed z-40 transition-all duration-300 rounded-xl overflow-hidden shadow-2xl border border-[#282828] bg-black ${
+        aria-hidden="true"
+        className={`fixed transition-all duration-300 rounded-xl overflow-hidden shadow-2xl border border-[#282828] bg-black ${
           showVideo
-            ? 'bottom-[120px] md:bottom-24 right-4 md:right-6 w-72 h-40 md:w-80 md:h-48 lg:w-96 lg:h-56 opacity-100 pointer-events-auto'
-            : 'w-1 h-1 -left-[9999px] -top-[9999px] opacity-0 pointer-events-none'
+            ? 'bottom-[120px] md:bottom-24 right-4 md:right-6 w-72 h-40 md:w-80 md:h-48 lg:w-96 lg:h-56 opacity-100 pointer-events-auto z-40'
+            : 'bottom-0 right-0 w-64 h-36 opacity-[0.002] pointer-events-none -z-50'
         }`}
       >
         <div id="chillcast-yt-player" className="w-full h-full" />

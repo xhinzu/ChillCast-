@@ -408,11 +408,7 @@ export default function UniversalMusicPlayer() {
       </div>
 
       {/* Offscreen YouTube player container */}
-      {(!showVideoPreview || activeAdapterType !== 'youtube') && (
-        <div className="fixed -left-[9999px] -top-[9999px] w-1 h-1 pointer-events-none opacity-0">
-          <div id="chillcast-yt-player" />
-        </div>
-      )}
+      {(!showVideoPreview || activeAdapterType !== 'youtube') && null}
 
       {/* Error Message Toast */}
       {errorMessage && (
