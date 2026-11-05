@@ -61,9 +61,17 @@ export function AuthProvider({
     }
   }, [supabase]);
 
-  // Listen for Supabase auth state transitions
+  // Listen for Supabase auth state transitions and hydrate on mount
   useEffect(() => {
     if (!supabase) return;
+
+    // Hydrate user on mount in case session cookie is present
+    supabase.auth.getUser().then(async ({ data: { user: currentUser } }) => {
+      if (currentUser) {
+        setUser(currentUser);
+        await refreshProfile();
+      }
+    });
 
     const {
       data: { subscription },

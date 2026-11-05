@@ -13,6 +13,8 @@ export default function UserMenu() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  const [authError, setAuthError] = useState<string | null>(null);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -26,15 +28,17 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDropdownOpen]);
 
-  // Clean up any error parameters left in the URL on return
+  // Capture any auth error parameters from OAuth redirects
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
-    if (
-      url.searchParams.has('error') ||
-      url.searchParams.has('auth_error') ||
-      url.searchParams.has('error_description')
-    ) {
+    const err =
+      url.searchParams.get('auth_error') ||
+      url.searchParams.get('error_description') ||
+      url.searchParams.get('error');
+
+    if (err) {
+      setAuthError(decodeURIComponent(err.replace(/\+/g, ' ')));
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -67,6 +71,23 @@ export default function UserMenu() {
             onClose={() => setIsAuthModalOpen(false)}
           />
         )}
+
+        {authError && (
+          <div className="fixed top-16 right-4 z-[200] max-w-sm bg-[#1e1315] border border-rose-500/50 text-rose-200 text-xs p-3.5 rounded-xl shadow-2xl flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-200">
+            <span className="text-sm">⚠️</span>
+            <div className="flex-1">
+              <p className="font-semibold text-rose-100">Sign-in Notice</p>
+              <p className="text-[11px] text-rose-300/90 mt-0.5">{authError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAuthError(null)}
+              className="text-rose-400 hover:text-white text-xs cursor-pointer p-0.5"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </>
     );
   }
@@ -74,6 +95,22 @@ export default function UserMenu() {
   // If signed in: Render avatar + display name dropdown menu
   return (
     <div className="relative" ref={menuRef}>
+      {authError && (
+        <div className="fixed top-16 right-4 z-[200] max-w-sm bg-[#1e1315] border border-rose-500/50 text-rose-200 text-xs p-3.5 rounded-xl shadow-2xl flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-200">
+          <span className="text-sm">⚠️</span>
+          <div className="flex-1">
+            <p className="font-semibold text-rose-100">Sign-in Notice</p>
+            <p className="text-[11px] text-rose-300/90 mt-0.5">{authError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAuthError(null)}
+            className="text-rose-400 hover:text-white text-xs cursor-pointer p-0.5"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setIsDropdownOpen((prev) => !prev)}
