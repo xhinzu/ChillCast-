@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx src/lib/lyrics/visuals/__tests__/visuals.test.ts && npx tsx src/lib/lyrics/visuals/effects/__tests__/effects.test.ts && npx tsx src/lib/auth/__tests__/redirect.test.ts && npx tsx src/lib/auth/__tests__/validation.test.ts",
+    "test": "npx tsx src/lib/lyrics/visuals/__tests__/visuals.test.ts && npx tsx src/lib/lyrics/visuals/effects/__tests__/effects.test.ts && npx tsx src/lib/auth/__tests__/redirect.test.ts && npx tsx src/lib/auth/__tests__/validation.test.ts && npx tsx src/lib/rooms/__tests__/rooms.test.ts",
     "electron:dev": "electron .",
     "electron:build": "node scripts/build-desktop.js"
   },

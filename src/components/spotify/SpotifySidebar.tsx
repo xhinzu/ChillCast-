@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
+import { useRoom } from '@/context/RoomContext';
 import AddSourceModal, { SavedPlaylistItem } from './AddSourceModal';
 import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
 import {
@@ -27,6 +28,7 @@ export default function SpotifySidebar({
 }: SpotifySidebarProps) {
   const { loadPlaylist, switchAdapter, loadCustomLocalFile } = usePlayback();
   const { activeCount } = useAmbient();
+  const { room } = useRoom();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -208,6 +210,32 @@ export default function SpotifySidebar({
               <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
             </svg>
             <span>Lyrics</span>
+          </button>
+
+          {/* Listen Together */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView('together');
+              if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', room ? `/together/${room.code}` : '/together');
+              }
+            }}
+            className={`flex items-center gap-4 px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              activeView === 'together'
+                ? 'text-white bg-[#222222] border border-[#333333]'
+                : 'text-[#888888] hover:text-white hover:bg-[#1a1a1a]'
+            }`}
+          >
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 3a9 9 0 0 0-9 9v7a3 3 0 0 0 3 3h1a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H5v-3a7 7 0 1 1 14 0v3h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1a3 3 0 0 0 3-3v-7a9 9 0 0 0-9-9z" />
+            </svg>
+            <div className="flex items-center justify-between w-full">
+              <span>Listen Together</span>
+              {room && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Connected to room" />
+              )}
+            </div>
           </button>
         </nav>
 

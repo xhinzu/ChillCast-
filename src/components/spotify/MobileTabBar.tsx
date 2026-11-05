@@ -19,6 +19,7 @@ export default function MobileTabBar({
   const isHome = activeView === 'home';
   const isVinyl = activeView === 'vinyl';
   const isLyrics = activeView === 'lyrics';
+  const isTogether = activeView === 'together';
   const isAmbience = activeView === 'ambience' || activeView === 'mixer';
   const isPlaylists = activeView === 'playlists' || activeView.startsWith('playlist:');
 
@@ -73,6 +74,23 @@ export default function MobileTabBar({
           <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
         </svg>
         <span className="text-[10px] font-semibold">Lyrics</span>
+      </button>
+
+      {/* 4. Listen Together */}
+      <button
+        type="button"
+        onClick={() => {
+          setActiveView('together');
+          setSearchQuery('');
+        }}
+        className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors cursor-pointer ${
+          isTogether ? 'text-white font-bold' : 'text-[#777777]'
+        }`}
+      >
+        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 3a9 9 0 0 0-9 9v7a3 3 0 0 0 3 3h1a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H5v-3a7 7 0 1 1 14 0v3h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1a3 3 0 0 0 3-3v-7a9 9 0 0 0-9-9z" />
+        </svg>
+        <span className="text-[10px] font-semibold">Together</span>
       </button>
 
       {/* 3. Ambience */}

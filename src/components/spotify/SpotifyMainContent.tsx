@@ -10,6 +10,9 @@ import { TrackInfo } from '@/types/playback';
 import { ENGLISH_TRACKS, MALAYALAM_TRACKS, CuratedTrack } from '@/lib/curated-tracks';
 import DualVinylMixer from '@/components/mixer/DualVinylMixer';
 import LyricsPage from '@/components/lyrics/LyricsPage';
+import { useRoom } from '@/context/RoomContext';
+import RoomLobbyView from '@/components/rooms/RoomLobbyView';
+import RoomMainView from '@/components/rooms/RoomMainView';
 import { formatCleanDisplayTrack } from '@/lib/lyrics/normalize';
 import {
   ALL_GENRE_TRENDING_SONGS,
@@ -94,6 +97,8 @@ export default function SpotifyMainContent({
     toggleMasterMute,
     applyPreset,
   } = useAmbient();
+
+  const { room, canAdd, addToQueue, roomStatus } = useRoom();
 
   // Playlists loaded from localStorage
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -406,13 +411,15 @@ export default function SpotifyMainContent({
   const isAmbienceView = activeView === 'ambience' || activeView === 'mixer';
   const isVinylView = activeView === 'vinyl';
   const isLyricsView = activeView === 'lyrics';
+  const isTogetherView = activeView === 'together';
   const isHomeView =
     !isSearchActive &&
     !isPlaylistView &&
     !isPlaylistsView &&
     !isAmbienceView &&
     !isVinylView &&
-    !isLyricsView;
+    !isLyricsView &&
+    !isTogetherView;
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
 
   // Track which curated playlist is currently playing
@@ -1038,6 +1045,58 @@ export default function SpotifyMainContent({
                           {video.duration}
                         </span>
 
+                        {/* Add to Room Queue buttons (only in a room) */}
+                        {room && canAdd && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const res = await addToQueue({
+                                  videoId: video.id,
+                                  title: video.title,
+                                  artist: video.channel,
+                                  thumbnail: video.thumbnail,
+                                  durationSec: parseDurationSeconds(video.duration),
+                                }, false);
+                                if (res.warning) {
+                                  setAddedToast(res.warning);
+                                } else {
+                                  setAddedToast(`Added "${video.title}" to room queue`);
+                                }
+                                setTimeout(() => setAddedToast(null), 3000);
+                              }}
+                              className="py-1 px-2.5 rounded-full bg-[#1e1e1e] hover:bg-emerald-500 hover:text-black text-emerald-400 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer border border-emerald-900/50"
+                              title="Add to room queue"
+                            >
+                              <span>＋ Room</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const res = await addToQueue({
+                                  videoId: video.id,
+                                  title: video.title,
+                                  artist: video.channel,
+                                  thumbnail: video.thumbnail,
+                                  durationSec: parseDurationSeconds(video.duration),
+                                }, true);
+                                if (res.warning) {
+                                  setAddedToast(res.warning);
+                                } else {
+                                  setAddedToast(`Playing "${video.title}" next in room`);
+                                }
+                                setTimeout(() => setAddedToast(null), 3000);
+                              }}
+                              className="py-1 px-2 rounded-full bg-[#1e1e1e] hover:bg-white hover:text-black text-[#888888] text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer border border-[#333333]"
+                              title="Play next in room"
+                            >
+                              <span>▶ Next</span>
+                            </button>
+                          </div>
+                        )}
+
                         {/* Add to Playlist button */}
                         <button
                           type="button"
@@ -1161,6 +1220,58 @@ export default function SpotifyMainContent({
                             <HeartIcon className="w-4 h-4" filled={liked} />
                           </button>
                         </div>
+
+                        {/* Room Queue buttons (Grid view) */}
+                        {room && canAdd && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const res = await addToQueue({
+                                  videoId: video.id,
+                                  title: video.title,
+                                  artist: video.channel,
+                                  thumbnail: video.thumbnail,
+                                  durationSec: parseDurationSeconds(video.duration),
+                                }, false);
+                                if (res.warning) {
+                                  setAddedToast(res.warning);
+                                } else {
+                                  setAddedToast(`Added "${video.title}" to room queue`);
+                                }
+                                setTimeout(() => setAddedToast(null), 3000);
+                              }}
+                              className="flex-1 py-1.5 px-2 rounded-full bg-[#1e1e1e] hover:bg-emerald-500 hover:text-black text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-emerald-900/50"
+                              title="Add to room queue"
+                            >
+                              <span>＋</span> Room Queue
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const res = await addToQueue({
+                                  videoId: video.id,
+                                  title: video.title,
+                                  artist: video.channel,
+                                  thumbnail: video.thumbnail,
+                                  durationSec: parseDurationSeconds(video.duration),
+                                }, true);
+                                if (res.warning) {
+                                  setAddedToast(res.warning);
+                                } else {
+                                  setAddedToast(`Playing "${video.title}" next in room`);
+                                }
+                                setTimeout(() => setAddedToast(null), 3000);
+                              }}
+                              className="py-1.5 px-2.5 rounded-full bg-[#1e1e1e] hover:bg-white hover:text-black text-[#888888] text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-[#333333]"
+                              title="Play next in room"
+                            >
+                              <span>▶</span> Next
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1447,8 +1558,60 @@ export default function SpotifyMainContent({
                           </div>
                         </div>
 
-                        {/* Far Right: Duration and Like button at the very horizontal end */}
-                        <div className="flex items-center gap-4 shrink-0 ml-auto">
+                        {/* Far Right: Duration, Room Queue buttons, and Like button */}
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                          {/* Room Queue buttons (only in a room) */}
+                          {room && canAdd && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const res = await addToQueue({
+                                    videoId: song.id,
+                                    title: song.title,
+                                    artist: song.artist,
+                                    thumbnail: song.thumbnail,
+                                    durationSec: parseDurationSeconds(song.duration),
+                                  }, false);
+                                  if (res.warning) {
+                                    setAddedToast(res.warning);
+                                  } else {
+                                    setAddedToast(`Added "${song.title}" to room queue`);
+                                  }
+                                  setTimeout(() => setAddedToast(null), 3000);
+                                }}
+                                className="py-1 px-2.5 rounded-full bg-[#1e1e1e] hover:bg-emerald-500 hover:text-black text-emerald-400 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer border border-emerald-900/50"
+                                title="Add to room queue"
+                              >
+                                <span>＋ Room</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const res = await addToQueue({
+                                    videoId: song.id,
+                                    title: song.title,
+                                    artist: song.artist,
+                                    thumbnail: song.thumbnail,
+                                    durationSec: parseDurationSeconds(song.duration),
+                                  }, true);
+                                  if (res.warning) {
+                                    setAddedToast(res.warning);
+                                  } else {
+                                    setAddedToast(`Playing "${song.title}" next in room`);
+                                  }
+                                  setTimeout(() => setAddedToast(null), 3000);
+                                }}
+                                className="py-1 px-2 rounded-full bg-[#1e1e1e] hover:bg-white hover:text-black text-[#888888] text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer border border-[#333333]"
+                                title="Play next in room"
+                              >
+                                <span>▶ Next</span>
+                              </button>
+                            </div>
+                          )}
+
                           <span className="text-xs font-mono text-[#888888]">
                             {song.duration}
                           </span>
@@ -1489,6 +1652,34 @@ export default function SpotifyMainContent({
         {isLyricsView && (
           <section aria-label="Lyrics View" className="w-full flex-1 flex flex-col min-h-[calc(100vh-210px)] overflow-hidden">
             <LyricsPage />
+          </section>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW: LISTEN TOGETHER                                         */}
+        {/* ------------------------------------------------------------- */}
+        {isTogetherView && (
+          <section aria-label="Listen Together View" className="w-full flex-1 flex flex-col min-h-[calc(100vh-210px)] overflow-y-auto">
+            {room && (roomStatus === 'connected' || roomStatus === 'connecting' || roomStatus === 'kicked' || roomStatus === 'ended' || roomStatus === 'error') ? (
+              <RoomMainView
+                onOpenLyrics={() => setActiveView('lyrics')}
+                onLeave={() => {
+                  setActiveView('together');
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState(null, '', '/together');
+                  }
+                }}
+              />
+            ) : (
+              <RoomLobbyView
+                onRoomJoined={(code) => {
+                  setActiveView('together');
+                  if (typeof window !== 'undefined') {
+                    window.history.pushState(null, '', `/together/${code}`);
+                  }
+                }}
+              />
+            )}
           </section>
         )}
 

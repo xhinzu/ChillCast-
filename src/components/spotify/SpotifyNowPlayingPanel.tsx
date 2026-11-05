@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
+import { useRoom } from '@/context/RoomContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from '@/components/spotify/AddSourceModal';
 import {
   MusicNoteIcon,
@@ -38,6 +39,7 @@ export default function SpotifyNowPlayingPanel({
     isSpatial8D,
     isMuffled,
   } = usePlayback();
+  const { room, canAdd, addToQueue } = useRoom();
 
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
   const [hasLyrics, setHasLyrics] = useState<boolean>(false);
@@ -292,6 +294,52 @@ export default function SpotifyNowPlayingPanel({
                 </div>
               </div>
             </div>
+
+            {/* Room Queue Actions (Shown only while in a room) */}
+            {room && canAdd && currentTrack && (
+              <div className="p-2.5 rounded-xl bg-[#141414] border border-[#242424] space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-[#888888]">
+                  <span>Room: {room.name}</span>
+                  <span className="font-mono text-white">{room.code}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await addToQueue({
+                        videoId: currentTrack.id,
+                        title: currentTrack.title,
+                        artist: currentTrack.artist || 'Unknown Artist',
+                        thumbnail: currentTrack.artworkUrl || '',
+                        durationSec: Math.round(duration || currentTrack.duration || 0),
+                      }, false);
+                      if (res.warning) setToastMessage(res.warning);
+                      else setToastMessage('Added to room queue');
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-[#202020] hover:bg-emerald-500 hover:text-black text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-emerald-900/40"
+                  >
+                    <span>＋</span> Room Queue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await addToQueue({
+                        videoId: currentTrack.id,
+                        title: currentTrack.title,
+                        artist: currentTrack.artist || 'Unknown Artist',
+                        thumbnail: currentTrack.artworkUrl || '',
+                        durationSec: Math.round(duration || currentTrack.duration || 0),
+                      }, true);
+                      if (res.warning) setToastMessage(res.warning);
+                      else setToastMessage('Set to play next in room');
+                    }}
+                    className="py-1.5 px-2 rounded-lg bg-[#202020] hover:bg-white hover:text-black text-[#888888] text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-[#333333]"
+                  >
+                    <span>▶</span> Play Next
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Playback Badge & Active Effects */}
             <div className="flex items-center gap-2 flex-wrap">

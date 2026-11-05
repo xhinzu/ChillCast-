@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { PlaybackProvider, usePlayback } from '@/context/PlaybackContext';
 import { AmbientProvider } from '@/context/AmbientContext';
+import { RoomProvider, useRoom } from '@/context/RoomContext';
 import SpotifyTopNav from '@/components/spotify/SpotifyTopNav';
 import SpotifySidebar from '@/components/spotify/SpotifySidebar';
 import SpotifyMainContent from '@/components/spotify/SpotifyMainContent';
@@ -11,9 +12,15 @@ import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 
-function ChillCastShell() {
+export interface ChillCastAppProps {
+  initialView?: string;
+  initialRoomCode?: string;
+}
+
+function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppProps) {
   const { togglePlay, currentTrack } = usePlayback();
-  const [activeView, setActiveView] = useState<string>('home');
+  const { joinRoom, room } = useRoom();
+  const [activeView, setActiveView] = useState<string>(initialView);
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
@@ -27,6 +34,13 @@ function ChillCastShell() {
     } catch {}
     return 'list';
   });
+
+  // If initial room code was provided in URL (e.g. /together/[code]), initiate join
+  useEffect(() => {
+    if (initialRoomCode && (!room || room.code !== initialRoomCode)) {
+      joinRoom(initialRoomCode);
+    }
+  }, [initialRoomCode, joinRoom, room]);
 
   const handleSetSearchViewMode = (mode: 'list' | 'grid') => {
     setSearchViewMode(mode);
@@ -147,11 +161,13 @@ function ChillCastShell() {
   );
 }
 
-export default function ChillCastApp() {
+export default function ChillCastApp({ initialView = 'home', initialRoomCode }: ChillCastAppProps) {
   return (
     <PlaybackProvider>
       <AmbientProvider>
-        <ChillCastShell />
+        <RoomProvider>
+          <ChillCastShell initialView={initialView} initialRoomCode={initialRoomCode} />
+        </RoomProvider>
       </AmbientProvider>
     </PlaybackProvider>
   );
