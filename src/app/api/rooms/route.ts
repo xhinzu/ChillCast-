@@ -31,9 +31,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Supabase is not configured' }, { status: 503 });
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const adminClient = createAdminClient() || supabase;
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  let user = null;
+  try {
+    const authClient = adminClient || supabase;
+    const { data } = token
+      ? await authClient.auth.getUser(token)
+      : await supabase.auth.getUser();
+    user = data?.user || null;
+  } catch {
+    user = null;
+  }
 
   if (!user) {
     return NextResponse.json(
@@ -65,8 +76,6 @@ export async function POST(request: NextRequest) {
     locked: Boolean(parsed.data.settings?.locked),
     maxMembers: Math.min(20, Math.max(2, parsed.data.settings?.maxMembers || 12)),
   };
-
-  const adminClient = createAdminClient() || supabase;
 
   // 4. Generate unique collision-checked room code
   let roomCode = '';

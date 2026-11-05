@@ -47,11 +47,17 @@ export async function POST(
   }
 
   // 3. Resolve user identity (signed-in vs guest)
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
   let user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null = null;
-  if (supabase) {
+  if (supabase || adminClient) {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      user = userData.user;
+      const authClient = adminClient || supabase!;
+      const { data: userData } = token
+        ? await authClient.auth.getUser(token)
+        : await supabase!.auth.getUser();
+      user = userData?.user || null;
     } catch {
       user = null;
     }
@@ -91,18 +97,12 @@ export async function POST(
   } else {
     // Guest user
     const rawNickname = parsed.success ? parsed.data.nickname : undefined;
-    const sanitized = sanitizeDisplayName(rawNickname || '');
+    let sanitized = sanitizeDisplayName(rawNickname || '');
     if (!sanitized || sanitized.length < 2) {
-      return NextResponse.json(
-        { error: 'Please enter a nickname between 2 and 24 characters to join.' },
-        { status: 400 }
-      );
+      sanitized = `Listener_${Math.floor(1000 + Math.random() * 9000)}`;
     }
     if (sanitized.length > 24) {
-      return NextResponse.json(
-        { error: 'Nickname must be 24 characters or less.' },
-        { status: 400 }
-      );
+      sanitized = sanitized.slice(0, 24);
     }
 
     memberId = `guest_${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
@@ -131,16 +131,27 @@ export async function POST(
     .update({ last_active_at: new Date().toISOString() })
     .eq('code', code);
 
+  // Fetch queue items ordered by position
+  const { data: queueItems } = await adminClient
+    .from('room_queue')
+    .select('*')
+    .eq('room_code', code)
+    .order('position', { ascending: true });
+
+  const memberPayload = {
+    id: memberId,
+    name: memberName,
+    avatar: memberAvatar,
+    isHost: room.host_id === memberId,
+    isGuest,
+    joinedAt: Date.now(),
+  };
+
   const response = NextResponse.json({
     room,
-    member: {
-      id: memberId,
-      name: memberName,
-      avatar: memberAvatar,
-      isHost: room.host_id === memberId,
-      isGuest,
-      joinedAt: Date.now(),
-    },
+    queue: queueItems || [],
+    member: memberPayload,
+    memberInfo: memberPayload,
     guestToken,
   });
 

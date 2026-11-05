@@ -1656,10 +1656,10 @@ export default function SpotifyMainContent({
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* VIEW: LISTEN TOGETHER                                         */}
+        {/* VIEW: TOGETHER                                                */}
         {/* ------------------------------------------------------------- */}
         {isTogetherView && (
-          <section aria-label="Listen Together View" className="w-full flex-1 flex flex-col min-h-[calc(100vh-210px)] overflow-y-auto">
+          <section aria-label="Together View" className="w-full flex-1 flex flex-col min-h-[calc(100vh-210px)] overflow-y-auto">
             {room && (roomStatus === 'connected' || roomStatus === 'connecting' || roomStatus === 'kicked' || roomStatus === 'ended' || roomStatus === 'error') ? (
               <RoomMainView
                 onOpenLyrics={() => setActiveView('lyrics')}

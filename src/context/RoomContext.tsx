@@ -123,6 +123,31 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   const canAdd = Boolean(room && currentMember && canAddSong(room.settings, currentMember.id, room.host_id));
   const hasVotedSkip = Boolean(currentMember && skipVotes.includes(currentMember.id));
 
+  // Authenticated fetch helper: attaches Supabase access token to requests
+  const authFetch = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      } catch {
+        // Fallback to unauthenticated headers
+      }
+    }
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  }, []);
+
   // 1. Initial & periodic clock synchronization
   const syncClock = useCallback(async () => {
     try {
@@ -147,7 +172,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   // 2. Fetch full room details + queue from server
   const fetchRoomData = useCallback(async (code: string) => {
     try {
-      const res = await fetch(`/api/rooms/${code}`, { cache: 'no-store' });
+      const res = await authFetch(`/api/rooms/${code}`, { cache: 'no-store' });
       if (!res.ok) {
         if (res.status === 404) {
           setErrorMessage('Room not found or expired.');
@@ -163,7 +188,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to fetch room data:', err);
       return null;
     }
-  }, []);
+  }, [authFetch]);
 
   // 3. Audio synchronization: align playback engine with room state
   useEffect(() => {
@@ -249,9 +274,8 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     if (!isHost || !room || roomStatus !== 'connected') return;
 
     if (playback.playbackState === 'ended' && room.state.queueItemId) {
-      fetch(`/api/rooms/${room.code}/next`, {
+      authFetch(`/api/rooms/${room.code}/next`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentQueueItemId: room.state.queueItemId,
           version: room.state.version,
@@ -265,7 +289,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
         }
       });
     }
-  }, [isHost, room, playback.playbackState, roomStatus]);
+  }, [isHost, room, playback.playbackState, roomStatus, authFetch]);
 
   // 6. Host inactivity & disconnect monitor (promotes longest-present member after 60s)
   useEffect(() => {
@@ -278,16 +302,13 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       } else {
         const timeSinceLastSeen = Date.now() - hostLastSeenRef.current;
         if (timeSinceLastSeen > 60000 && members.length > 0) {
-          // Find longest-present member (lowest joinedAt)
           const sorted = [...members].sort((a, b) => a.joinedAt - b.joinedAt);
           const longestMember = sorted[0];
 
           if (longestMember && currentMember && longestMember.id === currentMember.id) {
-            // Auto-promote self as new host
             try {
-              const res = await fetch(`/api/rooms/${room.code}/promote`, {
+              const res = await authFetch(`/api/rooms/${room.code}/promote`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   newHostId: currentMember.id,
                   reason: 'host_disconnected',
@@ -306,7 +327,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [roomStatus, room, isHost, members, currentMember]);
+  }, [roomStatus, room, isHost, members, currentMember, authFetch]);
 
   // 7. Subscribe to Supabase Realtime channel
   const subscribeToRoom = useCallback((code: string, memberInfo: RoomMemberInfo) => {
@@ -340,7 +361,6 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
           });
         });
 
-        // Ensure current host flag is accurately reflected
         const currentHostId = roomRef.current?.host_id;
         const normalized = activeMembers.map((m) => ({
           ...m,
@@ -405,9 +425,8 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     setErrorMessage(null);
 
     try {
-      const res = await fetch(`/api/rooms/${code}/join`, {
+      const res = await authFetch(`/api/rooms/${code}/join`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname }),
       });
 
@@ -418,9 +437,11 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: data.error };
       }
 
+      const member = data.memberInfo || data.member;
       setRoom(data.room);
       setQueue(data.queue || []);
-      setCurrentMember(data.memberInfo);
+      setCurrentMember(member);
+      setRoomStatus('connected');
       setSkipVotes([]);
       hostLastSeenRef.current = Date.now();
 
@@ -428,7 +449,9 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       setNeedsAutoplayUnlock(true);
 
       // Subscribe to Realtime channel
-      subscribeToRoom(data.room.code, data.memberInfo);
+      if (member) {
+        subscribeToRoom(data.room.code, member);
+      }
 
       return { success: true };
     } catch (err: unknown) {
@@ -437,18 +460,13 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       setRoomStatus('error');
       return { success: false, error: msg };
     }
-  }, [subscribeToRoom]);
+  }, [authFetch, subscribeToRoom]);
 
   // 9. Create Room Action
   const createRoom = useCallback(async (name?: string, settings?: Partial<RoomSettings>) => {
-    if (!user) {
-      return { error: 'Sign in to host a room' };
-    }
-
     try {
-      const res = await fetch('/api/rooms', {
+      const res = await authFetch('/api/rooms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, settings }),
       });
 
@@ -463,7 +481,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       const msg = err instanceof Error ? err.message : 'Error creating room';
       return { error: msg };
     }
-  }, [user, joinRoom]);
+  }, [authFetch, joinRoom]);
 
   // 10. Leave Room Action
   const leaveRoom = useCallback(() => {
@@ -508,9 +526,8 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   const playRoom = useCallback(async () => {
     if (!room || !canControl) return;
     const currentMs = Math.round(playback.currentTime * 1000);
-    const res = await fetch(`/api/rooms/${room.code}/state`, {
+    const res = await authFetch(`/api/rooms/${room.code}/state`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'play',
         positionMs: currentMs,
@@ -521,14 +538,13 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       setRoom(data.room);
     }
-  }, [room, canControl, playback.currentTime]);
+  }, [room, canControl, playback.currentTime, authFetch]);
 
   const pauseRoom = useCallback(async () => {
     if (!room || !canControl) return;
     const currentMs = Math.round(playback.currentTime * 1000);
-    const res = await fetch(`/api/rooms/${room.code}/state`, {
+    const res = await authFetch(`/api/rooms/${room.code}/state`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'pause',
         positionMs: currentMs,
@@ -539,13 +555,12 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       setRoom(data.room);
     }
-  }, [room, canControl, playback.currentTime]);
+  }, [room, canControl, playback.currentTime, authFetch]);
 
   const seekRoom = useCallback(async (positionMs: number) => {
     if (!room || !canControl) return;
-    const res = await fetch(`/api/rooms/${room.code}/state`, {
+    const res = await authFetch(`/api/rooms/${room.code}/state`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'seek',
         positionMs,
@@ -557,13 +572,12 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       setRoom(data.room);
       lastSeekTimestampRef.current = Date.now();
     }
-  }, [room, canControl]);
+  }, [room, canControl, authFetch]);
 
   const skipRoomTrack = useCallback(async () => {
     if (!room || !canControl) return;
-    const res = await fetch(`/api/rooms/${room.code}/next`, {
+    const res = await authFetch(`/api/rooms/${room.code}/next`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         currentQueueItemId: room.state.queueItemId,
         version: room.state.version,
@@ -575,13 +589,12 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       setQueue(data.queue);
       setSkipVotes([]);
     }
-  }, [room, canControl]);
+  }, [room, canControl, authFetch]);
 
   const voteSkip = useCallback(async () => {
     if (!room) return;
-    const res = await fetch(`/api/rooms/${room.code}/vote-skip`, {
+    const res = await authFetch(`/api/rooms/${room.code}/vote-skip`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         totalMembers: Math.max(1, members.length),
       }),
@@ -596,7 +609,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
         setSkipVotes(data.votes || []);
       }
     }
-  }, [room, members.length]);
+  }, [room, members.length, authFetch]);
 
   // 14. Room Queue Operations
   const addToQueue = useCallback(async (
@@ -613,9 +626,8 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'You do not have permission to add songs' };
     }
 
-    const res = await fetch(`/api/rooms/${room.code}/queue`, {
+    const res = await authFetch(`/api/rooms/${room.code}/queue`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...track, playNext }),
     });
 
@@ -630,16 +642,15 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     }
 
     return { success: true, warning: data.warning };
-  }, [room, canAdd]);
+  }, [room, canAdd, authFetch]);
 
   const removeFromQueue = useCallback(async (queueItemId: string) => {
     if (!room || !currentMember) return;
     const item = queue.find((q) => q.id === queueItemId);
     if (!item || !canModifyQueueItem(currentMember.id, room.host_id, item.added_by.id)) return;
 
-    const res = await fetch(`/api/rooms/${room.code}/queue`, {
+    const res = await authFetch(`/api/rooms/${room.code}/queue`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ queueItemId }),
     });
     if (res.ok) {
@@ -647,67 +658,63 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       setQueue(data.queue);
       if (data.room) setRoom(data.room);
     }
-  }, [room, currentMember, queue]);
+  }, [room, currentMember, queue, authFetch]);
 
   const reorderQueue = useCallback(async (queueItemId: string, newPosition: number) => {
     if (!room || !currentMember) return;
     const item = queue.find((q) => q.id === queueItemId);
     if (!item || !canModifyQueueItem(currentMember.id, room.host_id, item.added_by.id)) return;
 
-    const res = await fetch(`/api/rooms/${room.code}/queue`, {
+    const res = await authFetch(`/api/rooms/${room.code}/queue`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ queueItemId, newPosition }),
     });
     if (res.ok) {
       const data = await res.json();
       setQueue(data.queue);
     }
-  }, [room, currentMember, queue]);
+  }, [room, currentMember, queue, authFetch]);
 
   // 15. Room Host Management
   const updateSettings = useCallback(async (settings: Partial<RoomSettings>, name?: string) => {
     if (!room || !isHost) return;
-    const res = await fetch(`/api/rooms/${room.code}/settings`, {
+    const res = await authFetch(`/api/rooms/${room.code}/settings`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...settings, name }),
     });
     if (res.ok) {
       const data = await res.json();
       setRoom(data.room);
     }
-  }, [room, isHost]);
+  }, [room, isHost, authFetch]);
 
   const kickMember = useCallback(async (targetUserId: string) => {
     if (!room || !isHost) return;
-    await fetch(`/api/rooms/${room.code}/kick`, {
+    await authFetch(`/api/rooms/${room.code}/kick`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetUserId }),
     });
     setMembers((prev) => prev.filter((m) => m.id !== targetUserId));
-  }, [room, isHost]);
+  }, [room, isHost, authFetch]);
 
   const transferHost = useCallback(async (newHostId: string) => {
     if (!room || !isHost) return;
-    const res = await fetch(`/api/rooms/${room.code}/promote`, {
+    const res = await authFetch(`/api/rooms/${room.code}/promote`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ newHostId, reason: 'transfer' }),
     });
     if (res.ok) {
       setRoom((prev) => (prev ? { ...prev, host_id: newHostId } : null));
     }
-  }, [room, isHost]);
+  }, [room, isHost, authFetch]);
 
   const endRoom = useCallback(async () => {
     if (!room || !isHost) return;
-    await fetch(`/api/rooms/${room.code}`, {
+    await authFetch(`/api/rooms/${room.code}`, {
       method: 'DELETE',
     });
     leaveRoom();
-  }, [room, isHost, leaveRoom]);
+  }, [room, isHost, leaveRoom, authFetch]);
 
   const value: RoomContextValue = {
     room,

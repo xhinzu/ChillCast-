@@ -1,7 +1,7 @@
 import ChillCastApp from '@/components/ChillCastApp';
 
 export const metadata = {
-  title: 'Listen Together — ChillCast',
+  title: 'Together — ChillCast',
   description: 'Synchronize music and live lyrics with friends in real-time.',
 };
 

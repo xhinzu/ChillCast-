@@ -31,16 +31,22 @@ export default function RoomLobbyView({ onRoomJoined }: RoomLobbyViewProps) {
     setCreateError(null);
     setIsCreating(true);
 
-    const res = await createRoom(createName.trim() || undefined, {
-      controlPlayback: createControl,
-      addSongs: createAdd,
-    });
+    try {
+      const res = await createRoom(createName.trim() || undefined, {
+        controlPlayback: createControl,
+        addSongs: createAdd,
+      });
 
-    setIsCreating(false);
-    if (res.error) {
-      setCreateError(res.error);
-    } else if (res.code) {
-      if (onRoomJoined) onRoomJoined(res.code);
+      if (res.error) {
+        setCreateError(res.error);
+      } else if (res.code) {
+        if (onRoomJoined) onRoomJoined(res.code);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error creating room';
+      setCreateError(msg);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -60,13 +66,28 @@ export default function RoomLobbyView({ onRoomJoined }: RoomLobbyViewProps) {
     }
 
     setIsJoining(true);
-    const res = await joinRoom(code, !user ? joinNickname.trim() : undefined);
-    setIsJoining(false);
+    try {
+      const res = await joinRoom(code, !user ? joinNickname.trim() : undefined);
+      if (!res.success) {
+        setJoinError(res.error || 'Failed to join room');
+      } else if (onRoomJoined) {
+        onRoomJoined(code);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error joining room';
+      setJoinError(msg);
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
-    if (!res.success) {
-      setJoinError(res.error || 'Failed to join room');
-    } else if (onRoomJoined) {
-      onRoomJoined(code);
+  const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const urlMatch = raw.match(/\/together\/([A-Za-z0-9]{6})/);
+    if (urlMatch) {
+      setJoinCode(urlMatch[1].toUpperCase());
+    } else {
+      setJoinCode(raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
     }
   };
 
@@ -78,7 +99,7 @@ export default function RoomLobbyView({ onRoomJoined }: RoomLobbyViewProps) {
           <svg className="w-3.5 h-3.5 fill-current text-neutral-300" viewBox="0 0 24 24">
             <path d="M12 3a9 9 0 0 0-9 9v7a3 3 0 0 0 3 3h1a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H5v-3a7 7 0 1 1 14 0v3h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1a3 3 0 0 0 3-3v-7a9 9 0 0 0-9-9z" />
           </svg>
-          <span>Listen Together</span>
+          <span>Together</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
           Real-time Collaborative Music
@@ -113,7 +134,7 @@ export default function RoomLobbyView({ onRoomJoined }: RoomLobbyViewProps) {
                 <input
                   type="text"
                   value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  onChange={handleCodeChange}
                   placeholder="e.g. 7K9XP2"
                   maxLength={6}
                   className="w-full bg-[#181818] border border-[#333333] rounded-xl px-4 py-3 text-lg font-mono tracking-widest uppercase text-white focus:outline-none focus:border-white transition-colors text-center"

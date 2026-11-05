@@ -231,7 +231,7 @@ export default function SpotifySidebar({
               <path d="M12 3a9 9 0 0 0-9 9v7a3 3 0 0 0 3 3h1a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H5v-3a7 7 0 1 1 14 0v3h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1a3 3 0 0 0 3-3v-7a9 9 0 0 0-9-9z" />
             </svg>
             <div className="flex items-center justify-between w-full">
-              <span>Listen Together</span>
+              <span>Together</span>
               {room && (
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Connected to room" />
               )}

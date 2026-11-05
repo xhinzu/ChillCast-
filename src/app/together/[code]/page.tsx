@@ -7,7 +7,7 @@ export async function generateMetadata({
 }) {
   const { code } = await params;
   return {
-    title: `Room ${code.toUpperCase()} — Listen Together | ChillCast`,
+    title: `Room ${code.toUpperCase()} — Together | ChillCast`,
     description: `Join room ${code.toUpperCase()} to listen together in real-time on ChillCast.`,
   };
 }

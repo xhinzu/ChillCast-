@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyGuestToken } from './tokens';
 
 export interface RoomCaller {
@@ -11,24 +12,31 @@ export interface RoomCaller {
 
 /**
  * Resolves the identity of a room API caller.
- * Checks for a signed-in Supabase user first.
+ * Checks for a signed-in Supabase user first (via Authorization Bearer JWT or cookies).
  * If not signed in, verifies the room guest token from headers or cookies.
  */
 export async function getRoomCaller(
   request: NextRequest,
   roomCode: string
 ): Promise<RoomCaller | null> {
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
   // 1. Check for authenticated Supabase session
   try {
     const supabase = await createClient();
-    if (supabase) {
+    const admin = createAdminClient();
+    const client = admin || supabase;
+    if (client) {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = token
+        ? await client.auth.getUser(token)
+        : await (supabase?.auth.getUser() ?? client.auth.getUser());
 
       if (user) {
         // Fetch user profile
-        const { data: profile } = await supabase
+        const { data: profile } = await client
           .from('profiles')
           .select('display_name, avatar_url')
           .eq('id', user.id)
@@ -54,17 +62,10 @@ export async function getRoomCaller(
   }
 
   // 2. Check for signed guest token in Authorization header or cookie
-  const authHeader = request.headers.get('authorization');
-  let token: string | null = null;
+  const guestToken = token || request.cookies.get(`chillcast_guest_${roomCode}`)?.value || null;
 
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  } else {
-    token = request.cookies.get(`chillcast_guest_${roomCode}`)?.value || null;
-  }
-
-  if (token) {
-    const payload = verifyGuestToken(token);
+  if (guestToken) {
+    const payload = verifyGuestToken(guestToken);
     if (payload && payload.roomCode === roomCode) {
       return {
         id: payload.guestId,
@@ -77,4 +78,3 @@ export async function getRoomCaller(
 
   return null;
 }
-
