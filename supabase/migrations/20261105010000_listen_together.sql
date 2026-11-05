@@ -67,6 +67,29 @@ create policy "Service role has full access to rooms"
   using (true)
   with check (true);
 
+-- Authenticated hosts can insert and manage their own rooms
+drop policy if exists "Authenticated users can create rooms" on public.rooms;
+create policy "Authenticated users can create rooms"
+  on public.rooms
+  for insert
+  to authenticated
+  with check (auth.uid() = host_id);
+
+drop policy if exists "Hosts can update own rooms" on public.rooms;
+create policy "Hosts can update own rooms"
+  on public.rooms
+  for update
+  to authenticated
+  using (auth.uid() = host_id)
+  with check (auth.uid() = host_id);
+
+drop policy if exists "Hosts can delete own rooms" on public.rooms;
+create policy "Hosts can delete own rooms"
+  on public.rooms
+  for delete
+  to authenticated
+  using (auth.uid() = host_id);
+
 -- Policies for public.room_queue:
 -- Anyone can view queue items
 drop policy if exists "Anyone can view room queue" on public.room_queue;
@@ -82,6 +105,29 @@ create policy "Service role has full access to room_queue"
   for all
   using (true)
   with check (true);
+
+-- Queue mutations permitted for authenticated & anon (server route handlers perform authority validation)
+drop policy if exists "Users can insert queue items" on public.room_queue;
+create policy "Users can insert queue items"
+  on public.room_queue
+  for insert
+  to authenticated, anon
+  with check (true);
+
+drop policy if exists "Users can update queue items" on public.room_queue;
+create policy "Users can update queue items"
+  on public.room_queue
+  for update
+  to authenticated, anon
+  using (true)
+  with check (true);
+
+drop policy if exists "Users can delete queue items" on public.room_queue;
+create policy "Users can delete queue items"
+  on public.room_queue
+  for delete
+  to authenticated, anon
+  using (true);
 
 -- 4. Enable Supabase Realtime broadcast and postgres_changes
 do $$

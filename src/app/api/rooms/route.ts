@@ -144,7 +144,10 @@ export async function POST(request: NextRequest) {
 
   if (insertError) {
     console.error('Failed to create room:', insertError);
-    return NextResponse.json({ error: 'Failed to create room in database' }, { status: 500 });
+    const msg = insertError.code === '42501'
+      ? 'Database permission error (RLS). Please add SUPABASE_SERVICE_ROLE_KEY to Vercel Environment Variables or run the RLS policies SQL in Supabase.'
+      : (insertError.message || 'Failed to create room in database');
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   return NextResponse.json({ room }, { status: 201 });
