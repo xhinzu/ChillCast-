@@ -26,6 +26,19 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDropdownOpen]);
 
+  // Clean up any error parameters left in the URL on return
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (
+      url.searchParams.has('error') ||
+      url.searchParams.has('auth_error') ||
+      url.searchParams.has('error_description')
+    ) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Compute initials fallback
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'Listener';
   const initials = displayName.trim().slice(0, 2).toUpperCase();

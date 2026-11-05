@@ -16,6 +16,10 @@ create table if not exists public.profiles (
 -- Index for fast lookup by Discord ID
 create index if not exists idx_profiles_discord_id on public.profiles(discord_id);
 
+-- Permissions
+grant usage on schema public to postgres, anon, authenticated, service_role;
+grant all on table public.profiles to postgres, anon, authenticated, service_role;
+
 -- 2. Enable Row Level Security (RLS)
 alter table public.profiles enable row level security;
 
@@ -59,7 +63,10 @@ grant select on public.public_profiles to anon, authenticated;
 
 -- 5. Trigger function to auto-create or update profile when a user signs up
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer set search_path = public, pg_temp
+as $$
 declare
   raw_discord_id text;
   raw_display_name text;
@@ -67,14 +74,17 @@ declare
 begin
   -- Extract Discord provider id if signed in via Discord OAuth
   if new.raw_app_meta_data->>'provider' = 'discord' then
-    raw_discord_id := coalesce(new.raw_user_meta_data->>'provider_id', new.raw_user_meta_data->>'sub');
+    raw_discord_id := coalesce(
+      new.raw_user_meta_data->>'provider_id',
+      new.raw_user_meta_data->>'sub'
+    );
   else
     raw_discord_id := null;
   end if;
 
-  -- Extract display name from metadata, fallback to email username or 'Chill Listener'
+  -- Extract display name using safe json path traversal (using #>> or -> followed by ->>)
   raw_display_name := coalesce(
-    nullif(trim(new.raw_user_meta_data->>'custom_claims'->>'global_name'), ''),
+    nullif(trim(new.raw_user_meta_data#>>'{custom_claims,global_name}'), ''),
     nullif(trim(new.raw_user_meta_data->>'full_name'), ''),
     nullif(trim(new.raw_user_meta_data->>'name'), ''),
     nullif(trim(new.raw_user_meta_data->>'user_name'), ''),
@@ -112,12 +122,15 @@ begin
     updated_at = now();
 
   return new;
+exception when others then
+  -- Prevent database trigger error from blocking user account creation
+  raise warning 'Error creating profile for user %: %', new.id, sqlerrm;
+  return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- Recreate trigger on auth.users
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
-
