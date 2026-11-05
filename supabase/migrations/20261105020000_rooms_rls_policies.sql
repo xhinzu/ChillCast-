@@ -49,3 +49,4 @@ create policy "Users can delete queue items"
   for delete
   to authenticated, anon
   using (true);
+
