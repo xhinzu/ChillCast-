@@ -197,7 +197,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
 
   // 3. Audio synchronization: align playback engine with room state
   useEffect(() => {
-    if (!room || roomStatus !== 'connected' || needsAutoplayUnlock) return;
+    if (!room || roomStatus !== 'connected') return;
 
     const currentTrackId = playback.currentTrack?.id;
     const currentRoomItem = queue.find((q) => q.id === room.state.queueItemId);
@@ -221,21 +221,29 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       }).then(() => {
         playback.seek(targetSec);
         if (room.state.status === 'playing') {
-          playback.play().catch(() => {
-            setNeedsAutoplayUnlock(true);
-          });
+          if (!needsAutoplayUnlock) {
+            playback.play().catch((err) => {
+              console.warn('Playback play() blocked by browser:', err);
+              setNeedsAutoplayUnlock(true);
+            });
+          }
         } else {
           playback.pause();
         }
+      }).catch((err) => {
+        console.warn('Failed to load room track into playback engine:', err);
       });
       return;
     }
 
     // Handle play/pause state synchronization
     if (room.state.status === 'playing' && !playback.isPlaying) {
-      playback.play().catch(() => {
-        setNeedsAutoplayUnlock(true);
-      });
+      if (!needsAutoplayUnlock) {
+        playback.play().catch((err) => {
+          console.warn('Playback play() blocked by browser:', err);
+          setNeedsAutoplayUnlock(true);
+        });
+      }
     } else if (room.state.status === 'paused' && playback.isPlaying) {
       playback.pause();
     }
@@ -450,9 +458,6 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       setSkipVotes([]);
       hostLastSeenRef.current = Date.now();
 
-      // Check autoplay permission
-      setNeedsAutoplayUnlock(true);
-
       // Subscribe to Realtime channel
       if (member) {
         subscribeToRoom(data.room.code, member);
@@ -506,10 +511,32 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   // 11. Autoplay unlock gesture handler
   const unlockAutoplay = useCallback(() => {
     setNeedsAutoplayUnlock(false);
-    if (room?.state.status === 'playing') {
-      playback.play().catch(() => {});
-    }
-  }, [playback, room?.state.status]);
+    const currentRoom = roomRef.current;
+    if (!currentRoom) return;
+
+    const currentRoomItem = queueRef.current.find((q) => q.id === currentRoom.state.queueItemId);
+    if (!currentRoomItem) return;
+
+    const estimatedServerNow = Date.now() + clockOffsetMs;
+    const targetMs = calculateTargetPosition(currentRoom.state, estimatedServerNow, currentRoomItem.duration_sec);
+    const targetSec = Math.max(0, targetMs / 1000);
+
+    playback.loadPlaylist(currentRoomItem.video_id, 'youtube', {
+      title: currentRoomItem.title,
+      artist: currentRoomItem.artist,
+      duration: currentRoomItem.duration_sec,
+      artworkUrl: currentRoomItem.thumbnail,
+    }).then(() => {
+      playback.seek(targetSec);
+      if (currentRoom.state.status === 'playing') {
+        playback.play().catch((err) => {
+          console.warn('Play error after unlockAutoplay:', err);
+        });
+      }
+    }).catch((err) => {
+      console.warn('unlockAutoplay loadPlaylist error:', err);
+    });
+  }, [clockOffsetMs, playback]);
 
   // 12. Send Reaction Action
   const sendReaction = useCallback(async (emoji: string) => {
@@ -530,6 +557,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   // 13. Room Playback Controls (gated & routed through server API)
   const playRoom = useCallback(async () => {
     if (!room || !canControl) return;
+    setNeedsAutoplayUnlock(false);
     const currentMs = Math.round(playback.currentTime * 1000);
     const res = await authFetch(`/api/rooms/${room.code}/state`, {
       method: 'POST',

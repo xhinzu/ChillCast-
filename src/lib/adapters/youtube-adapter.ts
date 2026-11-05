@@ -39,6 +39,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private isSpatial8DActive = false;
   private isMuffledActive = false;
   private analyserNode: AnalyserNode | null = null;
+  private shouldPlayOnReady = false;
 
   private initDsp() {
     if (this.audioCtx || !this.streamAudio || typeof window === 'undefined') return;
@@ -373,6 +374,10 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
                 this.player.setVolume(Math.round(this.volume * 100));
               } else {
                 this.player.mute();
+              }
+              if (this.shouldPlayOnReady) {
+                this.shouldPlayOnReady = false;
+                this.player.playVideo();
               }
             }
             resolve();
@@ -717,22 +722,6 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.duration = trackHint?.duration || 0;
     this.currentVideoId = null;
 
-    if (!this.player) {
-      this.pendingTarget = parsed;
-      if (parsed.type === 'video' && parsed.id) {
-        this.loadStreamForVideo(parsed.id);
-      }
-      await this.initialize();
-      return [];
-    }
-
-    if (parsed.type === 'video' && parsed.id) {
-      this.loadStreamForVideo(parsed.id);
-    }
-
-    this.emitState('loading');
-    await this.applyTarget(parsed);
-
     // Format clean title and artist if trackHint is provided
     let title = parsed.type === 'playlist' ? 'YouTube Playlist' : 'YouTube Video';
     let artist = parsed.type === 'playlist' ? 'YouTube' : 'YouTube Stream';
@@ -755,6 +744,23 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     };
     this.currentTrack = initialPlaceholder;
     this.emitTrack(initialPlaceholder);
+
+    if (!this.player) {
+      this.pendingTarget = parsed;
+      if (parsed.type === 'video' && parsed.id) {
+        this.loadStreamForVideo(parsed.id);
+      }
+      await this.initialize();
+      return [initialPlaceholder];
+    }
+
+    if (parsed.type === 'video' && parsed.id) {
+      this.loadStreamForVideo(parsed.id);
+    }
+
+    this.emitState('loading');
+    await this.applyTarget(parsed);
+
     return [initialPlaceholder];
   }
 
@@ -792,6 +798,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       } catch (err) {
         this.emitError((err as Error).message);
       }
+    } else {
+      this.shouldPlayOnReady = true;
     }
     if (this.streamAudio) {
       this.streamAudio.play().catch((err) => {
@@ -801,6 +809,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public pause(): void {
+    this.shouldPlayOnReady = false;
     if (this.isDirectStreamFallback && this.streamAudio) {
       this.streamAudio.pause();
       this.emitState('paused');
