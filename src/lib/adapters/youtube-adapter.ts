@@ -16,7 +16,18 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private positionInterval: number | null = null;
   private currentVideoId: string | null = null;
   private isApiReady = false;
+  private isPlayerReady = false;
   private pendingTarget: { type: 'playlist' | 'video'; id: string } | null = null;
+
+  public isPlayerFunctional(): boolean {
+    return Boolean(
+      this.player &&
+      this.isPlayerReady &&
+      typeof this.player.playVideo === 'function' &&
+      typeof this.player.unMute === 'function' &&
+      typeof this.player.loadVideoById === 'function'
+    );
+  }
 
   // Seeking guard to prevent YouTube iframe async position lag from overwriting seek time
   private isSeeking = false;
@@ -103,8 +114,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       // Stream audio not yet active; keep YouTube player unmuted so music never stops!
       if (this.player) {
         try {
-          this.player.unMute();
-          this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
         } catch {}
       }
     }
@@ -146,8 +157,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       // Stream audio not yet active; keep YouTube player unmuted so music never stops!
       if (this.player) {
         try {
-          this.player.unMute();
-          this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
         } catch {}
       }
     }
@@ -222,8 +233,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         this.isStreamingActive = false;
         if (this.player) {
           try {
-            this.player.unMute();
-            this.player.setVolume(Math.round(this.volume * 100));
+            if (typeof this.player.unMute === 'function') this.player.unMute();
+            if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
           } catch {}
         }
       }
@@ -234,8 +245,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       this.isStreamingActive = false;
       if (this.player) {
         try {
-          this.player.unMute();
-          this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
         } catch {
           // ignore
         }
@@ -270,8 +281,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     // Do NOT mute player here! Keep YouTube player unmuted while stream buffers
     if (this.player && !this.isStreamingActive) {
       try {
-        this.player.unMute();
-        this.player.setVolume(Math.round(this.volume * 100));
+        if (typeof this.player.unMute === 'function') this.player.unMute();
+        if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
       } catch {}
     }
 
@@ -368,16 +379,27 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         },
         events: {
           onReady: () => {
+            this.isPlayerReady = true;
             this.emitState('paused');
             if (this.player) {
               if (!this.isStreamingActive) {
-                this.player.setVolume(Math.round(this.volume * 100));
+                if (typeof this.player.unMute === 'function') this.player.unMute();
+                if (typeof this.player.setVolume === 'function') {
+                  this.player.setVolume(Math.round(this.volume * 100));
+                }
               } else {
-                this.player.mute();
+                if (typeof this.player.mute === 'function') this.player.mute();
+              }
+              if (this.pendingTarget) {
+                const target = this.pendingTarget;
+                this.pendingTarget = null;
+                this.applyTarget(target);
               }
               if (this.shouldPlayOnReady) {
                 this.shouldPlayOnReady = false;
-                this.player.playVideo();
+                if (typeof this.player.playVideo === 'function') {
+                  this.player.playVideo();
+                }
               }
             }
             resolve();
@@ -682,29 +704,40 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   private applyTarget(target: { type: 'playlist' | 'video'; id: string }): Promise<void> {
     this.isDirectStreamFallback = false;
-    if (!this.player) return Promise.resolve();
+    if (!this.isPlayerFunctional()) {
+      this.pendingTarget = target;
+      return Promise.resolve();
+    }
 
     if (target.type === 'playlist') {
-      this.player.loadPlaylist({
-        list: target.id,
-        listType: 'playlist',
-        index: 0,
-        startSeconds: 0,
-      });
+      if (typeof this.player?.loadPlaylist === 'function') {
+        this.player.loadPlaylist({
+          list: target.id,
+          listType: 'playlist',
+          index: 0,
+          startSeconds: 0,
+        });
+      }
     } else {
-      this.player.loadVideoById({
-        videoId: target.id,
-        startSeconds: 0,
-      });
+      if (typeof this.player?.loadVideoById === 'function') {
+        this.player.loadVideoById({
+          videoId: target.id,
+          startSeconds: 0,
+        });
+      }
       this.loadStreamForVideo(target.id);
     }
 
     try {
       if (!this.isStreamingActive) {
-        this.player.unMute();
-        this.player.setVolume(Math.round(this.volume * 100));
+        if (typeof this.player?.unMute === 'function') this.player.unMute();
+        if (typeof this.player?.setVolume === 'function') {
+          this.player.setVolume(Math.round(this.volume * 100));
+        }
       }
-      this.player.playVideo();
+      if (typeof this.player?.playVideo === 'function') {
+        this.player.playVideo();
+      }
     } catch {
       // ignore
     }
@@ -745,7 +778,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.currentTrack = initialPlaceholder;
     this.emitTrack(initialPlaceholder);
 
-    if (!this.player) {
+    if (!this.isPlayerFunctional()) {
       this.pendingTarget = parsed;
       if (parsed.type === 'video' && parsed.id) {
         this.loadStreamForVideo(parsed.id);
@@ -786,17 +819,21 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
     }
 
-    if (this.player) {
+    if (this.isPlayerFunctional()) {
       try {
         if (this.isStreamingActive) {
-          this.player.mute();
+          if (typeof this.player?.mute === 'function') this.player.mute();
         } else {
-          this.player.unMute();
-          this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player?.unMute === 'function') this.player.unMute();
+          if (typeof this.player?.setVolume === 'function') {
+            this.player.setVolume(Math.round(this.volume * 100));
+          }
         }
-        this.player.playVideo();
+        if (typeof this.player?.playVideo === 'function') {
+          this.player.playVideo();
+        }
       } catch (err) {
-        this.emitError((err as Error).message);
+        console.warn('[YouTubeAdapter] playVideo error:', err);
       }
     } else {
       this.shouldPlayOnReady = true;
@@ -817,11 +854,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       return;
     }
 
-    if (this.player) {
+    if (this.player && typeof this.player.pauseVideo === 'function') {
       try {
         this.player.pauseVideo();
       } catch (err) {
-        this.emitError((err as Error).message);
+        console.warn('[YouTubeAdapter] pauseVideo error:', err);
       }
     }
     if (this.streamAudio) {
@@ -848,7 +885,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
     if (this.player && !this.isDirectStreamFallback) {
       try {
-        this.player.seekTo(seconds, true);
+        if (typeof this.player.seekTo === 'function') {
+          this.player.seekTo(seconds, true);
+        }
       } catch (err) {
         console.warn('[YouTubeAdapter] player seekTo error:', err);
       }
@@ -861,7 +900,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public nextTrack(): void {
-    if (this.player) {
+    if (this.player && typeof this.player.nextVideo === 'function') {
       try {
         this.player.nextVideo();
       } catch {
@@ -871,7 +910,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public previousTrack(): void {
-    if (this.player) {
+    if (this.player && typeof this.player.previousVideo === 'function') {
       try {
         this.player.previousVideo();
       } catch {
@@ -888,7 +927,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     if (this.streamAudio) {
       this.streamAudio.volume = this.volume;
     }
-    if (this.player) {
+    if (this.player && typeof this.player.setVolume === 'function') {
       try {
         if (!this.isStreamingActive) {
           this.player.setVolume(Math.round(this.volume * 100));
@@ -989,6 +1028,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
       this.player = null;
     }
+    this.isPlayerReady = false;
+    this.shouldPlayOnReady = false;
 
     if (typeof document !== 'undefined') {
       const wrapper = document.getElementById('chillcast-yt-wrapper') || document.body;
