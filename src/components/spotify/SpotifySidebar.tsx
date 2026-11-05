@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import AddSourceModal, { SavedPlaylistItem } from './AddSourceModal';
@@ -352,6 +353,21 @@ export default function SpotifySidebar({
                 <p className="text-[10px] text-[#888888] truncate">Local File • .mp3, .wav, .flac</p>
               </div>
             </div>
+          </div>
+
+          {/* Legal / Policy Footer Links */}
+          <div className="pt-2 px-2 flex items-center justify-center gap-2 text-[10px] text-zinc-500 shrink-0">
+            <Link href="/privacy" className="hover:text-zinc-300 transition-colors">
+              Privacy
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-zinc-300 transition-colors">
+              Terms
+            </Link>
+            <span>•</span>
+            <Link href="/credits" className="hover:text-zinc-300 transition-colors">
+              Credits
+            </Link>
           </div>
         </section>
       </aside>

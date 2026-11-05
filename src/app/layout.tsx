@@ -12,6 +12,9 @@ import {
   Playfair_Display,
 } from "next/font/google";
 import "./globals.css";
+import { createClient } from "@/lib/supabase/server";
+import { AuthProvider } from "@/context/AuthContext";
+import type { Profile } from "@/types/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,18 +69,44 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  let initialUser = null;
+  let initialProfile: Profile | null = null;
+
+  try {
+    const supabase = await createClient();
+    if (supabase) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      initialUser = user;
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+        initialProfile = (profile as Profile) || null;
+      }
+    }
+  } catch {
+    // Guest mode fallback
+  }
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${interFont.variable} ${nunitoFont.variable} ${newsreaderFont.variable} ${arimoFont.variable} ${nunitoSansFont.variable} ${jostFont.variable} ${playfairFont.variable} h-full antialiased bg-black`}
     >
       <body className="h-screen w-screen overflow-hidden bg-black text-white flex flex-col antialiased">
-        {children}
+        <AuthProvider initialUser={initialUser} initialProfile={initialProfile}>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

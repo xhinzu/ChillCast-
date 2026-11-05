@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { CoffeeIcon } from '@/components/common/MinimalIcons';
+import UserMenu from '@/components/auth/UserMenu';
 
 interface SpotifyTopNavProps {
   activeView: string;
@@ -246,6 +247,9 @@ export default function SpotifyTopNav({
             <span className="hidden sm:inline">Buy me a </span>coffee
           </span>
         </button>
+
+        {/* User Account / Sign In Menu */}
+        <UserMenu />
       </div>
 
       {/* ─────────────────────────────── FAMPAY QR CODE POPUP MODAL ─────────────────────────────── */}
