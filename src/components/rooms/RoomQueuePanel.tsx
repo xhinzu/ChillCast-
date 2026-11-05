@@ -53,13 +53,13 @@ export default function RoomQueuePanel() {
       {/* Queue Header */}
       <div className="p-4 border-b border-[#222222] flex items-center justify-between shrink-0">
         <div>
-          <h3 className="font-bold text-base text-white flex items-center gap-2">
-            <span>🎵</span> Room Queue
-            <span className="text-xs bg-[#242424] text-[#888888] px-2 py-0.5 rounded-full">
+          <h3 className="font-bold text-sm text-white flex items-center gap-2">
+            <span>Room Queue</span>
+            <span className="text-[11px] bg-[#222222] text-[#888888] px-2 py-0.5 rounded-full font-normal">
               {queue.length} / 100
             </span>
           </h3>
-          <p className="text-xs text-[#888888] mt-0.5">
+          <p className="text-[11px] text-[#666666] mt-0.5">
             Total length: {totalMinutes}m {totalDurationSec % 60}s
           </p>
         </div>

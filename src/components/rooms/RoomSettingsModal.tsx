@@ -54,8 +54,8 @@ export default function RoomSettingsModal({ isOpen, onClose }: RoomSettingsModal
       <div className="bg-[#181818] border border-[#2a2a2a] rounded-2xl w-full max-w-lg shadow-2xl p-6 text-white max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#282828]">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span>⚙️</span> Room Settings
+          <h2 className="text-lg font-bold text-white">
+            Room Settings
           </h2>
           <button
             type="button"
@@ -218,8 +218,8 @@ export default function RoomSettingsModal({ isOpen, onClose }: RoomSettingsModal
                       )}
                       <span className="truncate">{m.name}</span>
                       {isThisHost && (
-                        <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20">
-                          Host 👑
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-neutral-300 bg-white/10 px-2 py-0.5 rounded-full border border-white/20">
+                          Host
                         </span>
                       )}
                     </div>
