@@ -28,7 +28,7 @@ export async function POST(
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient(request);
   const adminClient = createAdminClient() || supabase;
   if (!adminClient) {
     return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
@@ -51,13 +51,27 @@ export async function POST(
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
   let user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null = null;
-  if (supabase || adminClient) {
+
+  // Check Bearer token first
+  if (token) {
     try {
       const authClient = adminClient || supabase!;
-      const { data: userData } = token
-        ? await authClient.auth.getUser(token)
-        : await supabase!.auth.getUser();
-      user = userData?.user || null;
+      const { data: userData } = await authClient.auth.getUser(token);
+      if (userData?.user) {
+        user = userData.user;
+      }
+    } catch {
+      user = null;
+    }
+  }
+
+  // Fall back to cookie session from request if token didn't yield a user
+  if (!user && supabase) {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        user = userData.user;
+      }
     } catch {
       user = null;
     }

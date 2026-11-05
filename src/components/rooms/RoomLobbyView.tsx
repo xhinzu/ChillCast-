@@ -252,9 +252,18 @@ export default function RoomLobbyView({ onRoomJoined }: RoomLobbyViewProps) {
                 </div>
 
                 {createError && (
-                  <p className="text-xs text-red-400 bg-red-950/30 p-2.5 rounded-lg border border-red-900/40">
-                    {createError}
-                  </p>
+                  <div className="text-xs text-red-400 bg-red-950/30 p-2.5 rounded-lg border border-red-900/40 flex items-center justify-between gap-2">
+                    <span>{createError}</span>
+                    {createError.toLowerCase().includes('signed in') && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAuthModalOpen(true)}
+                        className="underline text-white font-medium hover:text-neutral-200 shrink-0"
+                      >
+                        Sign in
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 <button

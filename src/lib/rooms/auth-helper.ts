@@ -24,17 +24,26 @@ export async function getRoomCaller(
 
   // 1. Check for authenticated Supabase session
   try {
-    const supabase = await createClient();
+    const supabase = await createClient(request);
     const admin = createAdminClient();
     const client = admin || supabase;
-    if (client) {
-      const {
-        data: { user },
-      } = token
-        ? await client.auth.getUser(token)
-        : await (supabase?.auth.getUser() ?? client.auth.getUser());
+    let user = null;
 
-      if (user) {
+    if (token && client) {
+      const { data } = await client.auth.getUser(token);
+      if (data?.user) {
+        user = data.user;
+      }
+    }
+
+    if (!user && supabase) {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        user = data.user;
+      }
+    }
+
+    if (user && client) {
         // Fetch user profile
         const { data: profile } = await client
           .from('profiles')
@@ -56,7 +65,6 @@ export async function getRoomCaller(
           isGuest: false,
         };
       }
-    }
   } catch {
     // Fallback to guest token
   }

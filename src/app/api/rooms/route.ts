@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 2. Requires authenticated user to host a room
-  const supabase = await createClient();
+  const supabase = await createClient(request);
   if (!supabase) {
     return NextResponse.json({ error: 'Supabase is not configured' }, { status: 503 });
   }
@@ -36,14 +36,30 @@ export async function POST(request: NextRequest) {
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
   let user = null;
-  try {
-    const authClient = adminClient || supabase;
-    const { data } = token
-      ? await authClient.auth.getUser(token)
-      : await supabase.auth.getUser();
-    user = data?.user || null;
-  } catch {
-    user = null;
+
+  // Check Bearer token first
+  if (token) {
+    try {
+      const authClient = adminClient || supabase;
+      const { data } = await authClient.auth.getUser(token);
+      if (data?.user) {
+        user = data.user;
+      }
+    } catch {
+      user = null;
+    }
+  }
+
+  // Fall back to cookie session from request if token didn't yield a user
+  if (!user) {
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        user = data.user;
+      }
+    } catch {
+      user = null;
+    }
   }
 
   if (!user) {

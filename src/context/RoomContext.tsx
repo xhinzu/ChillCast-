@@ -133,18 +133,23 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        let { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          session = refreshed?.session || null;
+        }
         if (session?.access_token) {
           headers['Authorization'] = `Bearer ${session.access_token}`;
         }
       } catch {
-        // Fallback to unauthenticated headers
+        // Fallback to cookie credentials
       }
     }
 
     return fetch(url, {
       ...options,
       headers,
+      credentials: 'include',
     });
   }, []);
 
