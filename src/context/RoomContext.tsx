@@ -633,7 +633,16 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
 
     const res = await authFetch(`/api/rooms/${room.code}/queue`, {
       method: 'POST',
-      body: JSON.stringify({ ...track, playNext }),
+      body: JSON.stringify({
+        video_id: track.videoId,
+        videoId: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        thumbnail: track.thumbnail,
+        duration_sec: track.durationSec,
+        durationSec: track.durationSec,
+        playNext,
+      }),
     });
 
     const data = await res.json();
@@ -641,7 +650,9 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: data.error || 'Failed to add song' };
     }
 
-    setQueue(data.queue);
+    if (data.queue) {
+      setQueue(data.queue);
+    }
     if (data.room) {
       setRoom(data.room);
     }
@@ -654,13 +665,13 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     const item = queue.find((q) => q.id === queueItemId);
     if (!item || !canModifyQueueItem(currentMember.id, room.host_id, item.added_by.id)) return;
 
-    const res = await authFetch(`/api/rooms/${room.code}/queue`, {
+    const res = await authFetch(`/api/rooms/${room.code}/queue?itemId=${encodeURIComponent(queueItemId)}`, {
       method: 'DELETE',
-      body: JSON.stringify({ queueItemId }),
+      body: JSON.stringify({ queueItemId, itemId: queueItemId }),
     });
     if (res.ok) {
       const data = await res.json();
-      setQueue(data.queue);
+      if (data.queue) setQueue(data.queue);
       if (data.room) setRoom(data.room);
     }
   }, [room, currentMember, queue, authFetch]);
@@ -672,11 +683,11 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
 
     const res = await authFetch(`/api/rooms/${room.code}/queue`, {
       method: 'PATCH',
-      body: JSON.stringify({ queueItemId, newPosition }),
+      body: JSON.stringify({ queueItemId, itemId: queueItemId, newPosition }),
     });
     if (res.ok) {
       const data = await res.json();
-      setQueue(data.queue);
+      if (data.queue) setQueue(data.queue);
     }
   }, [room, currentMember, queue, authFetch]);
 

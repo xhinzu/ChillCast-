@@ -7,19 +7,44 @@ import { getRoomCaller } from '@/lib/rooms/auth-helper';
 import { canAddSong, canModifyQueueItem } from '@/lib/rooms/permissions';
 import { checkRateLimit } from '@/lib/rooms/rate-limit';
 
-const addQueueSchema = z.object({
-  video_id: z.string().min(1),
-  title: z.string().min(1).max(200),
-  artist: z.string().max(200).default(''),
-  thumbnail: z.string().default(''),
-  duration_sec: z.number().int().min(0).default(0),
-  playNext: z.boolean().default(false),
-});
+const addQueueSchema = z
+  .object({
+    video_id: z.string().min(1).optional(),
+    videoId: z.string().min(1).optional(),
+    title: z.string().min(1).max(200),
+    artist: z.string().max(200).default(''),
+    thumbnail: z.string().default(''),
+    duration_sec: z.number().int().min(0).optional(),
+    durationSec: z.number().int().min(0).optional(),
+    playNext: z.boolean().default(false),
+  })
+  .transform((data) => ({
+    video_id: data.videoId || data.video_id || '',
+    title: data.title,
+    artist: data.artist || 'Unknown Artist',
+    thumbnail: data.thumbnail || '',
+    duration_sec: data.durationSec ?? data.duration_sec ?? 0,
+    playNext: Boolean(data.playNext),
+  }))
+  .refine((data) => Boolean(data.video_id), {
+    message: 'Video ID is required',
+    path: ['video_id'],
+  });
 
-const reorderSchema = z.object({
-  itemId: z.string().uuid(),
-  newPosition: z.number().int().min(0),
-});
+const reorderSchema = z
+  .object({
+    itemId: z.string().optional(),
+    queueItemId: z.string().optional(),
+    newPosition: z.number().int().min(0),
+  })
+  .transform((data) => ({
+    itemId: data.itemId || data.queueItemId || '',
+    newPosition: data.newPosition,
+  }))
+  .refine((data) => Boolean(data.itemId), {
+    message: 'itemId is required',
+    path: ['itemId'],
+  });
 
 export async function POST(
   request: NextRequest,
@@ -38,7 +63,7 @@ export async function POST(
     return NextResponse.json({ error: 'Rate limit exceeded. Please wait a moment.' }, { status: 429 });
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient(request);
   const adminClient = createAdminClient() || supabase;
   if (!adminClient) {
     return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
@@ -116,12 +141,14 @@ export async function POST(
     .single();
 
   if (insertError) {
-    return NextResponse.json({ error: 'Failed to insert track into queue' }, { status: 500 });
+    console.error('Failed to insert track into queue:', insertError);
+    return NextResponse.json({ error: insertError.message || 'Failed to insert track into queue' }, { status: 500 });
   }
 
   // If no track is currently playing, start this track immediately!
+  let updatedRoom = room;
   if (!room.state?.queueItemId) {
-    await adminClient
+    const { data: r } = await adminClient
       .from('rooms')
       .update({
         state: {
@@ -133,12 +160,44 @@ export async function POST(
         },
         last_active_at: new Date().toISOString(),
       })
-      .eq('code', code);
+      .eq('code', code)
+      .select()
+      .single();
+    if (r) updatedRoom = r;
+  }
+
+  // Fetch full updated queue
+  const { data: updatedQueue } = await adminClient
+    .from('room_queue')
+    .select('*')
+    .eq('room_code', code)
+    .order('position', { ascending: true });
+
+  // Broadcast updates via Realtime
+  try {
+    const channel = adminClient.channel(`room:${code}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'queue_updated',
+      payload: { queue: updatedQueue || [] },
+    });
+    if (!room.state?.queueItemId) {
+      await channel.send({
+        type: 'broadcast',
+        event: 'state_updated',
+        payload: { state: updatedRoom.state },
+      });
+    }
+  } catch (err) {
+    console.error('Failed to broadcast queue event:', err);
   }
 
   return NextResponse.json({
     item: newItem,
+    queue: updatedQueue || [],
+    room: updatedRoom,
     hasDuplicate: isDuplicate,
+    warning: isDuplicate ? 'This song is already in the room queue' : undefined,
   });
 }
 
@@ -154,7 +213,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient(request);
   const adminClient = createAdminClient() || supabase;
   if (!adminClient) {
     return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
@@ -200,10 +259,10 @@ export async function PATCH(
     .eq('room_code', code)
     .order('position', { ascending: true });
 
-  if (!items) return NextResponse.json({ success: true });
+  if (!items) return NextResponse.json({ queue: [] });
 
   const currentIndex = items.findIndex((i) => i.id === parsed.data.itemId);
-  if (currentIndex === -1) return NextResponse.json({ success: true });
+  if (currentIndex === -1) return NextResponse.json({ queue: items });
 
   const [moved] = items.splice(currentIndex, 1);
   const targetIndex = Math.max(0, Math.min(items.length, parsed.data.newPosition));
@@ -213,10 +272,23 @@ export async function PATCH(
   for (let idx = 0; idx < items.length; idx++) {
     if (items[idx].position !== idx) {
       await adminClient.from('room_queue').update({ position: idx }).eq('id', items[idx].id);
+      items[idx].position = idx;
     }
   }
 
-  return NextResponse.json({ success: true });
+  // Broadcast reordered queue
+  try {
+    const channel = adminClient.channel(`room:${code}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'queue_updated',
+      payload: { queue: items },
+    });
+  } catch (err) {
+    console.error('Failed to broadcast reorder:', err);
+  }
+
+  return NextResponse.json({ queue: items });
 }
 
 export async function DELETE(
@@ -232,12 +304,22 @@ export async function DELETE(
   }
 
   const url = new URL(request.url);
-  const itemId = url.searchParams.get('itemId');
+  let itemId = url.searchParams.get('itemId') || url.searchParams.get('queueItemId');
+
   if (!itemId) {
-    return NextResponse.json({ error: 'itemId query parameter required' }, { status: 400 });
+    try {
+      const body = await request.json();
+      itemId = body.itemId || body.queueItemId || null;
+    } catch {
+      // Empty body fallback
+    }
   }
 
-  const supabase = await createClient();
+  if (!itemId) {
+    return NextResponse.json({ error: 'Queue item ID required' }, { status: 400 });
+  }
+
+  const supabase = await createClient(request);
   const adminClient = createAdminClient() || supabase;
   if (!adminClient) {
     return NextResponse.json({ error: 'Database service unavailable' }, { status: 503 });
@@ -272,6 +354,7 @@ export async function DELETE(
   await adminClient.from('room_queue').delete().eq('id', itemId);
 
   // If the removed item was currently playing, advance to next
+  let updatedRoom = room;
   if (room.state?.queueItemId === itemId) {
     const { data: nextItem } = await adminClient
       .from('room_queue')
@@ -282,7 +365,7 @@ export async function DELETE(
       .limit(1)
       .maybeSingle();
 
-    await adminClient
+    const { data: r } = await adminClient
       .from('rooms')
       .update({
         state: {
@@ -293,9 +376,41 @@ export async function DELETE(
           version: (room.state?.version || 1) + 1,
         },
       })
-      .eq('code', code);
+      .eq('code', code)
+      .select()
+      .single();
+    if (r) updatedRoom = r;
   }
 
-  return NextResponse.json({ success: true });
-}
+  // Fetch updated queue
+  const { data: updatedQueue } = await adminClient
+    .from('room_queue')
+    .select('*')
+    .eq('room_code', code)
+    .order('position', { ascending: true });
 
+  // Broadcast updates
+  try {
+    const channel = adminClient.channel(`room:${code}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'queue_updated',
+      payload: { queue: updatedQueue || [] },
+    });
+    if (room.state?.queueItemId === itemId) {
+      await channel.send({
+        type: 'broadcast',
+        event: 'state_updated',
+        payload: { state: updatedRoom.state },
+      });
+    }
+  } catch (err) {
+    console.error('Failed to broadcast delete:', err);
+  }
+
+  return NextResponse.json({
+    success: true,
+    queue: updatedQueue || [],
+    room: updatedRoom,
+  });
+}

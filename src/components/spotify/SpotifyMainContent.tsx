@@ -1055,11 +1055,13 @@ export default function SpotifyMainContent({
                                 const res = await addToQueue({
                                   videoId: video.id,
                                   title: video.title,
-                                  artist: video.channel,
-                                  thumbnail: video.thumbnail,
+                                  artist: video.channel || 'Unknown Artist',
+                                  thumbnail: video.thumbnail || '',
                                   durationSec: parseDurationSeconds(video.duration),
                                 }, false);
-                                if (res.warning) {
+                                if (!res.success) {
+                                  setAddedToast(res.error || 'Failed to add track');
+                                } else if (res.warning) {
                                   setAddedToast(res.warning);
                                 } else {
                                   setAddedToast(`Added "${video.title}" to room queue`);
@@ -1078,11 +1080,13 @@ export default function SpotifyMainContent({
                                 const res = await addToQueue({
                                   videoId: video.id,
                                   title: video.title,
-                                  artist: video.channel,
-                                  thumbnail: video.thumbnail,
+                                  artist: video.channel || 'Unknown Artist',
+                                  thumbnail: video.thumbnail || '',
                                   durationSec: parseDurationSeconds(video.duration),
                                 }, true);
-                                if (res.warning) {
+                                if (!res.success) {
+                                  setAddedToast(res.error || 'Failed to add track');
+                                } else if (res.warning) {
                                   setAddedToast(res.warning);
                                 } else {
                                   setAddedToast(`Playing "${video.title}" next in room`);
@@ -1231,11 +1235,13 @@ export default function SpotifyMainContent({
                                 const res = await addToQueue({
                                   videoId: video.id,
                                   title: video.title,
-                                  artist: video.channel,
-                                  thumbnail: video.thumbnail,
+                                  artist: video.channel || 'Unknown Artist',
+                                  thumbnail: video.thumbnail || '',
                                   durationSec: parseDurationSeconds(video.duration),
                                 }, false);
-                                if (res.warning) {
+                                if (!res.success) {
+                                  setAddedToast(res.error || 'Failed to add track');
+                                } else if (res.warning) {
                                   setAddedToast(res.warning);
                                 } else {
                                   setAddedToast(`Added "${video.title}" to room queue`);
@@ -1254,11 +1260,13 @@ export default function SpotifyMainContent({
                                 const res = await addToQueue({
                                   videoId: video.id,
                                   title: video.title,
-                                  artist: video.channel,
-                                  thumbnail: video.thumbnail,
+                                  artist: video.channel || 'Unknown Artist',
+                                  thumbnail: video.thumbnail || '',
                                   durationSec: parseDurationSeconds(video.duration),
                                 }, true);
-                                if (res.warning) {
+                                if (!res.success) {
+                                  setAddedToast(res.error || 'Failed to add track');
+                                } else if (res.warning) {
                                   setAddedToast(res.warning);
                                 } else {
                                   setAddedToast(`Playing "${video.title}" next in room`);
@@ -1570,11 +1578,13 @@ export default function SpotifyMainContent({
                                   const res = await addToQueue({
                                     videoId: song.id,
                                     title: song.title,
-                                    artist: song.artist,
-                                    thumbnail: song.thumbnail,
+                                    artist: song.artist || 'Unknown Artist',
+                                    thumbnail: song.thumbnail || '',
                                     durationSec: parseDurationSeconds(song.duration),
                                   }, false);
-                                  if (res.warning) {
+                                  if (!res.success) {
+                                    setAddedToast(res.error || 'Failed to add track');
+                                  } else if (res.warning) {
                                     setAddedToast(res.warning);
                                   } else {
                                     setAddedToast(`Added "${song.title}" to room queue`);
@@ -1593,11 +1603,13 @@ export default function SpotifyMainContent({
                                   const res = await addToQueue({
                                     videoId: song.id,
                                     title: song.title,
-                                    artist: song.artist,
-                                    thumbnail: song.thumbnail,
+                                    artist: song.artist || 'Unknown Artist',
+                                    thumbnail: song.thumbnail || '',
                                     durationSec: parseDurationSeconds(song.duration),
                                   }, true);
-                                  if (res.warning) {
+                                  if (!res.success) {
+                                    setAddedToast(res.error || 'Failed to add track');
+                                  } else if (res.warning) {
                                     setAddedToast(res.warning);
                                   } else {
                                     setAddedToast(`Playing "${song.title}" next in room`);
