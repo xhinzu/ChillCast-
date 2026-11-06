@@ -11,6 +11,7 @@ import SpotifyBottomPlayer from '@/components/spotify/SpotifyBottomPlayer';
 import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
+import DiscordPresenceBridge from '@/components/discord/DiscordPresenceBridge';
 
 export interface ChillCastAppProps {
   initialView?: string;
@@ -158,6 +159,9 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
       >
         <div id="chillcast-yt-player" className="w-full h-full" />
       </div>
+
+      {/* 6. Discord Rich Presence Bridge (PreMiD support) */}
+      <DiscordPresenceBridge />
     </div>
   );
 }

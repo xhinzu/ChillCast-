@@ -1,0 +1,25 @@
+{
+  "apiVersion": 1,
+  "author": {
+    "name": "MyuJiku",
+    "id": "1336000000000000000"
+  },
+  "service": "MyuJiku",
+  "description": {
+    "en": "Listen to synchronized lo-fi, 8D audio, and music together with friends on MyuJiku."
+  },
+  "url": "myujiku.vercel.app",
+  "version": "1.0.0",
+  "logo": "https://i.imgur.com/placeholder-myujiku-logo.png",
+  "thumbnail": "https://i.imgur.com/placeholder-myujiku-thumb.png",
+  "color": "#ffffff",
+  "category": "music",
+  "tags": [
+    "music",
+    "audio",
+    "lofi",
+    "streaming",
+    "together",
+    "sync"
+  ]
+}

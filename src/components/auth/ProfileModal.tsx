@@ -4,6 +4,13 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useUser } from '@/hooks/useUser';
 import { profileUpdateSchema } from '@/lib/auth/validation';
+import {
+  getDiscordPresenceEnabled,
+  getDiscordPresenceShareRoom,
+  setDiscordPresenceEnabled,
+  setDiscordPresenceShareRoom,
+  DISCORD_SETTINGS_CHANGED_EVENT,
+} from '@/lib/discord/presence-settings';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -20,6 +27,17 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [discordEnabled, setDiscordEnabled] = useState<boolean>(() => getDiscordPresenceEnabled());
+  const [shareRoom, setShareRoom] = useState<boolean>(() => getDiscordPresenceShareRoom());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setDiscordEnabled(getDiscordPresenceEnabled());
+      setShareRoom(getDiscordPresenceShareRoom());
+    };
+    window.addEventListener(DISCORD_SETTINGS_CHANGED_EVENT, handleSync);
+    return () => window.removeEventListener(DISCORD_SETTINGS_CHANGED_EVENT, handleSync);
+  }, []);
 
   // Close on Escape key
   useEffect(() => {
@@ -264,6 +282,99 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           <p className="text-[11px] text-zinc-400 leading-relaxed">
             Your playlists, liked songs, and custom ambiance settings are currently stored securely on your local device. Cloud library backup and cross-device syncing will be enabled in an upcoming release.
           </p>
+        </div>
+
+        {/* Section: Discord Rich Presence */}
+        <div className="pt-2 border-t border-[#24242a] space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+              Discord Rich Presence
+            </h3>
+            <a
+              href="https://premid.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1"
+            >
+              <span>premid.app</span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#18181c] border border-[#26262e] space-y-2.5">
+            <div className="flex items-center justify-between gap-4">
+              <label
+                htmlFor="profile-discord-presence-toggle"
+                className="text-xs font-medium text-white cursor-pointer select-none"
+              >
+                Show what I&apos;m listening to on Discord
+              </label>
+
+              <button
+                type="button"
+                id="profile-discord-presence-toggle"
+                role="switch"
+                aria-checked={discordEnabled}
+                onClick={() => {
+                  const next = !discordEnabled;
+                  setDiscordEnabled(next);
+                  setDiscordPresenceEnabled(next);
+                }}
+                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  discordEnabled ? 'bg-white' : 'bg-[#2e2e36]'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                    discordEnabled ? 'translate-x-5 bg-black' : 'translate-x-0 bg-zinc-400'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-zinc-400 leading-relaxed border-t border-[#22222a] pt-2">
+              Only works with the PreMiD app and extension. Shows song title, artist, and the app name.
+            </p>
+
+            {discordEnabled && (
+              <div className="pt-2 border-t border-[#22222a] flex items-center justify-between gap-4">
+                <div>
+                  <label
+                    htmlFor="profile-discord-presence-share-room"
+                    className="text-xs font-medium text-zinc-200 cursor-pointer select-none block"
+                  >
+                    Share room link in presence
+                  </label>
+                  <p className="text-[10px] text-zinc-500">
+                    Adds a &quot;Join my room&quot; button on Discord when in a room.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  id="profile-discord-presence-share-room"
+                  role="switch"
+                  aria-checked={shareRoom}
+                  onClick={() => {
+                    const next = !shareRoom;
+                    setShareRoom(next);
+                    setDiscordPresenceShareRoom(next);
+                  }}
+                  className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    shareRoom ? 'bg-white' : 'bg-[#2e2e36]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-3 w-3 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                      shareRoom ? 'translate-x-4 bg-black' : 'translate-x-0 bg-zinc-400'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Section: Data Privacy & Export */}
