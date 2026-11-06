@@ -127,7 +127,117 @@ function extractYtInitialData(html: string): Record<string, unknown> | null {
 }
 
 // -------------------------------------------------------------
-// Strategy 1: Direct YouTube Web Scraper (Zero Quota)
+// Strategy 1: Direct YouTube Innertube JSON API (Universal, Zero Quota, Serverless-Friendly)
+// -------------------------------------------------------------
+async function searchViaInnertube(
+  searchQueryText: string,
+  nonMusicPattern: RegExp,
+  allowLongTracks: boolean
+): Promise<YouTubeSearchResult[]> {
+  const res = await fetch('https://www.youtube.com/youtubei/v1/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      context: {
+        client: {
+          clientName: 'WEB',
+          clientVersion: '2.20240101.01.00',
+          hl: 'en',
+          gl: 'US',
+        },
+      },
+      query: searchQueryText,
+    }),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(6000),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Innertube returned status ${res.status}`);
+  }
+
+  const data = (await res.json()) as {
+    contents?: {
+      twoColumnSearchResultsRenderer?: {
+        primaryContents?: {
+          sectionListRenderer?: {
+            contents?: Array<{
+              itemSectionRenderer?: {
+                contents?: Array<{
+                  videoRenderer?: {
+                    videoId?: string;
+                    title?: { runs?: Array<{ text?: string }>; simpleText?: string };
+                    ownerText?: { runs?: Array<{ text?: string }>; simpleText?: string };
+                    lengthText?: { simpleText?: string; runs?: Array<{ text?: string }> };
+                    thumbnail?: { thumbnails?: Array<{ url?: string }> };
+                  };
+                }>;
+              };
+            }>;
+          };
+        };
+      };
+    };
+  };
+
+  const sections =
+    data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer
+      ?.contents || [];
+
+  const results: YouTubeSearchResult[] = [];
+
+  for (const section of sections) {
+    const items = section?.itemSectionRenderer?.contents || [];
+    for (const item of items) {
+      const v = item.videoRenderer;
+      if (v && v.videoId) {
+        const titleRuns =
+          v.title?.runs?.map((r) => r.text || '').join('') || v.title?.simpleText;
+        const title = decodeHtmlEntities(titleRuns || 'YouTube Track');
+
+        const channelRuns =
+          v.ownerText?.runs?.map((r) => r.text || '').join('') || v.ownerText?.simpleText;
+        const channel = decodeHtmlEntities(channelRuns || 'YouTube Artist');
+
+        const duration =
+          v.lengthText?.simpleText ||
+          v.lengthText?.runs?.map((r) => r.text || '').join('') ||
+          '0:00';
+        const durSec = parseDurationSeconds(duration);
+
+        if (durSec > 0 && durSec < 45) continue;
+        if (nonMusicPattern.test(title) || nonMusicPattern.test(channel)) continue;
+        if (!allowLongTracks && durSec > 660) continue;
+
+        const thumbs = v.thumbnail?.thumbnails;
+        const thumbnail =
+          (thumbs && thumbs.length > 0 ? thumbs[thumbs.length - 1]?.url : null) ||
+          `https://img.youtube.com/vi/${v.videoId}/hqdefault.jpg`;
+
+        results.push({
+          id: v.videoId,
+          title,
+          channel,
+          duration,
+          thumbnail,
+        });
+
+        if (results.length >= 18) break;
+      }
+    }
+    if (results.length >= 18) break;
+  }
+
+  return results;
+}
+
+// -------------------------------------------------------------
+// Strategy 2: Direct YouTube Web Scraper (Zero Quota)
 // -------------------------------------------------------------
 async function searchViaScrape(
   searchQueryText: string,
@@ -394,18 +504,31 @@ export async function GET(req: NextRequest) {
   let sourceUsed = 'scrape';
   const errors: string[] = [];
 
-  // TIER 1: Direct YouTube Scraper with Anti-Bot headers & Consent bypass
+  // TIER 1: YouTube Innertube JSON API (Universal, Zero Quota, Serverless-Friendly)
   try {
-    results = await searchViaScrape(searchQueryText, nonMusicPattern, allowLongTracks);
+    results = await searchViaInnertube(searchQueryText, nonMusicPattern, allowLongTracks);
     if (results.length > 0) {
-      sourceUsed = 'direct-scrape';
+      sourceUsed = 'innertube';
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    errors.push(`Scraper: ${msg}`);
+    errors.push(`Innertube: ${msg}`);
   }
 
-  // TIER 2: YouTube Data API v3 (if scraper returned 0 items or threw, and API key exists)
+  // TIER 2: Direct YouTube Scraper with Anti-Bot headers & Consent bypass
+  if (results.length === 0) {
+    try {
+      results = await searchViaScrape(searchQueryText, nonMusicPattern, allowLongTracks);
+      if (results.length > 0) {
+        sourceUsed = 'direct-scrape';
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Scraper: ${msg}`);
+    }
+  }
+
+  // TIER 3: YouTube Data API v3 (if key exists)
   if (results.length === 0 && process.env.YOUTUBE_API_KEY) {
     try {
       results = await searchViaYouTubeApi(searchQueryText, process.env.YOUTUBE_API_KEY, nonMusicPattern);
@@ -418,7 +541,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // TIER 3: Local yt-dlp Executable Fallback (bypasses browser rate-limits with native extractor)
+  // TIER 4: Local yt-dlp Executable Fallback (if installed locally)
   if (results.length === 0) {
     try {
       results = await searchViaYtDlp(searchQueryText, nonMusicPattern, allowLongTracks);

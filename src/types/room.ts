@@ -60,3 +60,13 @@ export interface RoomReactionEvent {
   timestamp: number;
 }
 
+export interface RoomChatMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  avatar: string | null;
+  text: string;
+  timestamp: number;
+  isHost?: boolean;
+}
+

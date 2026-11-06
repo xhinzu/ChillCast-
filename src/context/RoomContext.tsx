@@ -13,8 +13,10 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayback } from '@/context/PlaybackContext';
 import {
+  RoomChatMessage,
   RoomData,
   RoomMemberInfo,
+  RoomPlaybackState,
   RoomQueueItem,
   RoomReactionEvent,
   RoomSettings,
@@ -49,12 +51,14 @@ export interface RoomContextValue {
   skipVotes: string[];
   hasVotedSkip: boolean;
   activeRoomCode: string | null;
+  messages: RoomChatMessage[];
 
   createRoom: (name?: string, settings?: Partial<RoomSettings>) => Promise<{ code?: string; error?: string }>;
   joinRoom: (code: string, nickname?: string) => Promise<{ success: boolean; error?: string }>;
   leaveRoom: () => void;
   unlockAutoplay: () => void;
   sendReaction: (emoji: string) => Promise<void>;
+  sendMessage: (text: string) => Promise<void>;
   playRoom: () => Promise<void>;
   pauseRoom: () => Promise<void>;
   seekRoom: (positionMs: number) => Promise<void>;
@@ -104,6 +108,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   const [needsAutoplayUnlock, setNeedsAutoplayUnlock] = useState<boolean>(false);
   const [skipVotes, setSkipVotes] = useState<string[]>([]);
   const [clockOffsetMs, setClockOffsetMs] = useState<number>(0);
+  const [messages, setMessages] = useState<RoomChatMessage[]>([]);
 
   const activeChannelRef = useRef<RealtimeChannel | null>(null);
   const lastSeekTimestampRef = useRef<number>(0);
@@ -236,16 +241,30 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Handle play/pause state synchronization
-    if (room.state.status === 'playing' && !playback.isPlaying) {
-      if (!needsAutoplayUnlock) {
-        playback.play().catch((err) => {
-          console.warn('Playback play() blocked by browser:', err);
-          setNeedsAutoplayUnlock(true);
-        });
+    // Handle play/pause & seek synchronization
+    if (room.state.status === 'playing') {
+      const actualSec = playback.getCurrentTime ? playback.getCurrentTime() : playback.currentTime;
+      const drift = Math.abs(targetSec - actualSec);
+      if (drift > 0.6) {
+        playback.seek(targetSec);
       }
-    } else if (room.state.status === 'paused' && playback.isPlaying) {
-      playback.pause();
+      if (!playback.isPlaying) {
+        if (!needsAutoplayUnlock) {
+          playback.play().catch((err) => {
+            console.warn('Playback play() blocked by browser:', err);
+            setNeedsAutoplayUnlock(true);
+          });
+        }
+      }
+    } else if (room.state.status === 'paused') {
+      if (playback.isPlaying) {
+        playback.pause();
+      }
+      const actualSec = playback.getCurrentTime ? playback.getCurrentTime() : playback.currentTime;
+      const pausedSec = (room.state.positionMs || 0) / 1000;
+      if (Math.abs(pausedSec - actualSec) > 0.6) {
+        playback.seek(pausedSec);
+      }
     }
   }, [room, queue, roomStatus, needsAutoplayUnlock, clockOffsetMs, playback]);
 
@@ -384,7 +403,36 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       })
       .on('broadcast', { event: 'state_updated' }, ({ payload }) => {
         if (payload?.state) {
-          setRoom((prev) => (prev ? { ...prev, state: payload.state } : null));
+          const nextState: RoomPlaybackState = payload.state;
+          setRoom((prev) => (prev ? { ...prev, state: nextState } : null));
+
+          if (nextState.status === 'paused') {
+            playback.pause();
+            if (typeof nextState.positionMs === 'number') {
+              playback.seek(nextState.positionMs / 1000);
+            }
+          } else if (nextState.status === 'playing') {
+            const currentRoomItem = queueRef.current.find((q) => q.id === nextState.queueItemId);
+            const estimatedServerNow = Date.now() + clockOffsetMs;
+            const targetMs = calculateTargetPosition(nextState, estimatedServerNow, currentRoomItem?.duration_sec || 0);
+            const targetSec = Math.max(0, targetMs / 1000);
+            const actualSec = playback.getCurrentTime ? playback.getCurrentTime() : playback.currentTime;
+            if (Math.abs(targetSec - actualSec) > 0.6 || payload?.action === 'seek') {
+              lastSeekTimestampRef.current = Date.now();
+              playback.seek(targetSec);
+            }
+            if (!playback.isPlaying && !needsAutoplayUnlock) {
+              playback.play().catch((err) => {
+                console.warn('Playback play() blocked by browser:', err);
+                setNeedsAutoplayUnlock(true);
+              });
+            }
+          }
+        }
+      })
+      .on('broadcast', { event: 'chat_message' }, ({ payload }) => {
+        if (payload?.text && payload.userId !== currentMemberRef.current?.id) {
+          setMessages((prev) => [...prev.slice(-99), payload]);
         }
       })
       .on('broadcast', { event: 'queue_updated' }, ({ payload }) => {
@@ -506,6 +554,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     setRoomStatus('idle');
     setErrorMessage(null);
     setSkipVotes([]);
+    setMessages([]);
   }, []);
 
   // 11. Autoplay unlock gesture handler
@@ -554,58 +603,172 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     });
   }, [currentMember]);
 
+  // 12b. Send Chat Message Action
+  const sendMessage = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || !currentMember || !activeChannelRef.current) return;
+
+    const msg: RoomChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      userId: currentMember.id,
+      userName: currentMember.name,
+      avatar: currentMember.avatar || null,
+      text: trimmed,
+      timestamp: Date.now(),
+      isHost: currentMember.id === roomRef.current?.host_id,
+    };
+
+    setMessages((prev) => [...prev.slice(-99), msg]);
+
+    await activeChannelRef.current.send({
+      type: 'broadcast',
+      event: 'chat_message',
+      payload: msg,
+    });
+  }, [currentMember]);
+
   // 13. Room Playback Controls (gated & routed through server API)
   const playRoom = useCallback(async () => {
     if (!room || !canControl) return;
     setNeedsAutoplayUnlock(false);
-    const currentMs = Math.round(playback.currentTime * 1000);
-    const res = await authFetch(`/api/rooms/${room.code}/state`, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'play',
-        positionMs: currentMs,
-        version: room.state.version,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setRoom(data.room);
+    const currentSec = playback.getCurrentTime ? playback.getCurrentTime() : playback.currentTime;
+    const currentMs = Math.round(currentSec * 1000);
+    const nextVersion = (room.state?.version || 1) + 1;
+    const now = Date.now();
+    const nextState: RoomPlaybackState = {
+      queueItemId: room.state.queueItemId,
+      status: 'playing',
+      positionMs: currentMs,
+      serverTimeMs: now,
+      version: nextVersion,
+    };
+
+    // Optimistically apply locally & play
+    setRoom((prev) => (prev ? { ...prev, state: nextState } : null));
+    playback.play().catch(() => {});
+
+    // Broadcast immediately to connected peers
+    if (activeChannelRef.current) {
+      activeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'state_updated',
+        payload: { state: nextState, action: 'play' },
+      });
     }
-  }, [room, canControl, playback.currentTime, authFetch]);
+
+    try {
+      const res = await authFetch(`/api/rooms/${room.code}/state`, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'play',
+          status: 'playing',
+          positionMs: currentMs,
+          queueItemId: room.state.queueItemId,
+          version: nextVersion,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.room) setRoom(data.room);
+      }
+    } catch (err) {
+      console.warn('Failed to sync play state with server:', err);
+    }
+  }, [room, canControl, playback, authFetch]);
 
   const pauseRoom = useCallback(async () => {
     if (!room || !canControl) return;
-    const currentMs = Math.round(playback.currentTime * 1000);
-    const res = await authFetch(`/api/rooms/${room.code}/state`, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'pause',
-        positionMs: currentMs,
-        version: room.state.version,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setRoom(data.room);
+    const currentSec = playback.getCurrentTime ? playback.getCurrentTime() : playback.currentTime;
+    const currentMs = Math.round(currentSec * 1000);
+    const nextVersion = (room.state?.version || 1) + 1;
+    const now = Date.now();
+    const nextState: RoomPlaybackState = {
+      queueItemId: room.state.queueItemId,
+      status: 'paused',
+      positionMs: currentMs,
+      serverTimeMs: now,
+      version: nextVersion,
+    };
+
+    // Optimistically apply locally & pause
+    setRoom((prev) => (prev ? { ...prev, state: nextState } : null));
+    playback.pause();
+
+    // Broadcast immediately to connected peers
+    if (activeChannelRef.current) {
+      activeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'state_updated',
+        payload: { state: nextState, action: 'pause' },
+      });
     }
-  }, [room, canControl, playback.currentTime, authFetch]);
+
+    try {
+      const res = await authFetch(`/api/rooms/${room.code}/state`, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'pause',
+          status: 'paused',
+          positionMs: currentMs,
+          queueItemId: room.state.queueItemId,
+          version: nextVersion,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.room) setRoom(data.room);
+      }
+    } catch (err) {
+      console.warn('Failed to sync pause state with server:', err);
+    }
+  }, [room, canControl, playback, authFetch]);
 
   const seekRoom = useCallback(async (positionMs: number) => {
     if (!room || !canControl) return;
-    const res = await authFetch(`/api/rooms/${room.code}/state`, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'seek',
-        positionMs,
-        version: room.state.version,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setRoom(data.room);
-      lastSeekTimestampRef.current = Date.now();
+    const clampedMs = Math.max(0, Math.round(positionMs));
+    const nextVersion = (room.state?.version || 1) + 1;
+    const now = Date.now();
+    const nextState: RoomPlaybackState = {
+      queueItemId: room.state.queueItemId,
+      status: room.state.status,
+      positionMs: clampedMs,
+      serverTimeMs: now,
+      version: nextVersion,
+    };
+
+    lastSeekTimestampRef.current = now;
+    // Optimistically apply locally & seek
+    setRoom((prev) => (prev ? { ...prev, state: nextState } : null));
+    playback.seek(clampedMs / 1000);
+
+    // Broadcast immediately to connected peers
+    if (activeChannelRef.current) {
+      activeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'state_updated',
+        payload: { state: nextState, action: 'seek' },
+      });
     }
-  }, [room, canControl, authFetch]);
+
+    try {
+      const res = await authFetch(`/api/rooms/${room.code}/state`, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'seek',
+          status: room.state.status,
+          positionMs: clampedMs,
+          queueItemId: room.state.queueItemId,
+          version: nextVersion,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.room) setRoom(data.room);
+      }
+    } catch (err) {
+      console.warn('Failed to sync seek state with server:', err);
+    }
+  }, [room, canControl, playback, authFetch]);
 
   const skipRoomTrack = useCallback(async () => {
     if (!room || !canControl) return;
@@ -775,12 +938,14 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     skipVotes,
     hasVotedSkip,
     activeRoomCode: room?.code || null,
+    messages,
 
     createRoom,
     joinRoom,
     leaveRoom,
     unlockAutoplay,
     sendReaction,
+    sendMessage,
     playRoom,
     pauseRoom,
     seekRoom,

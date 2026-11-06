@@ -8,9 +8,11 @@ import { canControlPlayback } from '@/lib/rooms/permissions';
 import { checkRateLimit } from '@/lib/rooms/rate-limit';
 
 const stateUpdateSchema = z.object({
-  status: z.enum(['playing', 'paused']),
-  positionMs: z.number().min(0),
+  status: z.enum(['playing', 'paused']).optional(),
+  action: z.enum(['play', 'pause', 'seek']).optional(),
+  positionMs: z.number().min(0).optional(),
   queueItemId: z.string().nullable().optional(),
+  version: z.number().optional(),
 });
 
 export async function POST(
@@ -73,16 +75,31 @@ export async function POST(
   }
 
   const currentVersion = room.state?.version || 1;
-  const nextVersion = currentVersion + 1;
+  const nextVersion =
+    parsed.data.version && parsed.data.version > currentVersion
+      ? parsed.data.version
+      : currentVersion + 1;
   const now = Date.now();
+
+  let targetStatus: 'playing' | 'paused' = room.state?.status || 'paused';
+  if (parsed.data.action === 'play' || parsed.data.status === 'playing') {
+    targetStatus = 'playing';
+  } else if (parsed.data.action === 'pause' || parsed.data.status === 'paused') {
+    targetStatus = 'paused';
+  }
+
+  const targetPositionMs =
+    parsed.data.positionMs !== undefined
+      ? Math.round(parsed.data.positionMs)
+      : (room.state?.positionMs || 0);
 
   const nextState = {
     queueItemId:
       parsed.data.queueItemId !== undefined
         ? parsed.data.queueItemId
         : room.state?.queueItemId || null,
-    status: parsed.data.status,
-    positionMs: Math.round(parsed.data.positionMs),
+    status: targetStatus,
+    positionMs: targetPositionMs,
     serverTimeMs: now,
     version: nextVersion,
   };
@@ -97,11 +114,27 @@ export async function POST(
     .select()
     .single();
 
-  if (updateError) {
+  if (updateError || !updatedRoom) {
     return NextResponse.json({ error: 'Failed to update room state' }, { status: 500 });
   }
 
+  // Broadcast state update to Supabase Realtime channel
+  try {
+    const channel = adminClient.channel(`room:${code}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'state_updated',
+      payload: {
+        state: updatedRoom.state,
+        action: parsed.data.action || (targetStatus === 'playing' ? 'play' : 'pause'),
+      },
+    });
+  } catch (bcError) {
+    console.warn('Failed to broadcast room state update:', bcError);
+  }
+
   return NextResponse.json({
+    room: updatedRoom,
     state: updatedRoom.state,
   });
 }

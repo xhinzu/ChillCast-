@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRoom } from '@/context/RoomContext';
 import RoomQueuePanel from './RoomQueuePanel';
+import RoomChatPanel from './RoomChatPanel';
 import RoomReactions from './RoomReactions';
 import RoomSettingsModal from './RoomSettingsModal';
 import { calculateTargetPosition } from '@/lib/rooms/sync';
@@ -23,6 +24,7 @@ export default function RoomMainView({ onOpenLyrics, onLeave }: RoomMainViewProp
     room,
     queue,
     members,
+    messages,
     isHost,
     canControl,
     roomStatus,
@@ -36,6 +38,10 @@ export default function RoomMainView({ onOpenLyrics, onLeave }: RoomMainViewProp
     leaveRoom,
   } = useRoom();
 
+  const [activeTab, setActiveTab] = useState<'queue' | 'chat'>('queue');
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const prevMessagesLengthRef = useRef(messages.length);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCopiedCode, setIsCopiedCode] = useState(false);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
@@ -45,6 +51,15 @@ export default function RoomMainView({ onOpenLyrics, onLeave }: RoomMainViewProp
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      setUnreadChatCount(0);
+    } else if (messages.length > prevMessagesLengthRef.current) {
+      setUnreadChatCount((prev) => prev + (messages.length - prevMessagesLengthRef.current));
+    }
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages.length, activeTab]);
 
   // States handling: kicked, ended, error, loading
   if (roomStatus === 'kicked') {
@@ -451,9 +466,52 @@ export default function RoomMainView({ onOpenLyrics, onLeave }: RoomMainViewProp
           </div>
         </div>
 
-        {/* Right Column: Queue Panel (5 cols) */}
-        <div className="lg:col-span-5 h-[560px]">
-          <RoomQueuePanel />
+        {/* Right Column: Queue & Chat Tabs Panel (5 cols) */}
+        <div className="lg:col-span-5 h-[560px] flex flex-col space-y-2.5">
+          {/* Minimalist Tabs: Queue | Chat */}
+          <div className="flex items-center gap-1.5 p-1 bg-[#121212] border border-[#242424] rounded-xl self-start shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('queue')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 ${
+                activeTab === 'queue'
+                  ? 'bg-white text-black shadow-sm font-bold'
+                  : 'text-[#888888] hover:text-white'
+              }`}
+            >
+              <span>Queue</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  activeTab === 'queue' ? 'bg-black/15 text-black' : 'bg-[#1e1e1e] text-[#888888]'
+                }`}
+              >
+                {queue.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('chat');
+                setUnreadChatCount(0);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 relative ${
+                activeTab === 'chat'
+                  ? 'bg-white text-black shadow-sm font-bold'
+                  : 'text-[#888888] hover:text-white'
+              }`}
+            >
+              <span>Chat</span>
+              {unreadChatCount > 0 && activeTab !== 'chat' ? (
+                <span className="px-1.5 py-0.2 text-[9px] rounded-full bg-white text-black font-bold animate-pulse">
+                  {unreadChatCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-0">
+            {activeTab === 'queue' ? <RoomQueuePanel /> : <RoomChatPanel />}
+          </div>
         </div>
       </div>
 

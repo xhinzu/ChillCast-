@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
+import { useRoom } from '@/context/RoomContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 import Popover from '@/components/common/Popover';
 import Toast from '@/components/common/Toast';
@@ -57,6 +58,46 @@ export default function SpotifyBottomPlayer({
   } = usePlayback();
 
   const { activeCount } = useAmbient();
+  const roomContext = useRoom();
+
+  const isInConnectedRoom = Boolean(roomContext?.room && roomContext?.roomStatus === 'connected');
+  const effectiveIsPlaying = isInConnectedRoom
+    ? roomContext.room?.state?.status === 'playing'
+    : isPlaying;
+
+  const handleTogglePlay = () => {
+    if (isInConnectedRoom) {
+      if (roomContext.canControl) {
+        if (effectiveIsPlaying) {
+          roomContext.pauseRoom();
+        } else {
+          roomContext.playRoom();
+        }
+      }
+      return;
+    }
+    togglePlay();
+  };
+
+  const handleSeek = (targetSec: number) => {
+    if (isInConnectedRoom) {
+      if (roomContext.canControl) {
+        roomContext.seekRoom(targetSec * 1000);
+      }
+      return;
+    }
+    seek(targetSec);
+  };
+
+  const handleNextTrack = () => {
+    if (isInConnectedRoom) {
+      if (roomContext.canControl) {
+        roomContext.skipRoomTrack();
+      }
+      return;
+    }
+    nextTrack();
+  };
 
   // Scrubber dragging state
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
@@ -227,11 +268,11 @@ export default function SpotifyBottomPlayer({
           {/* Play / Pause */}
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={handleTogglePlay}
             className="w-[36px] h-[36px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
-            title={isPlaying ? 'Pause' : 'Play'}
+            title={effectiveIsPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? (
+            {effectiveIsPlaying ? (
               <svg className="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
             ) : (
               <svg className="w-[18px] h-[18px] fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
@@ -241,7 +282,7 @@ export default function SpotifyBottomPlayer({
           {/* Next */}
           <button
             type="button"
-            onClick={nextTrack}
+            onClick={handleNextTrack}
             className="p-2 shrink-0 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
             title="Next"
           >
@@ -391,7 +432,7 @@ export default function SpotifyBottomPlayer({
           {/* Rewind 5s */}
           <button
             type="button"
-            onClick={() => seek(Math.max(0, currentTime - 5))}
+            onClick={() => handleSeek(Math.max(0, currentTime - 5))}
             className="text-[#888888] hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold hidden sm:block px-1"
             title="Rewind 5s"
           >
@@ -401,11 +442,11 @@ export default function SpotifyBottomPlayer({
           {/* Play / Pause - Authentic Circular Button */}
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={handleTogglePlay}
             className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow cursor-pointer"
-            title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            title={effectiveIsPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >
-            {isPlaying ? (
+            {effectiveIsPlaying ? (
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
               </svg>
@@ -419,7 +460,7 @@ export default function SpotifyBottomPlayer({
           {/* Forward 5s */}
           <button
             type="button"
-            onClick={() => seek(Math.min(duration, currentTime + 5))}
+            onClick={() => handleSeek(Math.min(duration, currentTime + 5))}
             className="text-[#888888] hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold hidden sm:block px-1"
             title="Forward 5s"
           >
@@ -429,7 +470,7 @@ export default function SpotifyBottomPlayer({
           {/* Next Track */}
           <button
             type="button"
-            onClick={nextTrack}
+            onClick={handleNextTrack}
             className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer"
             title="Next"
           >
@@ -480,7 +521,7 @@ export default function SpotifyBottomPlayer({
               }}
               onPointerUp={(e) => {
                 const targetSec = parseFloat((e.target as HTMLInputElement).value);
-                seek(targetSec);
+                handleSeek(targetSec);
                 setIsScrubbing(false);
               }}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
