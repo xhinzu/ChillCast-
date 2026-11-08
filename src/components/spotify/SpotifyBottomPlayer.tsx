@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import { useRoom } from '@/context/RoomContext';
-import { copyDiscordCustomStatus } from '@/lib/discord/custom-status';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 import { getSavedPlaylists, toggleLikedSong, PLAYLISTS_UPDATED_EVENT } from '@/lib/playlist-storage';
 import Popover from '@/components/common/Popover';
@@ -25,6 +24,8 @@ interface SpotifyBottomPlayerProps {
   setActiveView: (view: string) => void;
   onToggleNowPlaying?: () => void;
   isNowPlayingOpen?: boolean;
+  onToggleMiniplayer?: () => void;
+  isMiniplayerOpen?: boolean;
 }
 
 export default function SpotifyBottomPlayer({
@@ -34,6 +35,8 @@ export default function SpotifyBottomPlayer({
   setActiveView,
   onToggleNowPlaying,
   isNowPlayingOpen,
+  onToggleMiniplayer,
+  isMiniplayerOpen,
 }: SpotifyBottomPlayerProps) {
   const {
     currentTrack,
@@ -104,6 +107,8 @@ export default function SpotifyBottomPlayer({
   // Scrubber dragging state
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
   const [scrubTime, setScrubTime] = useState<number>(0);
+  const [showFxMenu, setShowFxMenu] = useState<boolean>(false);
+  const fxButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Playlists state for adding current track
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -352,29 +357,6 @@ export default function SpotifyBottomPlayer({
             </svg>
           </button>
         )}
-
-        {/* Copy Discord Custom Status Button */}
-        {currentTrack && (
-          <button
-            type="button"
-            onClick={async () => {
-              const res = await copyDiscordCustomStatus(
-                currentTrack.artist || 'Unknown Artist',
-                currentTrack.title || 'Untitled'
-              );
-              if (res.success) {
-                setToastMessage(`Copied Discord status: "${res.text}"`);
-              }
-            }}
-            className="p-1.5 rounded-lg bg-[#181818] hover:bg-[#252525] border border-[#2e2e2e] text-[#888888] hover:text-[#5865F2] transition-colors cursor-pointer"
-            title="Copy as Discord Custom Status"
-            aria-label="Copy as Discord Custom Status"
-          >
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-            </svg>
-          </button>
-        )}
       </div>
 
       {/* 2. Center: Controls & Scrubber */}
@@ -510,64 +492,123 @@ export default function SpotifyBottomPlayer({
         </div>
       </div>
 
-      {/* 3. Right: 8D Spatial & Muffled Effects, Mixer shortcut, Volume */}
+      {/* 3. Right: FX Effects Popover, Miniplayer, Mixer shortcut, Now Playing, Volume */}
       <div className="flex items-center justify-end gap-2.5 w-1/3 min-w-[200px] sm:min-w-[260px]">
-        {/* 8D Spatial Audio Toggle */}
-        <button
-          type="button"
-          onClick={toggleSpatial8D}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
-            isSpatial8D
-              ? 'bg-white/15 text-white border border-white/30 shadow-sm ring-1 ring-white/20'
-              : 'text-[#888888] hover:text-white hover:bg-white/10 border border-transparent'
-          }`}
-          title={
-            isSpatial8D
-              ? '8D Spatial Audio: ACTIVE (Song orbits left & right around your headset)'
-              : 'Turn ON 8D Spatial Audio (Song orbits in 360° around headset)'
-          }
-        >
-          <HeadphonesIcon className="w-3.5 h-3.5 text-zinc-300" />
-          <span className="hidden sm:inline text-[11px]">8D</span>
-          {isSpatial8D && (
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          )}
-        </button>
+        {/* FX Audio Effects Popover Button */}
+        <div className="relative">
+          <button
+            ref={fxButtonRef}
+            type="button"
+            onClick={() => setShowFxMenu(!showFxMenu)}
+            aria-haspopup="true"
+            aria-expanded={showFxMenu}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold font-mono tracking-wider transition-all cursor-pointer select-none ${
+              isSpatial8D || isMuffled
+                ? 'bg-white/15 text-white border-white/30 shadow-sm ring-1 ring-white/20'
+                : 'text-[#888888] hover:text-white hover:bg-white/10 border-[#2a2a2a]'
+            }`}
+            title="Audio Effects (8D Spatial & Muffled)"
+          >
+            <span>FX</span>
+            {(isSpatial8D || isMuffled) && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+            )}
+          </button>
 
-        {/* Muffled Effect Toggle */}
-        <button
-          type="button"
-          onClick={toggleMuffled}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-tight transition-all cursor-pointer select-none ${
-            isMuffled
-              ? 'bg-white/15 text-white border border-white/30 shadow-sm ring-1 ring-white/20'
-              : 'text-[#888888] hover:text-white hover:bg-white/10 border border-transparent'
-          }`}
-          title={
-            isMuffled
-              ? 'Muffled Effect: ACTIVE (Song filtered like hearing from another room)'
-              : 'Turn ON Muffled Effect (Lo-fi filter from behind a closed door)'
-          }
-        >
-          <span className="hidden sm:inline text-[11px]">Muffled</span>
-          {isMuffled && (
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-          )}
-        </button>
+          <Popover
+            triggerRef={fxButtonRef}
+            isOpen={showFxMenu}
+            onClose={() => setShowFxMenu(false)}
+            placement="top"
+            align="end"
+            ariaLabel="Audio Effects Menu"
+          >
+            <div className="w-64 p-3 bg-[#16161a] border border-[#2c2c36] rounded-xl shadow-2xl text-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+                <span className="font-bold text-white uppercase tracking-wider text-[11px]">
+                  Audio Effects
+                </span>
+                <span className="text-[10px] text-zinc-400">Web Audio DSP</span>
+              </div>
 
-        {/* Lyrics Button */}
+              {/* 8D Spatial Audio */}
+              <button
+                type="button"
+                onClick={() => toggleSpatial8D()}
+                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
+                  isSpatial8D
+                    ? 'bg-white/10 border-white/30 text-white'
+                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <HeadphonesIcon className="w-4 h-4 text-zinc-300" />
+                  <div>
+                    <p className="font-semibold text-white">8D Spatial Audio</p>
+                    <p className="text-[10px] text-zinc-400">Orbits 360° around headset</p>
+                  </div>
+                </div>
+                <div
+                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
+                    isSpatial8D ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
+                  }`}
+                >
+                  <div className="w-3 h-3 rounded-full bg-white shadow" />
+                </div>
+              </button>
+
+              {/* Muffled Audio */}
+              <button
+                type="button"
+                onClick={() => toggleMuffled()}
+                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
+                  isMuffled
+                    ? 'bg-white/10 border-white/30 text-white'
+                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <svg className="w-4 h-4 fill-current text-zinc-300" viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1z" />
+                    <circle cx="15.5" cy="12" r="1.5" />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-white">Muffled Effect</p>
+                    <p className="text-[10px] text-zinc-400">Lo-fi from another room</p>
+                  </div>
+                </div>
+                <div
+                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
+                    isMuffled ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
+                  }`}
+                >
+                  <div className="w-3 h-3 rounded-full bg-white shadow" />
+                </div>
+              </button>
+            </div>
+          </Popover>
+        </div>
+
+        {/* Miniplayer Option Button (Near FX Button) */}
         <button
           type="button"
-          onClick={() => setActiveView(activeView === 'lyrics' ? 'home' : 'lyrics')}
-          className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-            activeView === 'lyrics'
-              ? 'text-white bg-white/20 ring-1 ring-white/30'
-              : 'text-[#b3b3b3] hover:text-white'
+          onClick={() => {
+            if (onToggleMiniplayer) {
+              onToggleMiniplayer();
+            } else {
+              window.dispatchEvent(new CustomEvent('myujiku_toggle_miniplayer'));
+            }
+          }}
+          className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer ${
+            isMiniplayerOpen
+              ? 'bg-white text-black border-white'
+              : 'bg-[#181818] border-[#2e2e2e] text-[#888888] hover:text-white hover:bg-white/10'
           }`}
-          title="Live Synced Lyrics"
+          title="Open Miniplayer"
+          aria-label="Open Miniplayer"
         >
           <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+            <path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z" />
           </svg>
         </button>
 

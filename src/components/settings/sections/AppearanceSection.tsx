@@ -356,6 +356,37 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
       <div className="bg-[#17171a] border border-[#282830] rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-4">
           <div>
+            <label className="text-xs font-semibold text-white block">Theme color changes font color</label>
+            <p className="text-[11px] text-zinc-400">
+              When enabled, the app&apos;s text and font color changes to match your selected accent color.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.appearance.themeColorChangesFontColor}
+            onClick={() =>
+              updateSettings('appearance', {
+                themeColorChangesFontColor: !settings.appearance.themeColorChangesFontColor,
+              })
+            }
+            style={{
+              backgroundColor: settings.appearance.themeColorChangesFontColor
+                ? 'var(--accent)'
+                : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
+                settings.appearance.themeColorChangesFontColor ? 'translate-x-4 bg-white' : 'translate-x-0 bg-zinc-400'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="pt-3 border-t border-[#22222a] flex items-center justify-between gap-4">
+          <div>
             <label className="text-xs font-semibold text-white block">Lyrics stage follows theme</label>
             <p className="text-[11px] text-zinc-400">
               When disabled, the lyrics stage maintains its immersive black background for maximum contrast.

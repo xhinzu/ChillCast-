@@ -206,6 +206,20 @@ fn hide_window(app_handle: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn toggle_miniplayer(app_handle: AppHandle, enable: bool) -> Result<(), String> {
+    if let Some(w) = app_handle.get_webview_window("main") {
+        if enable {
+            let _ = w.set_size(tauri::Size::Logical(tauri::LogicalSize::new(420.0, 240.0)));
+            let _ = w.set_always_on_top(true);
+        } else {
+            let _ = w.set_size(tauri::Size::Logical(tauri::LogicalSize::new(1280.0, 800.0)));
+            let _ = w.set_always_on_top(false);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn quit_app(
     app_handle: AppHandle,
     manager: tauri::State<'_, SharedDiscordManager>,
@@ -281,7 +295,8 @@ pub fn run() {
             quit_app,
             update_tray_tooltip,
             get_stream_port,
-            get_youtube_stream_url
+            get_youtube_stream_url,
+            toggle_miniplayer
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();

@@ -34,6 +34,7 @@ export interface AppearanceSettings {
   surfaceTint: string | null;
   textColor: string | null;
   followCoverArtAccent: boolean;
+  themeColorChangesFontColor: boolean;
   lyricsStageFollowsTheme: boolean;
   holdLogoToInspect: boolean;
 }
@@ -154,6 +155,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     surfaceTint: null,
     textColor: null,
     followCoverArtAccent: false,
+    themeColorChangesFontColor: false,
     lyricsStageFollowsTheme: false,
     holdLogoToInspect: true,
   },

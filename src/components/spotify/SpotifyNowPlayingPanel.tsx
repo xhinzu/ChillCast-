@@ -10,7 +10,6 @@ import {
   MusicNoteIcon,
   HeartIcon,
 } from '@/components/common/MinimalIcons';
-import LyricSpeedSlider from '@/components/lyrics/LyricSpeedSlider';
 import Popover from '@/components/common/Popover';
 import Toast from '@/components/common/Toast';
 import AddToPlaylistMenu from './AddToPlaylistMenu';
@@ -39,12 +38,14 @@ export default function SpotifyNowPlayingPanel({
     duration,
     isSpatial8D,
     isMuffled,
+    nextTrackInQueue,
+    nextTrack,
     upcomingAutoplay,
     skipUpcomingAutoplay,
     isAutoplayTrack,
     autoplayReason,
   } = usePlayback();
-  const { room, canAdd, addToQueue } = useRoom();
+  const { room, queue: roomQueue, canAdd, addToQueue } = useRoom();
 
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
   const [hasLyrics, setHasLyrics] = useState<boolean>(false);
@@ -349,44 +350,101 @@ export default function SpotifyNowPlayingPanel({
                   }}
                 />
               </div>
-
-              {/* Minimal translucent Lyric Speed slider directly UNDER the progress/time bar */}
-              {hasLyrics && (
-                <div className="pt-1.5">
-                  <LyricSpeedSlider trackId={currentTrack.id} />
-                </div>
-              )}
             </div>
 
-            {/* Upcoming Autoplay Candidate Card */}
-            {upcomingAutoplay && (
-              <div className="p-3 rounded-xl bg-[#141417] border border-[#262630] space-y-1.5 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                      Up Next • Autoplay
+            {/* Next in Queue Section (Shows strictly only 1 next track in queue) */}
+            {(() => {
+              const roomNext = roomQueue && roomQueue.length > 0
+                ? roomQueue.find((q) => q.id !== currentTrack?.id) || roomQueue[0]
+                : null;
+              const nextTrackItem = roomNext
+                ? {
+                    id: roomNext.id,
+                    title: roomNext.title,
+                    artist: roomNext.artist,
+                    artworkUrl: roomNext.thumbnail,
+                    sourceType: 'Room Queue',
+                  }
+                : nextTrackInQueue
+                ? {
+                    id: nextTrackInQueue.id,
+                    title: nextTrackInQueue.title,
+                    artist: nextTrackInQueue.artist,
+                    artworkUrl: nextTrackInQueue.artworkUrl,
+                    sourceType: 'Up Next',
+                  }
+                : upcomingAutoplay
+                ? {
+                    id: upcomingAutoplay.track.id,
+                    title: upcomingAutoplay.track.title,
+                    artist: upcomingAutoplay.track.artist,
+                    artworkUrl: upcomingAutoplay.track.artworkUrl,
+                    sourceType: 'Autoplay',
+                  }
+                : null;
+
+              return (
+                <div className="p-3 rounded-xl bg-[#18181b] border border-[#282830] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                      Next in Queue
                     </span>
+                    {nextTrackItem && (
+                      <span className="text-[9px] font-semibold text-[var(--accent)] px-1.5 py-0.5 rounded bg-[var(--accent)]/10 border border-[var(--accent)]/20">
+                        {nextTrackItem.sourceType}
+                      </span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={skipUpcomingAutoplay}
-                    className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-[#202026] hover:bg-[#2c2c36] transition-colors cursor-pointer"
-                    title="Skip this suggestion and find another"
-                  >
-                    Skip ✕
-                  </button>
+
+                  {nextTrackItem ? (
+                    <div className="flex items-center gap-3 pt-0.5">
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-zinc-800 shrink-0 shadow border border-white/10">
+                        {nextTrackItem.artworkUrl ? (
+                          <Image
+                            src={nextTrackItem.artworkUrl}
+                            alt={nextTrackItem.title}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                            <MusicNoteIcon className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-xs font-semibold text-white truncate"
+                          title={nextTrackItem.title}
+                        >
+                          {nextTrackItem.title}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                          {nextTrackItem.artist}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={nextTrack}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title="Play next track now"
+                        aria-label="Play next track now"
+                      >
+                        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                          <path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-2 text-center text-zinc-500 text-[11px]">
+                      Queue is clear
+                    </div>
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <h5 className="text-xs font-semibold text-white truncate" title={upcomingAutoplay.track.title}>
-                    {upcomingAutoplay.track.title}
-                  </h5>
-                  <p className="text-[10px] text-zinc-400 truncate">
-                    {upcomingAutoplay.track.artist} • <span className="italic text-zinc-400">{upcomingAutoplay.reason}</span>
-                  </p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </>
         )}
       </div>

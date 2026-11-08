@@ -226,28 +226,40 @@ export default function SpotifySidebar({
 
           {/* Playlists List */}
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            {savedPlaylists.length === 0 ? (
-              <div className="p-4 bg-[#181818] rounded-lg text-center space-y-2 border border-[#242424]">
-                <p className="text-xs font-semibold text-white">Your library is empty</p>
-                <p className="text-[11px] text-[#888888]">
-                  Like any song or click the <strong className="text-white">+</strong> button above to create playlists.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="mt-2 px-3 py-1.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-full transition-colors cursor-pointer"
-                >
-                  + Add Playlist
-                </button>
-              </div>
-            ) : (
-              [...savedPlaylists]
+            {(() => {
+              const visiblePlaylists = [...savedPlaylists]
+                .filter((item) => {
+                  const isLiked = item.id === 'liked-songs' || (item as any).kind === 'liked' || item.title === 'Liked Songs';
+                  if (isLiked) {
+                    return Boolean(item.tracks && item.tracks.length > 0);
+                  }
+                  return true;
+                })
                 .sort((a, b) => {
                   if (a.id === 'liked-songs') return -1;
                   if (b.id === 'liked-songs') return 1;
                   return 0;
-                })
-                .map((item) => {
+                });
+
+              if (visiblePlaylists.length === 0) {
+                return (
+                  <div className="p-4 bg-[#181818] rounded-lg text-center space-y-2 border border-[#242424]">
+                    <p className="text-xs font-semibold text-white">Your library is empty</p>
+                    <p className="text-[11px] text-[#888888]">
+                      Like any song or click the <strong className="text-white">+</strong> button above to create playlists.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="mt-2 px-3 py-1.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-full transition-colors cursor-pointer"
+                    >
+                      + Add Playlist
+                    </button>
+                  </div>
+                );
+              }
+
+              return visiblePlaylists.map((item) => {
                   const isActive = activeView === `playlist:${item.id}`;
                   const isLikedPlaylist = item.id === 'liked-songs';
                   const trackCount = item.tracks ? item.tracks.length : null;
@@ -317,8 +329,8 @@ export default function SpotifySidebar({
                       )}
                     </div>
                   );
-                })
-            )}
+                });
+            })()}
           </div>
 
           {/* Upload Local Audio Button (Always available at bottom) */}

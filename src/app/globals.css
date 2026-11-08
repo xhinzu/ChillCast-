@@ -98,6 +98,36 @@
   --spotify-subtext: var(--text-muted);
 }
 
+/* Theme color changes font color mode */
+[data-accent-font="true"] {
+  --text: var(--accent);
+  --foreground: var(--accent);
+  color: var(--accent);
+}
+
+[data-accent-font="true"] .text-white,
+[data-accent-font="true"] .text-zinc-100,
+[data-accent-font="true"] .text-zinc-200,
+[data-accent-font="true"] .text-zinc-300,
+[data-accent-font="true"] .text-slate-100,
+[data-accent-font="true"] .text-slate-200,
+[data-accent-font="true"] .text-slate-300 {
+  color: var(--accent) !important;
+}
+
+[data-accent-font="true"] .text-zinc-400,
+[data-accent-font="true"] .text-zinc-500,
+[data-accent-font="true"] .text-slate-400,
+[data-accent-font="true"] .text-\[\#888888\],
+[data-accent-font="true"] .text-\[\#b3b3b3\] {
+  color: color-mix(in srgb, var(--accent) 70%, #999999) !important;
+}
+
+[data-accent-font="true"] button[style*="backgroundColor: var(--accent)"],
+[data-accent-font="true"] button[style*="background-color: var(--accent)"] {
+  color: var(--accent-contrast) !important;
+}
+
 body {
   background: var(--bg-base);
   color: var(--text);

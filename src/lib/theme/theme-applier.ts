@@ -100,17 +100,28 @@ export function applyTheme(appearance: AppearanceSettings, coverArtPalette?: str
     root.style.removeProperty('--surface');
   }
 
-  // Text color override with WCAG 4.5:1 auto-correction
-  if (appearance.textColor) {
-    const currentBg = appearance.backgroundTint || (resolved === 'light' ? '#f4f4f5' : (resolved === 'amoled' ? '#000000' : '#121212'));
-    let textColor = appearance.textColor;
-    if (getContrastRatio(textColor, currentBg) < 4.5) {
-      // Auto-correct to accessible text color
-      textColor = resolved === 'light' ? '#18181b' : '#ffffff';
-    }
-    root.style.setProperty('--text', textColor);
+  // Text color: Theme color changes font color OR custom text color override
+  if (appearance.themeColorChangesFontColor) {
+    root.setAttribute('data-accent-font', 'true');
+    root.style.setProperty('--text', activeAccent);
+    root.style.setProperty('--foreground', activeAccent);
+    root.style.setProperty('--text-muted', `color-mix(in srgb, ${activeAccent} 70%, #888888)`);
   } else {
-    root.style.removeProperty('--text');
+    root.removeAttribute('data-accent-font');
+    root.style.removeProperty('--text-muted');
+    if (appearance.textColor) {
+      const currentBg = appearance.backgroundTint || (resolved === 'light' ? '#f4f4f5' : (resolved === 'amoled' ? '#000000' : '#121212'));
+      let textColor = appearance.textColor;
+      if (getContrastRatio(textColor, currentBg) < 4.5) {
+        // Auto-correct to accessible text color
+        textColor = resolved === 'light' ? '#18181b' : '#ffffff';
+      }
+      root.style.setProperty('--text', textColor);
+      root.style.setProperty('--foreground', textColor);
+    } else {
+      root.style.removeProperty('--text');
+      root.style.removeProperty('--foreground');
+    }
   }
 
   // Sync background color with body & Tauri window

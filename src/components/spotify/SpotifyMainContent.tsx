@@ -1256,7 +1256,13 @@ export default function SpotifyMainContent({
               </div>
             ) : (
               <div className="space-y-2">
-                {savedPlaylists.map((pl) => {
+                {savedPlaylists
+                  .filter((pl) => {
+                    const isLiked = pl.id === 'liked-songs' || (pl as any).kind === 'liked' || pl.title === 'Liked Songs';
+                    if (isLiked) return Boolean(pl.tracks && pl.tracks.length > 0);
+                    return true;
+                  })
+                  .map((pl) => {
                   const isActive = activeView === `playlist:${pl.id}`;
                   return (
                     <button
@@ -1336,7 +1342,13 @@ export default function SpotifyMainContent({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {savedPlaylists.map((pl) => {
+                {savedPlaylists
+                  .filter((pl) => {
+                    const isLiked = pl.id === 'liked-songs' || (pl as any).kind === 'liked' || pl.title === 'Liked Songs';
+                    if (isLiked) return Boolean(pl.tracks && pl.tracks.length > 0);
+                    return true;
+                  })
+                  .map((pl) => {
                   const isCurrentPlaylistPlaying =
                     isPlaying && pl.tracks?.some((t) => t.id === currentTrack?.id);
                   const isLiked = pl.id === 'liked-songs';

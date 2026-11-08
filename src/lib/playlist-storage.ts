@@ -100,23 +100,7 @@ export function getSavedPlaylists(): SavedPlaylistItem[] {
       .map(normalizePlaylist)
       .filter((p) => !isPlaylistDeleted(p.id) && !isPlaylistDeleted((p as any).syncId));
 
-    // Ensure liked-songs is always present if not already
-    const hasLiked = valid.some((p) => p.id === 'liked-songs');
-    if (!hasLiked && valid.length > 0) {
-      const liked: SavedPlaylistItem = {
-        id: 'liked-songs',
-        title: 'Liked Songs',
-        subtitle: '0 songs • Liked Songs',
-        type: 'custom',
-        targetUrl: '',
-        icon: 'heart',
-        tracks: [],
-        description: 'Your favorite liked tracks on ChillCast',
-        createdAt: 0,
-      };
-      return [liked, ...valid];
-    }
-
+    // Keep valid playlists (liked-songs is persisted when user actually likes a song)
     return valid.length > 0 ? valid : DEFAULT_STARTER_PLAYLISTS;
   } catch (err) {
     console.warn('[PlaylistStorage] Error reading saved playlists:', err);

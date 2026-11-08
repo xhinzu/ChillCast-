@@ -30,32 +30,21 @@ export default function AddToPlaylistMenu({
 }: AddToPlaylistMenuProps) {
   if (!currentTrack) return null;
 
-  // Build full playlist list including "Liked Songs" and user's custom playlists
-  let allCustomPlaylists = savedPlaylists.filter((p) => p.type === 'custom');
-
-  // Ensure "Liked Songs" playlist is always represented
-  const hasLikedSongs = allCustomPlaylists.some((p) => p.id === 'liked-songs');
-  if (!hasLikedSongs) {
-    const virtualLikedPlaylist: SavedPlaylistItem = {
-      id: 'liked-songs',
-      title: 'Liked Songs',
-      subtitle: '0 songs • Liked Songs',
-      type: 'custom',
-      targetUrl: '',
-      icon: 'heart',
-      tracks: [],
-      description: 'Your favorite liked tracks on ChillCast',
-      createdAt: 0,
-    };
-    allCustomPlaylists = [virtualLikedPlaylist, ...allCustomPlaylists];
-  } else {
-    // Keep Liked Songs at the top or natural order
-    allCustomPlaylists = [...allCustomPlaylists].sort((a, b) => {
+  // Only show Liked Songs if there are actually liked songs (likesongs > 0)
+  const allCustomPlaylists = savedPlaylists
+    .filter((p) => p.type === 'custom')
+    .filter((p) => {
+      const isLiked = p.id === 'liked-songs' || (p as any).kind === 'liked' || p.title === 'Liked Songs';
+      if (isLiked) {
+        return Boolean(p.tracks && p.tracks.length > 0);
+      }
+      return true;
+    })
+    .sort((a, b) => {
       if (a.id === 'liked-songs') return -1;
       if (b.id === 'liked-songs') return 1;
       return 0;
     });
-  }
 
   const handleSelectPlaylist = (pl: SavedPlaylistItem) => {
     if (!currentTrack) return;

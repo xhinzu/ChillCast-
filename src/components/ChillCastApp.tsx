@@ -15,6 +15,7 @@ import DiscordPresenceBridge from '@/components/discord/DiscordPresenceBridge';
 import InspectModal from '@/components/lyrics/InspectModal';
 import CloseConfirmationModal from '@/components/desktop/CloseConfirmationModal';
 import ShortcutsOverlayModal from '@/components/common/ShortcutsOverlayModal';
+import Miniplayer from '@/components/player/Miniplayer';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { initThemeApplier } from '@/lib/theme/theme-applier';
 import { useSettings } from '@/lib/settings/useSettings';
@@ -25,6 +26,7 @@ import {
   updateTrayTooltip,
   listenWindowCloseRequested,
   listenTrayControls,
+  toggleDesktopMiniplayer,
 } from '@/lib/desktop';
 
 export interface ChillCastAppProps {
@@ -43,6 +45,7 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
   const [showInspectModal, setShowInspectModal] = useState<boolean>(false);
   const [showCloseModal, setShowCloseModal] = useState<boolean>(false);
   const [showShortcutsOverlay, setShowShortcutsOverlay] = useState<boolean>(false);
+  const [showMiniplayer, setShowMiniplayer] = useState<boolean>(false);
   const [trayNotice, setTrayNotice] = useState<string | null>(null);
 
   // Global Keyboard Shortcuts Engine
@@ -80,18 +83,30 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
       setShowShortcutsOverlay(false);
       setShowInspectModal(false);
       setShowCloseModal(false);
+      setShowMiniplayer(false);
     };
     const handleToggleShortcuts = () => {
       setShowShortcutsOverlay((prev) => !prev);
+    };
+    const handleToggleMiniplayer = () => {
+      setShowMiniplayer((prev) => {
+        const next = !prev;
+        if (isTauri()) {
+          toggleDesktopMiniplayer(next).catch(() => {});
+        }
+        return next;
+      });
     };
 
     window.addEventListener('myujiku_navigate_view', handleNav);
     window.addEventListener('myujiku_close_modals', handleClose);
     window.addEventListener('myujiku_toggle_shortcuts_overlay', handleToggleShortcuts);
+    window.addEventListener('myujiku_toggle_miniplayer', handleToggleMiniplayer);
     return () => {
       window.removeEventListener('myujiku_navigate_view', handleNav);
       window.removeEventListener('myujiku_close_modals', handleClose);
       window.removeEventListener('myujiku_toggle_shortcuts_overlay', handleToggleShortcuts);
+      window.removeEventListener('myujiku_toggle_miniplayer', handleToggleMiniplayer);
     };
   }, []);
 
@@ -269,6 +284,16 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
           setActiveView={setActiveView}
           onToggleNowPlaying={() => setShowNowPlaying((prev) => !prev)}
           isNowPlayingOpen={showNowPlaying}
+          onToggleMiniplayer={() => {
+            setShowMiniplayer((prev) => {
+              const next = !prev;
+              if (isTauri()) {
+                toggleDesktopMiniplayer(next).catch(() => {});
+              }
+              return next;
+            });
+          }}
+          isMiniplayerOpen={showMiniplayer}
         />
       </div>
 
@@ -318,6 +343,17 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
         onClose={() => setShowShortcutsOverlay(false)}
         onOpenSettings={() => {
           window.dispatchEvent(new CustomEvent('myujiku_open_settings'));
+        }}
+      />
+
+      {/* 10. Floating Miniplayer Mode */}
+      <Miniplayer
+        isOpen={showMiniplayer}
+        onClose={() => {
+          setShowMiniplayer(false);
+          if (isTauri()) {
+            toggleDesktopMiniplayer(false).catch(() => {});
+          }
         }}
       />
 

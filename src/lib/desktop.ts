@@ -281,3 +281,15 @@ export async function listenTrayControls(handlers: {
     unlistens.forEach((fn) => fn());
   };
 }
+
+/**
+ * Toggle desktop miniplayer window mode (resize and always on top)
+ */
+export async function toggleDesktopMiniplayer(enable: boolean): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke('toggle_miniplayer', { enable });
+  } catch (err) {
+    console.debug('[Desktop] toggle_miniplayer error:', err);
+  }
+}

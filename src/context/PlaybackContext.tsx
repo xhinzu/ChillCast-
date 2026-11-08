@@ -33,6 +33,7 @@ interface PlaybackContextValue {
   isMuffled: boolean;
   isShuffle: boolean;
   isRepeat: boolean;
+  nextTrackInQueue: TrackInfo | null;
 
   upcomingAutoplay: AutoplayResult | null;
   skipUpcomingAutoplay: () => void;
@@ -77,6 +78,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     currentIndex: 0,
   });
   const [duration, setDuration] = useState<number>(0);
+  const [nextTrackInQueue, setNextTrackInQueue] = useState<TrackInfo | null>(null);
   const [volume, setVolumeState] = useState<number>(0.8);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -346,6 +348,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       if (!tracks || tracks.length === 0) return;
       const index = Math.max(0, Math.min(tracks.length - 1, startIndex));
       playlistQueueRef.current = { tracks, currentIndex: index };
+      setNextTrackInQueue(index + 1 < tracks.length ? tracks[index + 1] : (tracks.length > 1 && isRepeatRef.current ? tracks[0] : null));
 
       const track = tracks[index];
       setErrorMessage(null);
@@ -481,6 +484,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         const loadedTracks = await adapter.loadPlaylist(urlOrId, trackHint);
         if (Array.isArray(loadedTracks) && loadedTracks.length > 0) {
           playlistQueueRef.current = { tracks: loadedTracks, currentIndex: 0 };
+          setNextTrackInQueue(loadedTracks.length > 1 ? loadedTracks[1] : null);
+        } else {
+          setNextTrackInQueue(null);
         }
         await adapter.play();
       }
@@ -592,6 +598,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         isMuffled,
         isShuffle,
         isRepeat,
+        nextTrackInQueue,
         upcomingAutoplay,
         skipUpcomingAutoplay,
         isAutoplayTrack,
