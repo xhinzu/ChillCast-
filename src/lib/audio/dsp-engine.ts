@@ -120,20 +120,22 @@ export class DspEngine {
     // 2. Muffled Low-Pass Biquad Filter
     this.muffledFilter = this.ctx.createBiquadFilter();
     this.muffledFilter.type = 'lowpass';
+    const nyquist = Math.max(24000, (this.ctx.sampleRate || 48000) / 2);
     this.muffledFilter.frequency.setValueAtTime(
-      this.isMuffledActive ? this.muffledCutoff : 22050,
+      this.isMuffledActive ? this.muffledCutoff : nyquist,
       this.ctx.currentTime
     );
-    this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 1.6 : 0.7, this.ctx.currentTime);
+    this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 1.6 : 0.0001, this.ctx.currentTime);
 
     // 3. 8D Panner Node (HRTF Panner preferred for true 3D spatial orbit; fallback to StereoPanner)
     try {
       const panner = this.ctx.createPanner();
       panner.panningModel = 'HRTF';
+      // Rolloff factor 0 completely disables distance attenuation and high-frequency dampening for maximum clarity
       panner.distanceModel = 'inverse';
       panner.refDistance = 1;
       panner.maxDistance = 10000;
-      panner.rolloffFactor = 1;
+      panner.rolloffFactor = 0;
       panner.coneInnerAngle = 360;
       panner.positionX.setValueAtTime(0, this.ctx.currentTime);
       panner.positionY.setValueAtTime(0, this.ctx.currentTime);
@@ -192,6 +194,10 @@ export class DspEngine {
     }
   }
 
+  public isConnected(element: HTMLMediaElement): boolean {
+    return this.sourceMap.has(element);
+  }
+
   /**
    * Updates 8D Spatial Audio settings
    * @param enabled Whether 8D orbit is active
@@ -227,11 +233,12 @@ export class DspEngine {
 
           if (this.isHRTFPanner) {
             const hrtf = this.pannerNode as PannerNode;
-            hrtf.positionX.setValueAtTime(x, this.ctx.currentTime);
-            hrtf.positionZ.setValueAtTime(z, this.ctx.currentTime);
+            // Smooth micro-target interpolation eliminates 60Hz zipper clicks
+            hrtf.positionX.setTargetAtTime(x, this.ctx.currentTime, 0.015);
+            hrtf.positionZ.setTargetAtTime(z, this.ctx.currentTime, 0.015);
           } else {
             const stereo = this.pannerNode as StereoPannerNode;
-            stereo.pan.setValueAtTime(x, this.ctx.currentTime);
+            stereo.pan.setTargetAtTime(x, this.ctx.currentTime, 0.015);
           }
 
           this.animFrameId = safeRequestAnimationFrame(tick);
@@ -266,10 +273,11 @@ export class DspEngine {
     if (!this.ctx) this.getContext();
     if (!this.muffledFilter || !this.ctx || !this.inputGain) return;
 
-    const targetFreq = enabled ? this.muffledCutoff : 22050;
-    const targetQ = enabled ? 1.6 : 0.7;
-    // Slight gain compensation (+1.5 dB) so filtered low frequencies remain audible
-    const targetComp = enabled ? 1.18 : 1.0;
+    const nyquist = Math.max(24000, (this.ctx.sampleRate || 48000) / 2);
+    const targetFreq = enabled ? this.muffledCutoff : nyquist;
+    const targetQ = enabled ? 1.6 : 0.0001;
+    // Flat unity gain to completely avoid digital clipping on loud/mastered audio
+    const targetComp = 1.0;
 
     this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.08);
     this.muffledFilter.Q.setTargetAtTime(targetQ, this.ctx.currentTime, 0.08);

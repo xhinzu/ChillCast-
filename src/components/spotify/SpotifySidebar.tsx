@@ -8,6 +8,12 @@ import { useRoom } from '@/context/RoomContext';
 import AddSourceModal, { SavedPlaylistItem } from './AddSourceModal';
 import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
 import {
+  getSavedPlaylists,
+  addOrUpdatePlaylist,
+  deletePlaylist,
+  PLAYLISTS_UPDATED_EVENT,
+} from '@/lib/playlist-storage';
+import {
   HeartIcon,
   PlaylistCoverIcon,
   FolderIcon,
@@ -18,8 +24,6 @@ interface SpotifySidebarProps {
   setActiveView: (view: string) => void;
   setSearchQuery?: (query: string) => void;
 }
-
-const STORAGE_KEY = 'chillify_saved_playlists';
 
 export default function SpotifySidebar({
   activeView,
@@ -37,58 +41,21 @@ export default function SpotifySidebar({
   // Load saved playlists from localStorage and sync across events
   useEffect(() => {
     const syncPlaylists = () => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored !== null) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            // One-time cleanup for existing browser state with legacy seeded playlists
-            if (localStorage.getItem('chillify_cleaned_starter_v2') !== 'true') {
-              const legacyIds = new Set(['chill-vibes', 'ig-viral-mix', 'lofi-midnight']);
-              let cleaned = parsed.filter((p: SavedPlaylistItem) => !legacyIds.has(p.id));
-              cleaned = cleaned.filter((p: SavedPlaylistItem) => {
-                if (p.id === 'liked-songs' && p.tracks && p.tracks.length === 10) {
-                  const hasOldStarter = p.tracks.some((t) => t.id === 'z4UDNuTla2k' || t.id === 'kPhpHvnnn0E');
-                  return !hasOldStarter;
-                }
-                return true;
-              });
-              localStorage.setItem('chillify_cleaned_starter_v2', 'true');
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-              setSavedPlaylists(cleaned);
-              return;
-            }
-            setSavedPlaylists(parsed);
-            return;
-          }
-        }
-        localStorage.setItem('chillify_cleaned_starter_v2', 'true');
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STARTER_PLAYLISTS));
-        setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
-      } catch {
-        // ignore
-      }
+      setSavedPlaylists(getSavedPlaylists());
     };
 
     syncPlaylists();
     window.addEventListener('storage', syncPlaylists);
-    window.addEventListener('chillify_playlists_updated', syncPlaylists);
+    window.addEventListener(PLAYLISTS_UPDATED_EVENT, syncPlaylists);
     return () => {
       window.removeEventListener('storage', syncPlaylists);
-      window.removeEventListener('chillify_playlists_updated', syncPlaylists);
+      window.removeEventListener(PLAYLISTS_UPDATED_EVENT, syncPlaylists);
     };
   }, []);
 
   const handleSavePlaylist = (item: SavedPlaylistItem) => {
-    setSavedPlaylists((prev) => {
-      const updated = [item, ...prev];
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
+    const updated = addOrUpdatePlaylist(item);
+    setSavedPlaylists(updated);
 
     if (item.type === 'custom') {
       setActiveView(`playlist:${item.id}`);
@@ -99,15 +66,8 @@ export default function SpotifySidebar({
 
   const handleRemovePlaylist = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSavedPlaylists((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
+    const updated = deletePlaylist(id);
+    setSavedPlaylists(updated);
 
     if (activeView === `playlist:${id}`) {
       setActiveView('home');

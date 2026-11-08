@@ -7,6 +7,7 @@ import { useAmbient } from '@/context/AmbientContext';
 import { useRoom } from '@/context/RoomContext';
 import { copyDiscordCustomStatus } from '@/lib/discord/custom-status';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
+import { getSavedPlaylists, toggleLikedSong, PLAYLISTS_UPDATED_EVENT } from '@/lib/playlist-storage';
 import Popover from '@/components/common/Popover';
 import Toast from '@/components/common/Toast';
 import AddToPlaylistMenu from './AddToPlaylistMenu';
@@ -120,17 +121,14 @@ export default function SpotifyBottomPlayer({
 
   useEffect(() => {
     const loadPlaylists = () => {
-      try {
-        const stored = localStorage.getItem('chillify_saved_playlists');
-        if (stored) setSavedPlaylists(JSON.parse(stored));
-      } catch {}
+      setSavedPlaylists(getSavedPlaylists());
     };
     loadPlaylists();
     window.addEventListener('storage', loadPlaylists);
-    window.addEventListener('chillify_playlists_updated', loadPlaylists);
+    window.addEventListener(PLAYLISTS_UPDATED_EVENT, loadPlaylists);
     return () => {
       window.removeEventListener('storage', loadPlaylists);
-      window.removeEventListener('chillify_playlists_updated', loadPlaylists);
+      window.removeEventListener(PLAYLISTS_UPDATED_EVENT, loadPlaylists);
     };
   }, []);
 
@@ -144,59 +142,15 @@ export default function SpotifyBottomPlayer({
   const handleToggleLike = () => {
     if (!currentTrack) return;
     try {
-      const stored = localStorage.getItem('chillify_saved_playlists');
-      let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
-
-      let likedPlaylist = prev.find((p) => p.id === 'liked-songs');
-      if (!likedPlaylist) {
-        likedPlaylist = {
-          id: 'liked-songs',
-          title: 'Liked Songs',
-          subtitle: '0 songs • Liked Songs',
-          type: 'custom',
-          targetUrl: '',
-          icon: 'heart',
-          tracks: [],
-          description: 'Your favorite liked tracks on ChillCast',
-          createdAt: Date.now(),
-        };
-        prev = [likedPlaylist, ...prev];
-      }
-
-      const prevTracks = likedPlaylist.tracks || [];
-      const alreadyLiked = prevTracks.some((t) => t.id === currentTrack.id);
-
-      let newTracks: CustomPlaylistTrack[];
-      if (alreadyLiked) {
-        newTracks = prevTracks.filter((t) => t.id !== currentTrack.id);
-      } else {
-        const newTrack: CustomPlaylistTrack = {
-          id: currentTrack.id,
-          title: currentTrack.title,
-          artist: currentTrack.artist,
-          duration: formatTime(duration),
-          thumbnail: currentTrack.artworkUrl || `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`,
-          addedAt: Date.now(),
-        };
-        newTracks = [newTrack, ...prevTracks];
-        setToastMessage('Added to Liked Songs');
-      }
-
-      const updated = prev.map((p) => {
-        if (p.id === 'liked-songs') {
-          return {
-            ...p,
-            tracks: newTracks,
-            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
-          };
-        }
-        return p;
+      const { updated, isLikedNow } = toggleLikedSong({
+        id: currentTrack.id,
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        duration: formatTime(duration),
+        thumbnail: currentTrack.artworkUrl,
       });
-
-      localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
       setSavedPlaylists(updated);
-      window.dispatchEvent(new Event('chillify_playlists_updated'));
-      window.dispatchEvent(new Event('storage'));
+      setToastMessage(isLikedNow ? 'Added to Liked Songs' : 'Removed from Liked Songs');
     } catch {}
   };
 

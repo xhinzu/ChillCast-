@@ -84,7 +84,9 @@ pub fn resolve_direct_url(state: &StreamServerState, video_id: &str) -> Result<S
     cmd.args([
         "-g",
         "-f",
-        "ba[ext=m4a]/ba[ext=mp3]/ba/b",
+        "bestaudio[ext=m4a][abr>=160]/bestaudio[ext=webm][abr>=160]/bestaudio/best",
+        "--audio-quality",
+        "0",
         "--extractor-args",
         "youtube:player_client=android,web",
         "--no-playlist",

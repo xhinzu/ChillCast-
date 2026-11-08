@@ -28,7 +28,7 @@ export function parseYouTubeInput(input: string): ParsedYouTubeTarget | null {
 
     // Check query params for `v=` (standard watch URL)
     const vParam = url.searchParams.get('v');
-    if (vParam) {
+    if (vParam && /^[a-zA-Z0-9_-]{11}$/.test(vParam)) {
       return { type: 'video', id: vParam };
     }
 

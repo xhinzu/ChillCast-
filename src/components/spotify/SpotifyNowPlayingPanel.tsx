@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useRoom } from '@/context/RoomContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from '@/components/spotify/AddSourceModal';
+import { getSavedPlaylists, toggleLikedSong, PLAYLISTS_UPDATED_EVENT } from '@/lib/playlist-storage';
 import {
   MusicNoteIcon,
   HeartIcon,
@@ -54,17 +55,14 @@ export default function SpotifyNowPlayingPanel({
   // Sync playlists from localStorage
   useEffect(() => {
     const loadPlaylists = () => {
-      try {
-        const stored = localStorage.getItem('chillify_saved_playlists');
-        if (stored) setSavedPlaylists(JSON.parse(stored));
-      } catch {}
+      setSavedPlaylists(getSavedPlaylists());
     };
     loadPlaylists();
     window.addEventListener('storage', loadPlaylists);
-    window.addEventListener('chillify_playlists_updated', loadPlaylists);
+    window.addEventListener(PLAYLISTS_UPDATED_EVENT, loadPlaylists);
     return () => {
       window.removeEventListener('storage', loadPlaylists);
-      window.removeEventListener('chillify_playlists_updated', loadPlaylists);
+      window.removeEventListener(PLAYLISTS_UPDATED_EVENT, loadPlaylists);
     };
   }, []);
 
@@ -123,52 +121,15 @@ export default function SpotifyNowPlayingPanel({
   const handleToggleLike = () => {
     if (!currentTrack) return;
     try {
-      const stored = localStorage.getItem('chillify_saved_playlists');
-      let playlists: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
-
-      let likedList = playlists.find((p) => p.id === 'liked-songs');
-      if (!likedList) {
-        likedList = {
-          id: 'liked-songs',
-          title: 'Liked Songs',
-          subtitle: 'Liked Songs',
-          type: 'custom',
-          targetUrl: '',
-          icon: 'heart',
-          tracks: [],
-          description: 'Your favorite liked tracks on ChillCast',
-          createdAt: Date.now(),
-        };
-        playlists = [likedList, ...playlists];
-      }
-
-      if (!likedList.tracks) likedList.tracks = [];
-
-      const exists = likedList.tracks.some((t) => t.id === currentTrack.id);
-      if (exists) {
-        likedList.tracks = likedList.tracks.filter((t) => t.id !== currentTrack.id);
-      } else {
-        const newTrack: CustomPlaylistTrack = {
-          id: currentTrack.id,
-          title: currentTrack.title,
-          artist: currentTrack.artist,
-          duration: formatDuration(currentTrack.duration || 180),
-          thumbnail: currentTrack.artworkUrl,
-          addedAt: Date.now(),
-        };
-        likedList.tracks.unshift(newTrack);
-        setToastMessage('Added to Liked Songs');
-      }
-
-      likedList.subtitle = `${likedList.tracks.length} ${
-        likedList.tracks.length === 1 ? 'song' : 'songs'
-      }`;
-
-      const updated = playlists.map((p) => (p.id === 'liked-songs' ? likedList! : p));
-      localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
+      const { updated, isLikedNow } = toggleLikedSong({
+        id: currentTrack.id,
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        duration: formatDuration(currentTrack.duration || 180),
+        thumbnail: currentTrack.artworkUrl,
+      });
       setSavedPlaylists(updated);
-      window.dispatchEvent(new Event('chillify_playlists_updated'));
-      window.dispatchEvent(new Event('storage'));
+      setToastMessage(isLikedNow ? 'Added to Liked Songs' : 'Removed from Liked Songs');
     } catch {
       // ignore
     }

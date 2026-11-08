@@ -113,7 +113,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.streamAudio = new Audio();
     this.streamAudio.crossOrigin = 'anonymous';
     this.streamAudio.preload = 'auto';
-    this.streamAudio.volume = this.volume;
+    this.streamAudio.volume = 1.0;
     getDspEngine().connectMediaElement(this.streamAudio);
 
     this.streamAudio.addEventListener('playing', () => {
@@ -743,7 +743,28 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public async loadTrack(track: TrackInfo): Promise<void> {
-    await this.loadPlaylist(track.sourceUrl || track.id, track);
+    let target = track.sourceUrl || track.id;
+    const parsed = parseYouTubeInput(target);
+    if (!parsed && track.title && track.artist) {
+      try {
+        const res = await fetch('/api/youtube/search-track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ artist: track.artist, title: track.title }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.videoId) {
+            target = data.videoId;
+            track.id = data.videoId;
+            track.sourceUrl = `https://www.youtube.com/watch?v=${data.videoId}`;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    await this.loadPlaylist(target, track);
   }
 
   public async play(): Promise<void> {
@@ -866,7 +887,13 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.volume = Math.max(0, Math.min(1, volume));
     getDspEngine().setVolume(this.volume);
     if (this.streamAudio) {
-      this.streamAudio.volume = this.volume;
+      // If connected to Web Audio, let masterGain control volume to avoid double attenuation
+      const dsp = getDspEngine();
+      if (dsp.isConnected(this.streamAudio)) {
+        this.streamAudio.volume = 1.0;
+      } else {
+        this.streamAudio.volume = this.volume;
+      }
     }
     if (this.player && typeof this.player.setVolume === 'function') {
       try {

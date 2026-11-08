@@ -3,6 +3,7 @@
 import React from 'react';
 import { TrackInfo } from '@/types/playback';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
+import { addTrackToPlaylist } from '@/lib/playlist-storage';
 import { MusicNoteIcon, HeartIcon } from '@/components/common/MinimalIcons';
 
 interface AddToPlaylistMenuProps {
@@ -60,47 +61,18 @@ export default function AddToPlaylistMenu({
     if (!currentTrack) return;
 
     try {
-      const stored = localStorage.getItem('chillify_saved_playlists');
-      let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
+      const newTrack: CustomPlaylistTrack = {
+        id: currentTrack.id,
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        duration: formatTime(duration),
+        thumbnail:
+          currentTrack.artworkUrl ||
+          `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`,
+        addedAt: Date.now(),
+      };
 
-      let found = prev.some((p) => p.id === pl.id);
-      if (!found && pl.id === 'liked-songs') {
-        prev = [pl, ...prev];
-        found = true;
-      }
-
-      const updated = prev.map((p) => {
-        if (p.id === pl.id) {
-          const prevTracks = p.tracks || [];
-          if (prevTracks.some((t) => t.id === currentTrack.id)) {
-            return p;
-          }
-          const newTrack: CustomPlaylistTrack = {
-            id: currentTrack.id,
-            title: currentTrack.title,
-            artist: currentTrack.artist,
-            duration: formatTime(duration),
-            thumbnail:
-              currentTrack.artworkUrl ||
-              `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`,
-            addedAt: Date.now(),
-          };
-          const newTracks = [newTrack, ...prevTracks];
-          return {
-            ...p,
-            tracks: newTracks,
-            subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • ${
-              p.id === 'liked-songs' ? 'Liked Songs' : 'Custom Playlist'
-            }`,
-          };
-        }
-        return p;
-      });
-
-      localStorage.setItem('chillify_saved_playlists', JSON.stringify(updated));
-      window.dispatchEvent(new Event('chillify_playlists_updated'));
-      window.dispatchEvent(new Event('storage'));
-
+      addTrackToPlaylist(pl.id, newTrack);
       onAdded(pl.title);
       onClose();
     } catch {

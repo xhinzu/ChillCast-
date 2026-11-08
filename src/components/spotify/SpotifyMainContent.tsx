@@ -21,6 +21,16 @@ import {
   trendingSongToTrackInfo,
 } from '@/lib/music-data';
 import {
+  getSavedPlaylists,
+  saveSavedPlaylists,
+  addOrUpdatePlaylist,
+  deletePlaylist,
+  addTrackToPlaylist,
+  removeTrackFromPlaylist,
+  toggleLikedSong,
+  PLAYLISTS_UPDATED_EVENT,
+} from '@/lib/playlist-storage';
+import {
   HeartIcon,
   PlayIcon,
   PauseIcon,
@@ -122,59 +132,23 @@ export default function SpotifyMainContent({
 
   // Load playlists & listen for storage sync
   const loadStoredPlaylists = () => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          // One-time cleanup for existing browser state with legacy seeded playlists
-          if (localStorage.getItem('chillify_cleaned_starter_v2') !== 'true') {
-            const legacyIds = new Set(['chill-vibes', 'ig-viral-mix', 'lofi-midnight']);
-            let cleaned = parsed.filter((p: SavedPlaylistItem) => !legacyIds.has(p.id));
-            cleaned = cleaned.filter((p: SavedPlaylistItem) => {
-              if (p.id === 'liked-songs' && p.tracks && p.tracks.length === 10) {
-                const hasOldStarter = p.tracks.some((t) => t.id === 'z4UDNuTla2k' || t.id === 'kPhpHvnnn0E');
-                return !hasOldStarter;
-              }
-              return true;
-            });
-            localStorage.setItem('chillify_cleaned_starter_v2', 'true');
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-            setSavedPlaylists(cleaned);
-            return;
-          }
-          setSavedPlaylists(parsed);
-          return;
-        }
-      }
-      localStorage.setItem('chillify_cleaned_starter_v2', 'true');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STARTER_PLAYLISTS));
-      setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
-    } catch {
-      setSavedPlaylists(DEFAULT_STARTER_PLAYLISTS);
-    }
+    setSavedPlaylists(getSavedPlaylists());
   };
 
   useEffect(() => {
     loadStoredPlaylists();
     const handleSync = () => loadStoredPlaylists();
     window.addEventListener('storage', handleSync);
-    window.addEventListener('chillify_playlists_updated', handleSync);
+    window.addEventListener(PLAYLISTS_UPDATED_EVENT, handleSync);
     return () => {
       window.removeEventListener('storage', handleSync);
-      window.removeEventListener('chillify_playlists_updated', handleSync);
+      window.removeEventListener(PLAYLISTS_UPDATED_EVENT, handleSync);
     };
   }, []);
 
   const savePlaylists = (updated: SavedPlaylistItem[]) => {
     setSavedPlaylists(updated);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      window.dispatchEvent(new Event('chillify_playlists_updated'));
-      window.dispatchEvent(new Event('storage'));
-    } catch {
-      // ignore
-    }
+    saveSavedPlaylists(updated);
   };
 
   // Dynamic greeting based on time of day
@@ -287,38 +261,21 @@ export default function SpotifyMainContent({
       addedAt: Date.now(),
     };
 
-    let targetTitle = 'Playlist';
-    const updated = savedPlaylists.map((p) => {
-      if (p.id === playlistId) {
-        targetTitle = p.title;
-        const prevTracks = p.tracks || [];
-        // Avoid duplicate videos in the same playlist
-        if (prevTracks.some((t) => t.id === video.id)) {
-          return p;
-        }
-        const newTracks = [...prevTracks, trackItem];
-        return {
-          ...p,
-          tracks: newTracks,
-          subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Custom Playlist`,
-        };
-      }
-      return p;
-    });
-
-    savePlaylists(updated);
+    const updated = addTrackToPlaylist(playlistId, trackItem);
+    setSavedPlaylists(updated);
     setPlaylistTargetVideo(null);
-    setAddedToast(`Added "${video.title}" to ${targetTitle}!`);
+    setAddedToast(`Added "${cleanInfo.cleanTitle || video.title}" to playlist!`);
     setTimeout(() => setAddedToast(null), 3000);
   };
 
   // Create new custom playlist on the fly and add video
   const handleCreateAndAdd = (video: YouTubeSearchResult) => {
     const title = newPlaylistName.trim() || 'My Custom Playlist';
+    const cleanInfo = formatCleanDisplayTrack(video.title, video.channel);
     const trackItem: CustomPlaylistTrack = {
       id: video.id,
-      title: video.title,
-      artist: video.channel,
+      title: cleanInfo.cleanTitle || video.title,
+      artist: cleanInfo.cleanArtist || video.channel,
       duration: video.duration,
       thumbnail: video.thumbnail,
       addedAt: Date.now(),
@@ -336,16 +293,18 @@ export default function SpotifyMainContent({
       createdAt: Date.now(),
     };
 
-    savePlaylists([newPlaylist, ...savedPlaylists]);
+    const updated = addOrUpdatePlaylist(newPlaylist);
+    setSavedPlaylists(updated);
     setNewPlaylistName('');
     setShowCreateInline(false);
     setPlaylistTargetVideo(null);
-    setAddedToast(`Created "${title}" and added "${video.title}"!`);
+    setAddedToast(`Created "${title}" and added "${cleanInfo.cleanTitle || video.title}"!`);
     setTimeout(() => setAddedToast(null), 3000);
   };
 
   const handleSaveNewPlaylist = (item: SavedPlaylistItem) => {
-    savePlaylists([item, ...savedPlaylists]);
+    const updated = addOrUpdatePlaylist(item);
+    setSavedPlaylists(updated);
     setIsAddSourceModalOpen(false);
     if (item.type === 'custom') {
       setActiveView(`playlist:${item.id}`);
@@ -356,46 +315,77 @@ export default function SpotifyMainContent({
 
   // Remove track from active custom playlist
   const handleRemoveTrackFromPlaylist = (playlistId: string, trackId: string) => {
-    const updated = savedPlaylists.map((p) => {
-      if (p.id === playlistId) {
-        const prevTracks = p.tracks || [];
-        const newTracks = prevTracks.filter((t) => t.id !== trackId);
-        return {
-          ...p,
-          tracks: newTracks,
-          subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Custom Playlist`,
-        };
-      }
-      return p;
-    });
-    savePlaylists(updated);
+    const updated = removeTrackFromPlaylist(playlistId, trackId);
+    setSavedPlaylists(updated);
   };
 
   // Delete entire playlist
   const handleDeletePlaylist = (playlistId: string) => {
-    const updated = savedPlaylists.filter((p) => p.id !== playlistId);
-    savePlaylists(updated);
+    const updated = deletePlaylist(playlistId);
+    setSavedPlaylists(updated);
     setActiveView('home');
   };
 
   // Play custom playlist starting from a specific index
-  const handlePlayCustomPlaylist = (playlist: SavedPlaylistItem, startIndex = 0) => {
+  const handlePlayCustomPlaylist = async (playlist: SavedPlaylistItem, startIndex = 0) => {
     if (!playlist.tracks || playlist.tracks.length === 0) return;
     const targetTrack = playlist.tracks[startIndex];
-    if (targetTrack && typeof window !== 'undefined') {
-      const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
-      yt?.primeAudioStream?.(targetTrack.id);
+    if (!targetTrack) return;
+
+    let targetVideoId = targetTrack.id;
+    const isYouTubeId = /^[a-zA-Z0-9_-]{11}$/.test(targetTrack.id);
+
+    // If this track originated from Spotify (22-char Spotify ID), resolve to YouTube stream
+    if (!isYouTubeId && targetTrack.title && targetTrack.artist) {
+      setAddedToast(`Resolving YouTube stream for "${targetTrack.title}"...`);
+      try {
+        const res = await fetch('/api/youtube/search-track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ artist: targetTrack.artist, title: targetTrack.title }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.videoId) {
+            targetVideoId = data.videoId;
+            targetTrack.id = data.videoId;
+            targetTrack.thumbnail = targetTrack.thumbnail || `https://img.youtube.com/vi/${data.videoId}/hqdefault.jpg`;
+            // Save resolved track permanently into this playlist
+            const updatedPlaylist: SavedPlaylistItem = {
+              ...playlist,
+              tracks: playlist.tracks.map((t, idx) => (idx === startIndex ? targetTrack : t)),
+            };
+            const updated = addOrUpdatePlaylist(updatedPlaylist);
+            setSavedPlaylists(updated);
+          }
+        }
+      } catch {
+        // ignore resolution failure, will fallback in adapter
+      } finally {
+        setTimeout(() => setAddedToast(null), 2000);
+      }
     }
-    const trackInfos: TrackInfo[] = playlist.tracks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      artist: t.artist,
-      album: playlist.title,
-      duration: parseDurationSeconds(t.duration || '0:00'),
-      source: 'youtube',
-      sourceUrl: `https://www.youtube.com/watch?v=${t.id}`,
-      artworkUrl: t.thumbnail,
-    }));
+
+    if (typeof window !== 'undefined') {
+      const yt = (window as unknown as { __ytAdapter?: { primeAudioStream?: (id: string) => void } }).__ytAdapter;
+      yt?.primeAudioStream?.(targetVideoId);
+    }
+
+    const trackInfos: TrackInfo[] = playlist.tracks.map((t, idx) => {
+      const isYt = /^[a-zA-Z0-9_-]{11}$/.test(t.id);
+      const vidId = idx === startIndex ? targetVideoId : t.id;
+      return {
+        id: vidId,
+        title: t.title,
+        artist: t.artist,
+        album: playlist.title,
+        duration: parseDurationSeconds(t.duration || '0:00'),
+        source: 'youtube',
+        sourceUrl: isYt || idx === startIndex ? `https://www.youtube.com/watch?v=${vidId}` : '',
+        artworkUrl: t.thumbnail,
+      };
+    });
+
     playCustomTrackList(trackInfos, startIndex);
   };
 
@@ -403,7 +393,9 @@ export default function SpotifyMainContent({
   const isPlaylistView = activeView.startsWith('playlist:');
   const activePlaylistId = isPlaylistView ? activeView.replace('playlist:', '') : null;
   const currentPlaylist = activePlaylistId
-    ? savedPlaylists.find((p) => p.id === activePlaylistId)
+    ? (savedPlaylists.find((p) => p.id === activePlaylistId) ||
+       getSavedPlaylists().find((p) => p.id === activePlaylistId) ||
+       null)
     : null;
 
   const isSearchActive = activeView === 'search' && searchQuery.trim().length > 0;
@@ -476,65 +468,12 @@ export default function SpotifyMainContent({
       duration?: string;
       thumbnail?: string;
     }) => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        let prev: SavedPlaylistItem[] = stored ? JSON.parse(stored) : [];
-
-        let likedPlaylist = prev.find((p) => p.id === 'liked-songs');
-        if (!likedPlaylist) {
-          likedPlaylist = {
-            id: 'liked-songs',
-            title: 'Liked Songs',
-            subtitle: '0 songs • Liked Songs',
-            type: 'custom',
-            targetUrl: '',
-            icon: 'heart',
-            tracks: [],
-            description: 'Your favorite liked tracks on ChillCast',
-            createdAt: Date.now(),
-          };
-          prev = [likedPlaylist, ...prev];
-        }
-
-        const prevTracks = likedPlaylist.tracks || [];
-        const alreadyLiked = prevTracks.some((t) => t.id === track.id);
-
-        let newTracks: CustomPlaylistTrack[];
-        if (alreadyLiked) {
-          newTracks = prevTracks.filter((t) => t.id !== track.id);
-          setAddedToast(`Removed "${track.title}" from Liked Songs`);
-        } else {
-          const newTrack: CustomPlaylistTrack = {
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-            duration: track.duration || '3:30',
-            thumbnail: track.thumbnail || `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`,
-            addedAt: Date.now(),
-          };
-          newTracks = [newTrack, ...prevTracks];
-          setAddedToast(`Added "${track.title}" to Liked Songs`);
-        }
-
-        setTimeout(() => setAddedToast(null), 2500);
-
-        const updated = prev.map((p) => {
-          if (p.id === 'liked-songs') {
-            return {
-              ...p,
-              tracks: newTracks,
-              subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
-            };
-          }
-          return p;
-        });
-
-        savePlaylists(updated);
-      } catch {
-        // ignore
-      }
+      const { updated, isLikedNow } = toggleLikedSong(track);
+      setSavedPlaylists(updated);
+      setAddedToast(isLikedNow ? `Added "${track.title}" to Liked Songs` : `Removed "${track.title}" from Liked Songs`);
+      setTimeout(() => setAddedToast(null), 2500);
     },
-    [savePlaylists]
+    []
   );
 
   // Play Trending list starting at index
@@ -577,8 +516,9 @@ export default function SpotifyMainContent({
         {/* ------------------------------------------------------------- */}
         {/* VIEW 1: CUSTOM PLAYLIST DETAIL VIEW                            */}
         {/* ------------------------------------------------------------- */}
-        {isPlaylistView && currentPlaylist && (
-          <section aria-label="Custom Playlist View" className="space-y-6">
+        {isPlaylistView && (
+          currentPlaylist ? (
+            <section aria-label="Custom Playlist View" className="space-y-6">
             {/* Top Navigation Row */}
             <div className="flex items-center justify-between">
               <button
@@ -720,7 +660,7 @@ export default function SpotifyMainContent({
               {inlineSearchResults.length > 0 && (
                 <div className="max-h-72 overflow-y-auto space-y-1.5 pt-2 divide-y divide-[#222222]">
                   {inlineSearchResults.map((video) => {
-                    const alreadyInPlaylist = currentPlaylist.tracks?.some((t) => t.id === video.id);
+                    const alreadyInPlaylist = currentPlaylist.tracks?.some((t: CustomPlaylistTrack) => t.id === video.id);
                     return (
                       <div
                         key={video.id}
@@ -782,7 +722,7 @@ export default function SpotifyMainContent({
 
                 {/* Table Rows */}
                 <div className="divide-y divide-[#222222]">
-                  {currentPlaylist.tracks.map((track, idx) => (
+                  {currentPlaylist.tracks.map((track: CustomPlaylistTrack, idx: number) => (
                     <div
                       key={track.id}
                       onClick={() => handlePlayCustomPlaylist(currentPlaylist, idx)}
@@ -848,7 +788,19 @@ export default function SpotifyMainContent({
               </div>
             )}
           </section>
-        )}
+        ) : (
+          <section aria-label="Playlist Not Found" className="p-12 text-center space-y-4 bg-[#141414] rounded-2xl border border-[#242424] my-6">
+            <h2 className="text-xl font-bold text-white">Playlist Not Found</h2>
+            <p className="text-xs text-[#888888] max-w-sm mx-auto">The playlist you selected could not be loaded or may have been deleted.</p>
+            <button
+              type="button"
+              onClick={() => setActiveView('home')}
+              className="px-5 py-2.5 bg-white text-black font-bold text-xs rounded-full hover:bg-zinc-200 transition-colors cursor-pointer"
+            >
+              Back to Home
+            </button>
+          </section>
+        ))}
 
         {/* ------------------------------------------------------------- */}
         {/* VIEW 2: SEARCH RESULTS VIEW (When searching YouTube)          */}
