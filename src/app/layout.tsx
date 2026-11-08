@@ -101,9 +101,38 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${interFont.variable} ${nunitoFont.variable} ${newsreaderFont.variable} ${arimoFont.variable} ${nunitoSansFont.variable} ${jostFont.variable} ${playfairFont.variable} h-full antialiased bg-black`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${interFont.variable} ${nunitoFont.variable} ${newsreaderFont.variable} ${arimoFont.variable} ${nunitoSansFont.variable} ${jostFont.variable} ${playfairFont.variable} h-full antialiased`}
     >
-      <body className="h-screen w-screen overflow-hidden bg-black text-white flex flex-col antialiased">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+              try {
+                var raw = localStorage.getItem('myujiku_settings_v2');
+                var theme = 'dark';
+                var bg = '#121214';
+                if (raw) {
+                  var parsed = JSON.parse(raw);
+                  if (parsed && parsed.appearance && parsed.appearance.theme) {
+                    theme = parsed.appearance.theme;
+                  }
+                }
+                if (theme === 'system') {
+                  theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                if (theme === 'amoled') bg = '#000000';
+                else if (theme === 'light') bg = '#f4f4f6';
+                else bg = '#121214';
+
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.style.backgroundColor = bg;
+              } catch(e) {}
+            })();`,
+          }}
+        />
+      </head>
+      <body className="h-screen w-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text)] flex flex-col antialiased">
         <AuthProvider
           initialUser={initialUser}
           initialProfile={initialProfile}

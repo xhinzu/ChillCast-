@@ -12,6 +12,7 @@ import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 import DiscordPresenceBridge from '@/components/discord/DiscordPresenceBridge';
+import { initThemeApplier } from '@/lib/theme/theme-applier';
 
 export interface ChillCastAppProps {
   initialView?: string;
@@ -68,9 +69,14 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlay]);
 
+  // Initialize global theme and system color scheme synchronization
+  useEffect(() => {
+    return initThemeApplier();
+  }, []);
+
   return (
     // Use h-dvh so mobile browser chrome (address bar) is accounted for
-    <div className="h-[100dvh] w-screen bg-black text-white flex flex-col overflow-hidden select-none font-sans">
+    <div className="h-[100dvh] w-screen bg-[var(--bg-base)] text-[var(--text)] flex flex-col overflow-hidden select-none font-sans">
 
       {/* 1. Top Navigation Bar */}
       <SpotifyTopNav

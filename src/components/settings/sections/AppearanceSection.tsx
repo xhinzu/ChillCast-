@@ -278,6 +278,54 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                 </button>
               </div>
             )}
+
+            {/* Theme Export / Import */}
+            <div className="pt-3 border-t border-[#222228] flex items-center justify-between">
+              <span className="text-[11px] text-zinc-400">Theme Preset File</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blob = new Blob([JSON.stringify(settings.appearance, null, 2)], {
+                      type: 'application/json',
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `myujiku-theme-${settings.appearance.theme}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="px-2.5 py-1 rounded bg-[#25252c] hover:bg-[#32323e] border border-[#353540] text-zinc-200 text-[11px] font-medium transition-colors cursor-pointer"
+                >
+                  Export Theme
+                </button>
+                <label className="px-2.5 py-1 rounded bg-[#25252c] hover:bg-[#32323e] border border-[#353540] text-zinc-200 text-[11px] font-medium transition-colors cursor-pointer inline-flex items-center">
+                  Import Theme
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        try {
+                          const parsed = JSON.parse(event.target?.result as string);
+                          if (parsed && typeof parsed === 'object') {
+                            updateSettings('appearance', parsed);
+                          }
+                        } catch {
+                          alert('Invalid theme JSON file');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
           </div>
         )}
       </div>

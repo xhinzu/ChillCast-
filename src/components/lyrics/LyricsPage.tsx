@@ -13,6 +13,7 @@ import {
   saveLyricsSettings,
   LyricsSettings,
 } from '@/lib/lyrics/settings';
+import { useSettings } from '@/lib/settings/useSettings';
 import { useLyricsSync } from '@/hooks/useLyricsSync';
 import { usePalette } from '@/hooks/usePalette';
 import { useWakeLock } from '@/hooks/useWakeLock';
@@ -117,6 +118,7 @@ function formatDurationClock(seconds: number): string {
 
 export default function LyricsPage() {
   const { currentTrack, duration, getCurrentTime, currentTime } = usePlayback();
+  const { settings: globalSettings } = useSettings();
 
   // Playing video's duration (not placeholder/search duration)
   const playingDuration =
@@ -1258,7 +1260,9 @@ export default function LyricsPage() {
           setShowAddModal(true);
         }
       }}
-      className={`w-full flex flex-col bg-black text-white relative select-none overflow-hidden transition-all duration-300 ${
+      className={`w-full flex flex-col ${
+        globalSettings.appearance.lyricsStageFollowsTheme ? 'bg-[var(--bg-base)]' : 'bg-black'
+      } text-white relative select-none overflow-hidden transition-all duration-300 ${
         isFullscreen
           ? 'fixed inset-0 z-50 p-4 sm:p-8 h-screen w-screen'
           : 'rounded-2xl border border-[#222222] flex-1 min-h-[60vh] sm:min-h-[70vh] h-[calc(100vh-230px)] max-h-[960px]'

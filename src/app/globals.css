@@ -1,24 +1,106 @@
 @import "tailwindcss";
 
-:root {
-  --background: #000000;
-  --foreground: #ffffff;
-  --chillify-accent: #ffffff;
-  --chillify-accent-dim: #9ca3af;
-  --chillify-grey-bg: #161616;
-  --chillify-card: #181818;
-  --chillify-card-hover: #242424;
-  --chillify-border: #2a2a2a;
-  --spotify-black: #000000;
-  --spotify-dark: #101010;
-  --spotify-card: #181818;
-  --spotify-card-hover: #242424;
-  --spotify-subtext: #8e8e93;
+/* Design Token System */
+:root,
+[data-theme="dark"] {
+  --bg-base: #121214;
+  --surface: #18181b;
+  --surface-2: #222226;
+  --surface-3: #2a2a30;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #ffffff;
+  --text-muted: #a1a1aa;
+  --accent: #10b981;
+  --accent-contrast: #000000;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --overlay: rgba(0, 0, 0, 0.75);
+  --focus-ring: rgba(16, 185, 129, 0.4);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+
+  --background: var(--bg-base);
+  --foreground: var(--text);
+  --chillify-accent: var(--accent);
+  --chillify-accent-dim: var(--text-muted);
+  --chillify-grey-bg: var(--bg-base);
+  --chillify-card: var(--surface);
+  --chillify-card-hover: var(--surface-2);
+  --chillify-border: var(--border);
+  --spotify-black: var(--bg-base);
+  --spotify-dark: var(--surface);
+  --spotify-card: var(--surface);
+  --spotify-card-hover: var(--surface-2);
+  --spotify-subtext: var(--text-muted);
+}
+
+[data-theme="amoled"] {
+  --bg-base: #000000;
+  --surface: #070708;
+  --surface-2: #121214;
+  --surface-3: #1a1a1e;
+  --border: #222226;
+  --text: #ffffff;
+  --text-muted: #88888e;
+  --accent: #10b981;
+  --accent-contrast: #000000;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --overlay: rgba(0, 0, 0, 0.92);
+  --focus-ring: rgba(16, 185, 129, 0.5);
+  --shadow-color: rgba(0, 0, 0, 0.85);
+
+  --background: var(--bg-base);
+  --foreground: var(--text);
+  --chillify-accent: var(--accent);
+  --chillify-accent-dim: var(--text-muted);
+  --chillify-grey-bg: var(--bg-base);
+  --chillify-card: var(--surface);
+  --chillify-card-hover: var(--surface-2);
+  --chillify-border: var(--border);
+  --spotify-black: var(--bg-base);
+  --spotify-dark: var(--surface);
+  --spotify-card: var(--surface);
+  --spotify-card-hover: var(--surface-2);
+  --spotify-subtext: var(--text-muted);
+}
+
+[data-theme="light"] {
+  --bg-base: #f4f4f6;
+  --surface: #ffffff;
+  --surface-2: #eaecef;
+  --surface-3: #dfe2e6;
+  --border: rgba(0, 0, 0, 0.12);
+  --text: #111114;
+  --text-muted: #5e6066;
+  --accent: #059669;
+  --accent-contrast: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --overlay: rgba(0, 0, 0, 0.45);
+  --focus-ring: rgba(5, 150, 105, 0.35);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+
+  --background: var(--bg-base);
+  --foreground: var(--text);
+  --chillify-accent: var(--accent);
+  --chillify-accent-dim: var(--text-muted);
+  --chillify-grey-bg: var(--bg-base);
+  --chillify-card: var(--surface);
+  --chillify-card-hover: var(--surface-2);
+  --chillify-border: var(--border);
+  --spotify-black: var(--bg-base);
+  --spotify-dark: var(--surface);
+  --spotify-card: var(--surface);
+  --spotify-card-hover: var(--surface-2);
+  --spotify-subtext: var(--text-muted);
 }
 
 body {
-  background: #000000;
-  color: #ffffff;
+  background: var(--bg-base);
+  color: var(--text);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
   user-select: none;
@@ -34,16 +116,109 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Chillify Spotify-Style Card (Black & Grey) */
+/* Chillify Spotify-Style Card */
 .spotify-card {
-  background-color: #161616;
-  border: 1px solid #222222;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .spotify-card:hover {
-  background-color: #202020;
-  border-color: #333333;
+  background-color: var(--surface-2);
+  border-color: var(--border);
+}
+
+/* Light & AMOLED Automatic Token Enforcers */
+[data-theme="light"] {
+  .bg-black,
+  .bg-\[\#000000\],
+  .bg-\[\#0c0c0c\],
+  .bg-\[\#121212\],
+  .bg-\[\#161616\],
+  .bg-\[\#17171a\],
+  .bg-\[\#181818\],
+  .bg-\[\#121215\] {
+    background-color: var(--surface) !important;
+  }
+
+  .bg-\[\#1c1c1c\],
+  .bg-\[\#202020\],
+  .bg-\[\#222222\],
+  .bg-\[\#242424\],
+  .bg-\[\#262626\],
+  .bg-\[\#2a2a2a\] {
+    background-color: var(--surface-2) !important;
+  }
+
+  .hover\:bg-\[\#1a1a1a\]:hover,
+  .hover\:bg-\[\#202020\]:hover,
+  .hover\:bg-\[\#242424\]:hover,
+  .hover\:bg-\[\#262626\]:hover,
+  .hover\:bg-\[\#282828\]:hover,
+  .hover\:bg-\[\#2c2c2c\]:hover,
+  .hover\:bg-\[\#32323e\]:hover,
+  .hover\:bg-\[\#333333\]:hover {
+    background-color: var(--surface-3) !important;
+  }
+
+  .border-\[\#1e1e1e\],
+  .border-\[\#202020\],
+  .border-\[\#222222\],
+  .border-\[\#242424\],
+  .border-\[\#282828\],
+  .border-\[\#282830\],
+  .border-\[\#2a2a2a\],
+  .border-\[\#2c2c2c\],
+  .border-\[\#2e2e2e\],
+  .border-\[\#333333\],
+  .border-\[\#383838\],
+  .border-\[\#383848\],
+  .border-\[\#444444\] {
+    border-color: var(--border) !important;
+  }
+
+  .text-white,
+  .text-\[\#ffffff\],
+  .text-zinc-200,
+  .text-zinc-300 {
+    color: var(--text) !important;
+  }
+
+  .text-zinc-400,
+  .text-zinc-500,
+  .text-\[\#888888\],
+  .text-\[\#777777\],
+  .text-\[\#8e8e93\],
+  .text-\[\#b3b3b3\] {
+    color: var(--text-muted) !important;
+  }
+}
+
+[data-theme="amoled"] {
+  .bg-\[\#121212\],
+  .bg-\[\#161616\],
+  .bg-\[\#17171a\],
+  .bg-\[\#181818\],
+  .bg-\[\#121215\] {
+    background-color: #050506 !important;
+  }
+
+  .bg-\[\#1c1c1c\],
+  .bg-\[\#202020\],
+  .bg-\[\#222222\] {
+    background-color: #0f0f12 !important;
+  }
+
+  .border-\[\#1e1e1e\],
+  .border-\[\#202020\],
+  .border-\[\#222222\],
+  .border-\[\#242424\],
+  .border-\[\#282828\],
+  .border-\[\#282830\],
+  .border-\[\#2a2a2a\] {
+    border-color: #1a1a20 !important;
+  }
 }
 
 /* Chillify Minimal Grey Range Slider */
