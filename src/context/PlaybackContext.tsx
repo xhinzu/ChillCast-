@@ -259,6 +259,18 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
       if (!isCancelled) {
         newAdapter.setVolume(isMuted ? 0 : volume);
+        const fx = newAdapter as unknown as {
+          setSpatial8D?: (b: boolean) => void;
+          setMuffled?: (b: boolean) => void;
+          setReverb?: (b: boolean) => void;
+          setChorus?: (b: boolean) => void;
+          setNoiseGate?: (b: boolean) => void;
+        };
+        if (typeof fx.setSpatial8D === 'function') fx.setSpatial8D(isSpatial8D);
+        if (typeof fx.setMuffled === 'function') fx.setMuffled(isMuffled);
+        if (typeof fx.setReverb === 'function') fx.setReverb(isReverb);
+        if (typeof fx.setChorus === 'function') fx.setChorus(isChorus);
+        if (typeof fx.setNoiseGate === 'function') fx.setNoiseGate(isNoiseGate);
       }
     };
 
@@ -301,6 +313,18 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       attachAdapterListeners(newAdapter);
       await newAdapter.initialize();
       newAdapter.setVolume(isMuted ? 0 : volume);
+      const fx = newAdapter as unknown as {
+        setSpatial8D?: (b: boolean) => void;
+        setMuffled?: (b: boolean) => void;
+        setReverb?: (b: boolean) => void;
+        setChorus?: (b: boolean) => void;
+        setNoiseGate?: (b: boolean) => void;
+      };
+      if (typeof fx.setSpatial8D === 'function') fx.setSpatial8D(isSpatial8D);
+      if (typeof fx.setMuffled === 'function') fx.setMuffled(isMuffled);
+      if (typeof fx.setReverb === 'function') fx.setReverb(isReverb);
+      if (typeof fx.setChorus === 'function') fx.setChorus(isChorus);
+      if (typeof fx.setNoiseGate === 'function') fx.setNoiseGate(isNoiseGate);
 
       return newAdapter;
     },
