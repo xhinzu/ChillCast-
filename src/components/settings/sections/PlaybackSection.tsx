@@ -15,7 +15,7 @@ export default function PlaybackSection() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Playback Settings
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -46,9 +46,10 @@ export default function PlaybackSection() {
             role="switch"
             aria-checked={playback.autoplay}
             onClick={() => updateSettings('playback', { autoplay: !playback.autoplay })}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              playback.autoplay ? 'bg-amber-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: playback.autoplay ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${

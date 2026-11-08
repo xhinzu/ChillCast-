@@ -46,7 +46,7 @@ export default function AudioSection() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-violet-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Audio Engine &amp; DSP Effects
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -81,9 +81,10 @@ export default function AudioSection() {
               updateSettings('audio', { spatial8DEnabled: next });
               if (toggleSpatial8D) toggleSpatial8D();
             }}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              audio.spatial8DEnabled || isSpatial8D ? 'bg-violet-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: audio.spatial8DEnabled || isSpatial8D ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -107,7 +108,8 @@ export default function AudioSection() {
                 step="1"
                 value={audio.spatial8DSpeed}
                 onChange={(e) => updateSettings('audio', { spatial8DSpeed: parseInt(e.target.value, 10) })}
-                className="w-full accent-violet-400"
+                style={{ accentColor: 'var(--accent)' }}
+                className="w-full"
               />
               <div className="flex justify-between text-[10px] text-zinc-500 mt-0.5">
                 <span>Fast (4s)</span>
@@ -128,7 +130,8 @@ export default function AudioSection() {
                 step="0.05"
                 value={audio.spatial8DWidth}
                 onChange={(e) => updateSettings('audio', { spatial8DWidth: parseFloat(e.target.value) })}
-                className="w-full accent-violet-400"
+                style={{ accentColor: 'var(--accent)' }}
+                className="w-full"
               />
             </div>
           </div>
@@ -153,9 +156,10 @@ export default function AudioSection() {
               updateSettings('audio', { muffledEnabled: next });
               if (toggleMuffled) toggleMuffled();
             }}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              audio.muffledEnabled || isMuffled ? 'bg-violet-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: audio.muffledEnabled || isMuffled ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -179,7 +183,8 @@ export default function AudioSection() {
                 step="50"
                 value={audio.muffledCutoff}
                 onChange={(e) => updateSettings('audio', { muffledCutoff: parseInt(e.target.value, 10) })}
-                className="w-full accent-violet-400"
+                style={{ accentColor: 'var(--accent)' }}
+                className="w-full"
               />
               <div className="flex justify-between text-[10px] text-zinc-500 mt-0.5">
                 <span>Deep / Submerged (300Hz)</span>
@@ -195,7 +200,14 @@ export default function AudioSection() {
       <div className="bg-[#17171a] border border-[#282830] rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-semibold text-white">Audio Pipeline Diagnostics</h4>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-violet-500/20 text-violet-300 border border-violet-500/30">
+          <span
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+              color: 'var(--accent)',
+              borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
+            }}
+            className="px-2 py-0.5 rounded text-[10px] font-mono border"
+          >
             State: {contextState}
           </span>
         </div>
@@ -207,13 +219,23 @@ export default function AudioSection() {
           </div>
           <div>
             <span className="text-zinc-500 block text-[9px] uppercase">8D Panner</span>
-            <span className={audio.spatial8DEnabled || isSpatial8D ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}>
+            <span
+              style={{
+                color: audio.spatial8DEnabled || isSpatial8D ? 'var(--accent)' : undefined,
+              }}
+              className={audio.spatial8DEnabled || isSpatial8D ? 'font-semibold' : 'text-zinc-500'}
+            >
               {audio.spatial8DEnabled || isSpatial8D ? 'Active' : 'Bypassed'}
             </span>
           </div>
           <div>
             <span className="text-zinc-500 block text-[9px] uppercase">Muffled Low-pass</span>
-            <span className={audio.muffledEnabled || isMuffled ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}>
+            <span
+              style={{
+                color: audio.muffledEnabled || isMuffled ? 'var(--accent)' : undefined,
+              }}
+              className={audio.muffledEnabled || isMuffled ? 'font-semibold' : 'text-zinc-500'}
+            >
               {audio.muffledEnabled || isMuffled ? `${audio.muffledCutoff}Hz` : 'Bypassed (20kHz)'}
             </span>
           </div>
@@ -227,7 +249,11 @@ export default function AudioSection() {
             type="button"
             onClick={handlePlayTestSweep}
             disabled={isPlayingTestTone}
-            className="px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+            style={{
+              backgroundColor: 'var(--accent)',
+              color: 'var(--accent-contrast)',
+            }}
+            className="px-3.5 py-1.5 rounded-lg font-semibold text-xs transition-opacity hover:opacity-90 cursor-pointer disabled:opacity-50 shrink-0 shadow"
           >
             {isPlayingTestTone ? 'Playing Tone Sweep...' : 'Play Test Sweep'}
           </button>

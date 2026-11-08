@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { isTauri } from '@/lib/desktop';
 
 interface AboutSectionProps {
@@ -22,7 +23,7 @@ export default function AboutSection({ onOpenLyricsSettings }: AboutSectionProps
     <div className="space-y-5 text-xs text-zinc-300">
       <div>
         <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
           About MyuJiku
         </h3>
         <p className="text-xs text-zinc-400 mt-0.5">
@@ -32,8 +33,14 @@ export default function AboutSection({ onOpenLyricsSettings }: AboutSectionProps
 
       <div className="bg-[#17171a] border border-[#282830] rounded-xl p-5 space-y-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-            M
+          <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center p-2 shadow-lg shrink-0">
+            <Image
+              src="/myujiku-logo.png"
+              alt="MyuJiku Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain filter drop-shadow"
+            />
           </div>
           <div>
             <h4 className="text-base font-bold text-white">MyuJiku</h4>

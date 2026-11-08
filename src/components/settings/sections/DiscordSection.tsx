@@ -459,10 +459,19 @@ export default function DiscordSection() {
 
                   {testResult && (
                     <div
-                      className={`p-2.5 rounded-lg text-[11px] flex items-center gap-2 ${
+                      style={
                         testResult.success
-                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
-                          : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
+                          ? {
+                              backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                              borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
+                              color: 'var(--accent)',
+                            }
+                          : undefined
+                      }
+                      className={`p-2.5 rounded-lg text-[11px] flex items-center gap-2 border ${
+                        testResult.success
+                          ? ''
+                          : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
                       }`}
                     >
                       <span>{testResult.success ? '✓' : '✕'}</span>

@@ -66,7 +66,7 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Appearance &amp; Theming
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -99,9 +99,18 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                 key={theme.id}
                 type="button"
                 onClick={() => updateSettings('appearance', { theme: theme.id as ThemeMode })}
+                style={
+                  isSelected
+                    ? {
+                        borderColor: 'var(--accent)',
+                        backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                        boxShadow: '0 0 12px color-mix(in srgb, var(--accent) 25%, transparent)',
+                      }
+                    : undefined
+                }
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50 shadow-md'
+                    ? 'text-white'
                     : 'border-[#2a2a34] bg-[#121215] text-zinc-300 hover:bg-[#1a1a20]'
                 }`}
               >
@@ -129,9 +138,12 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                   followCoverArtAccent: !settings.appearance.followCoverArtAccent,
                 })
               }
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                settings.appearance.followCoverArtAccent ? 'bg-emerald-500' : 'bg-[#2e2e36]'
-              }`}
+              style={{
+                backgroundColor: settings.appearance.followCoverArtAccent
+                  ? 'var(--accent)'
+                  : '#2e2e36',
+              }}
+              className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
             >
               <span
                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -348,9 +360,12 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                 lyricsStageFollowsTheme: !settings.appearance.lyricsStageFollowsTheme,
               })
             }
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              settings.appearance.lyricsStageFollowsTheme ? 'bg-emerald-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: settings.appearance.lyricsStageFollowsTheme
+                ? 'var(--accent)'
+                : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -376,9 +391,12 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                 holdLogoToInspect: !settings.appearance.holdLogoToInspect,
               })
             }
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              settings.appearance.holdLogoToInspect ? 'bg-emerald-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: settings.appearance.holdLogoToInspect
+                ? 'var(--accent)'
+                : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${

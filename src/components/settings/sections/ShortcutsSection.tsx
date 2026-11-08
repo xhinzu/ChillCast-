@@ -146,7 +146,7 @@ export default function ShortcutsSection() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Keyboard Shortcuts
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -170,7 +170,7 @@ export default function ShortcutsSection() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search shortcuts (e.g. play, seek, volume, lyrics)..."
-          className="w-full bg-[#17171a] border border-[#282830] rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-400"
+          className="w-full bg-[#17171a] border border-[#282830] rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[var(--accent)]"
         />
         {search && (
           <button
@@ -225,7 +225,11 @@ export default function ShortcutsSection() {
                           <div
                             tabIndex={0}
                             onKeyDown={(e) => handleKeyDown(e, sc.id)}
-                            className="px-3 py-1 rounded bg-rose-500 text-white font-mono text-xs font-semibold animate-pulse outline-none ring-2 ring-rose-400 cursor-pointer"
+                            style={{
+                              backgroundColor: 'var(--accent)',
+                              color: 'var(--accent-contrast)',
+                            }}
+                            className="px-3 py-1 rounded font-mono text-xs font-semibold animate-pulse outline-none ring-2 ring-white/50 cursor-pointer"
                           >
                             Press key combo... (Esc to cancel)
                           </div>
@@ -233,9 +237,18 @@ export default function ShortcutsSection() {
                           <button
                             type="button"
                             onClick={() => handleStartRecording(sc.id)}
+                            style={
+                              isModified
+                                ? {
+                                    backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                                    borderColor: 'color-mix(in srgb, var(--accent) 40%, transparent)',
+                                    color: 'var(--accent)',
+                                  }
+                                : undefined
+                            }
                             className={`px-2.5 py-1 rounded font-mono text-xs font-semibold border transition-all cursor-pointer ${
                               isModified
-                                ? 'bg-rose-500/10 text-rose-300 border-rose-500/40 hover:bg-rose-500/20'
+                                ? 'hover:opacity-80'
                                 : 'bg-[#202026] text-zinc-300 border-[#30303c] hover:bg-[#282832] hover:text-white'
                             }`}
                             title="Click to rebind this shortcut"

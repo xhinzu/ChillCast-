@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 import AppearanceSection from './sections/AppearanceSection';
 import GlowSection from './sections/GlowSection';
 import AudioSection from './sections/AudioSection';
@@ -216,8 +217,14 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
         {/* ─────────────────── TOP HEADER ─────────────────── */}
         <div className="h-14 px-5 border-b border-[#202028] flex items-center justify-between shrink-0 bg-[#151519]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-              ⚙
+            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center p-1.5 shadow-sm text-zinc-300">
+              <Image
+                src="/myujiku-logo.png"
+                alt="MyuJiku Logo"
+                width={24}
+                height={24}
+                className="w-full h-full object-contain filter drop-shadow"
+              />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
@@ -275,7 +282,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search settings..."
-                  className="w-full bg-[#1b1b22] border border-[#2b2b36] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#1b1b22] border border-[#2b2b36] rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[var(--accent)]"
                 />
                 {searchQuery && (
                   <button
@@ -303,9 +310,17 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                       key={sec.id}
                       type="button"
                       onClick={() => setActiveSection(sec.id)}
+                      style={
+                        isActive
+                          ? {
+                              backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                              borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)',
+                            }
+                          : undefined
+                      }
                       className={`w-full px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                         isActive
-                          ? 'bg-emerald-500/15 text-white font-semibold border border-emerald-500/30 shadow-sm'
+                          ? 'text-white font-semibold border shadow-sm'
                           : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
                       }`}
                     >
@@ -410,7 +425,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                   value={importJsonText}
                   onChange={(e) => setImportJsonText(e.target.value)}
                   placeholder='{"appearance": {...}, "glow": {...}}'
-                  className="w-full bg-[#101014] border border-[#282834] rounded-xl p-3 text-xs font-mono text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#101014] border border-[#282834] rounded-xl p-3 text-xs font-mono text-zinc-200 focus:outline-none focus:border-[var(--accent)]"
                 />
 
                 <div className="flex items-center justify-between">
@@ -424,7 +439,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-xs text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                    className="text-xs text-[var(--accent)] hover:opacity-80 underline cursor-pointer"
                   >
                     Upload JSON file
                   </button>
@@ -442,7 +457,14 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
               )}
 
               {importSuccess && (
-                <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                <div
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                    borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
+                    color: 'var(--accent)',
+                  }}
+                  className="p-2.5 rounded-lg border text-xs font-semibold"
+                >
                   ✓ Settings successfully imported and applied!
                 </div>
               )}
@@ -458,7 +480,11 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                 <button
                   type="button"
                   onClick={handleImportSubmit}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer shadow"
+                  style={{
+                    backgroundColor: 'var(--accent)',
+                    color: 'var(--accent-contrast)',
+                  }}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 cursor-pointer shadow"
                 >
                   Apply Settings
                 </button>

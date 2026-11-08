@@ -106,7 +106,7 @@ export default function AccountSection() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Account &amp; Cloud Sync
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -132,10 +132,17 @@ export default function AccountSection() {
                 <img
                   src={discordAvatar}
                   alt={displayName}
-                  className="w-10 h-10 rounded-full ring-2 ring-indigo-500/40"
+                  style={{ borderColor: 'var(--accent)' }}
+                  className="w-10 h-10 rounded-full border-2"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-base">
+                <div
+                  style={{
+                    backgroundColor: 'var(--accent)',
+                    color: 'var(--accent-contrast)',
+                  }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-base"
+                >
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -221,9 +228,10 @@ export default function AccountSection() {
                 syncPlaylistsAndLiked: !settings.account.syncPlaylistsAndLiked,
               })
             }
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              settings.account.syncPlaylistsAndLiked ? 'bg-indigo-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: settings.account.syncPlaylistsAndLiked ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -249,9 +257,10 @@ export default function AccountSection() {
                 syncSettings: !settings.account.syncSettings,
               })
             }
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              settings.account.syncSettings ? 'bg-indigo-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: settings.account.syncSettings ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -264,7 +273,14 @@ export default function AccountSection() {
 
       {/* Action feedback notice */}
       {actionNotice && (
-        <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs flex items-center gap-2">
+        <div
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+            borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
+            color: 'var(--accent)',
+          }}
+          className="p-3 rounded-xl border text-xs flex items-center gap-2"
+        >
           <span>✓</span>
           <span>{actionNotice}</span>
         </div>

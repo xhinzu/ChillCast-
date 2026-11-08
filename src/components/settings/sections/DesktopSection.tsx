@@ -14,7 +14,7 @@ export default function DesktopSection() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Desktop Integration
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -34,7 +34,13 @@ export default function DesktopSection() {
       {!isDesktop ? (
         <div className="bg-[#171720] border border-[#2a2a35] rounded-xl p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+            <span
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
+                color: 'var(--accent)',
+              }}
+              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+            >
               Desktop Exclusive Features
             </span>
           </div>
@@ -45,7 +51,11 @@ export default function DesktopSection() {
             <a
               href="/releases/MyuJiku_1.0.0_x64-setup.exe"
               download
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition-colors inline-flex items-center gap-1.5 shadow"
+              style={{
+                backgroundColor: 'var(--accent)',
+                color: 'var(--accent-contrast)',
+              }}
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-1.5 shadow"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -87,9 +97,18 @@ export default function DesktopSection() {
                     key={opt.id}
                     type="button"
                     onClick={() => updateSettings('desktop', { closeAction: opt.id as 'tray' | 'quit' | 'ask' })}
+                    style={
+                      isSelected
+                        ? {
+                            borderColor: 'var(--accent)',
+                            backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                            boxShadow: '0 0 10px color-mix(in srgb, var(--accent) 25%, transparent)',
+                          }
+                        : undefined
+                    }
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-500/10 text-white ring-1 ring-blue-500/50 shadow-md'
+                        ? 'text-white'
                         : 'border-[#2a2a34] bg-[#121215] text-zinc-300 hover:bg-[#1a1a20]'
                     }`}
                   >
@@ -113,9 +132,10 @@ export default function DesktopSection() {
                 role="switch"
                 aria-checked={desktop.startWithWindows}
                 onClick={() => updateSettings('desktop', { startWithWindows: !desktop.startWithWindows })}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  desktop.startWithWindows ? 'bg-blue-500' : 'bg-[#2e2e36]'
-                }`}
+                style={{
+                  backgroundColor: desktop.startWithWindows ? 'var(--accent)' : '#2e2e36',
+                }}
+                className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
               >
                 <span
                   className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -135,9 +155,10 @@ export default function DesktopSection() {
                 role="switch"
                 aria-checked={desktop.startMinimizedToTray}
                 onClick={() => updateSettings('desktop', { startMinimizedToTray: !desktop.startMinimizedToTray })}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  desktop.startMinimizedToTray ? 'bg-blue-500' : 'bg-[#2e2e36]'
-                }`}
+                style={{
+                  backgroundColor: desktop.startMinimizedToTray ? 'var(--accent)' : '#2e2e36',
+                }}
+                className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
               >
                 <span
                   className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${

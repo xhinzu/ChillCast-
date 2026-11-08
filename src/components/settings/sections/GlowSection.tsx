@@ -27,7 +27,7 @@ export default function GlowSection() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
             Glow &amp; Lighting
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -58,9 +58,10 @@ export default function GlowSection() {
             role="switch"
             aria-checked={glow.uiGlowEnabled}
             onClick={() => updateSettings('glow', { uiGlowEnabled: !glow.uiGlowEnabled })}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              glow.uiGlowEnabled ? 'bg-cyan-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: glow.uiGlowEnabled ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -84,7 +85,8 @@ export default function GlowSection() {
                 step="0.05"
                 value={glow.uiGlowIntensity}
                 onChange={(e) => updateSettings('glow', { uiGlowIntensity: parseFloat(e.target.value) })}
-                className="w-full accent-cyan-400 cursor-pointer"
+                style={{ accentColor: 'var(--accent)' }}
+                className="w-full cursor-pointer"
               />
             </div>
 
@@ -94,10 +96,19 @@ export default function GlowSection() {
                 <button
                   type="button"
                   onClick={() => updateSettings('glow', { uiGlowColor: 'accent' })}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  style={
                     glow.uiGlowColor === 'accent'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                      : 'bg-[#202026] text-zinc-400 hover:text-white'
+                      ? {
+                          backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
+                          borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+                          color: 'var(--accent)',
+                        }
+                      : undefined
+                  }
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer border ${
+                    glow.uiGlowColor === 'accent'
+                      ? ''
+                      : 'border-transparent bg-[#202026] text-zinc-400 hover:text-white'
                   }`}
                 >
                   Follow Accent Token
@@ -105,10 +116,19 @@ export default function GlowSection() {
                 <button
                   type="button"
                   onClick={() => updateSettings('glow', { uiGlowColor: 'custom' })}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                  style={
                     glow.uiGlowColor === 'custom'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                      : 'bg-[#202026] text-zinc-400 hover:text-white'
+                      ? {
+                          backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)',
+                          borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)',
+                          color: 'var(--accent)',
+                        }
+                      : undefined
+                  }
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer border ${
+                    glow.uiGlowColor === 'custom'
+                      ? ''
+                      : 'border-transparent bg-[#202026] text-zinc-400 hover:text-white'
                   }`}
                 >
                   Custom
@@ -141,9 +161,10 @@ export default function GlowSection() {
             role="switch"
             aria-checked={glow.lyricsEdgeGlowEnabled}
             onClick={() => updateSettings('glow', { lyricsEdgeGlowEnabled: !glow.lyricsEdgeGlowEnabled })}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              glow.lyricsEdgeGlowEnabled ? 'bg-cyan-500' : 'bg-[#2e2e36]'
-            }`}
+            style={{
+              backgroundColor: glow.lyricsEdgeGlowEnabled ? 'var(--accent)' : '#2e2e36',
+            }}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
@@ -168,14 +189,23 @@ export default function GlowSection() {
                       key={style.id}
                       type="button"
                       onClick={() => updateSettings('glow', { lyricsEdgeGlowStyle: style.id })}
+                      style={
+                        isSelected
+                          ? {
+                              borderColor: 'var(--accent)',
+                              backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                              boxShadow: '0 0 10px color-mix(in srgb, var(--accent) 25%, transparent)',
+                            }
+                          : undefined
+                      }
                       className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                         isSelected
-                          ? 'border-cyan-400 bg-cyan-500/10 text-white ring-1 ring-cyan-400/50'
+                          ? 'text-white'
                           : 'border-[#282832] bg-[#121216] text-zinc-400 hover:bg-[#1a1a20]'
                       }`}
                     >
                       <div
-                        className="w-10 h-7 rounded border border-white/20 text-cyan-400 shadow-inner"
+                        className="w-10 h-7 rounded border border-white/20 text-[var(--accent)] shadow-inner"
                         style={{
                           background: style.preview.includes('gradient') ? style.preview : '#09090b',
                           boxShadow: !style.preview.includes('gradient') ? style.preview : undefined,
@@ -239,7 +269,8 @@ export default function GlowSection() {
                   step="0.05"
                   value={glow.lyricsEdgeGlowIntensity}
                   onChange={(e) => updateSettings('glow', { lyricsEdgeGlowIntensity: parseFloat(e.target.value) })}
-                  className="w-full accent-cyan-400"
+                  style={{ accentColor: 'var(--accent)' }}
+                  className="w-full"
                 />
               </div>
 
@@ -255,7 +286,8 @@ export default function GlowSection() {
                   step="2"
                   value={glow.lyricsEdgeGlowSize}
                   onChange={(e) => updateSettings('glow', { lyricsEdgeGlowSize: parseInt(e.target.value, 10) })}
-                  className="w-full accent-cyan-400"
+                  style={{ accentColor: 'var(--accent)' }}
+                  className="w-full"
                 />
               </div>
             </div>

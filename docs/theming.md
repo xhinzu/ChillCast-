@@ -46,6 +46,10 @@ Before the React tree mounts or the browser paints the first frame, an inline sc
 2. **Left Sidebar (`SpotifySidebar.tsx`):** Mapped library lists and playlist items to `--surface` and `--text-muted`.
 3. **Now Playing Panel (`SpotifyNowPlayingPanel.tsx`):** Track info and lyrics preview card follow active theme tokens.
 4. **Bottom Player (`SpotifyBottomPlayer.tsx`):** Scrub bar and volume sliders use `--accent`, with track title and duration adapting to `--text` and `--text-muted`.
-5. **Settings Modal (`SettingsModal.tsx`):** 9 sections fully audited; background, left navigation tabs, inputs, and toggles all conform to token hierarchy.
+5. **Settings Modal & Sections (`SettingsModal.tsx` & `src/components/settings/sections/*`):**
+   - Header icon replaced with official MyuJiku high-resolution mascot logo (`/myujiku-logo.png`).
+   - About section generic "M" placeholder tile replaced with official MyuJiku logo.
+   - All 9 sections audited to remove hardcoded green, teal, cyan, blue, violet, and amber colors on active states, toggles, badges, and sliders.
+   - All section headers, active sidebar tabs, toggle track backgrounds (`var(--accent)`), slider tracks (`accentColor: 'var(--accent)'`), input focus rings (`focus:border-[var(--accent)]`), and active theme cards now strictly honor the selected user accent and cover art extraction.
 6. **Lyrics Stage (`LyricsPage.tsx`):** Defaults to immersive pure black (`bg-black`) for optimal lyrics legibility. Users can toggle "Lyrics stage follows theme" in Appearance settings to synchronize the lyrics canvas with light or dark themes.
 7. **Desktop Window Integration:** In Tauri desktop builds, the window background is bound to `--bg-base`.
