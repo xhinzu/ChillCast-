@@ -10,12 +10,20 @@ import { listen } from '@tauri-apps/api/event';
 export interface PresencePayload {
   title: string;
   artist: string;
+  album?: string;
   coverUrl?: string;
   startTimestamp?: number;
   endTimestamp?: number;
   paused: boolean;
   roomUrl?: string;
   hideDetails?: boolean;
+}
+
+export interface DiscordDebugInfo {
+  lastPayloadSent: Record<string, unknown> | null;
+  lastResponse: Record<string, unknown> | null;
+  lastError: string | null;
+  updateCount: number;
 }
 
 export type DiscordConnectionStatus =
@@ -101,10 +109,28 @@ export async function listenDiscordStatus(
 export async function setDesktopPresence(payload: PresencePayload): Promise<void> {
   if (!isTauri()) return;
   try {
+    if (process.env.NODE_ENV !== 'production' || typeof window !== 'undefined') {
+      console.debug('[Desktop IPC Update] Sending set_presence:', payload);
+    }
     await invoke('set_presence', { payload });
   } catch (err) {
     // Fail silently, never crash or block UI
     console.debug('[Desktop] set_presence error:', err);
+  }
+}
+
+/**
+ * Retrieve diagnostic information about the last payload sent to Discord and Discord's response
+ */
+export async function getDiscordDebugInfo(): Promise<DiscordDebugInfo> {
+  if (!isTauri()) {
+    return { lastPayloadSent: null, lastResponse: null, lastError: null, updateCount: 0 };
+  }
+  try {
+    return await invoke<DiscordDebugInfo>('get_discord_debug_info');
+  } catch (err) {
+    console.debug('[Desktop] get_discord_debug_info error:', err);
+    return { lastPayloadSent: null, lastResponse: null, lastError: String(err), updateCount: 0 };
   }
 }
 

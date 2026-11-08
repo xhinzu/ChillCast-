@@ -33,6 +33,7 @@ pub enum DiscordConnectionStatus {
 pub struct PresencePayload {
     pub title: String,
     pub artist: String,
+    pub album: Option<String>,
     #[serde(rename = "coverUrl")]
     pub cover_url: Option<String>,
     #[serde(rename = "startTimestamp")]
@@ -46,10 +47,38 @@ pub struct PresencePayload {
     pub hide_details: Option<bool>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DiscordDebugInfo {
+    #[serde(rename = "lastPayloadSent")]
+    pub last_payload_sent: Option<Value>,
+    #[serde(rename = "lastResponse")]
+    pub last_response: Option<Value>,
+    #[serde(rename = "lastError")]
+    pub last_error: Option<String>,
+    #[serde(rename = "updateCount")]
+    pub update_count: u64,
+}
+
 static NONCE_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 fn next_nonce() -> String {
     format!("myujiku-{}", NONCE_COUNTER.fetch_add(1, Ordering::Relaxed))
+}
+
+/// Discord requires strings between 2 and 128 characters
+fn sanitize_discord_string(input: &str, fallback: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        fallback.to_string()
+    } else if trimmed.chars().count() == 1 {
+        format!("{} ", trimmed)
+    } else if trimmed.chars().count() > 128 {
+        let mut s: String = trimmed.chars().take(125).collect();
+        s.push_str("...");
+        s
+    } else {
+        trimmed.to_string()
+    }
 }
 
 pub struct DiscordIpc {
@@ -186,50 +215,46 @@ impl DiscordIpc {
         Ok((opcode, val))
     }
 
-    /// Sets Rich Presence activity with Listening activity type (type: 2)
-    pub fn set_activity(&mut self, payload: &PresencePayload) -> Result<(), String> {
+    /// Sets Spotify-style Listening Rich Presence (type: 2, status_display_type: 1)
+    pub fn set_activity(
+        &mut self,
+        payload: &PresencePayload,
+    ) -> Result<(Value, Value), String> {
         let hide = payload.hide_details.unwrap_or(false);
 
         let details = if hide {
             "Listening to MyuJiku".to_string()
         } else {
-            let t = payload.title.trim();
-            if t.len() < 2 {
-                format!("{} ", t)
-            } else if t.len() > 128 {
-                t[..128].to_string()
-            } else {
-                t.to_string()
-            }
+            sanitize_discord_string(&payload.title, "Untitled Track")
         };
 
         let state = if hide {
             "Lo-Fi Soundscapes".to_string()
         } else {
-            let a = payload.artist.trim();
-            if a.len() < 2 {
-                format!("{} ", a)
-            } else if a.len() > 128 {
-                a[..128].to_string()
-            } else {
-                a.to_string()
-            }
+            sanitize_discord_string(&payload.artist, "Unknown Artist")
         };
 
+        let large_text = sanitize_discord_string(
+            payload.album.as_deref().unwrap_or("MyuJiku"),
+            "MyuJiku",
+        );
+
         // Determine large image: URL if valid https & <= 256 chars, else fallback to "logo"
-        let large_image = match &payload.cover_url {
+        let preferred_large_image = match &payload.cover_url {
             Some(url) if url.starts_with("https://") && url.len() <= 256 => url.clone(),
             _ => "logo".to_string(),
         };
 
-        let send_with_image = |file: &mut File, img_key: &str| -> Result<(), String> {
+        let send_with_image = |file: &mut File, img_key: &str| -> Result<(Value, Value), String> {
             let mut act = json!({
-                "type": 2, // 2 = Listening
+                "type": 2, // 2 = Listening!
+                "name": "MyuJiku",
                 "details": details,
                 "state": state,
+                "status_display_type": 1, // Display song title in member list
             });
 
-            // Timestamps (only when playing and not hidden)
+            // Timestamps: ONLY when playing and NOT hidden
             if !payload.paused && !hide {
                 if let Some(start) = payload.start_timestamp {
                     let mut ts = json!({ "start": start });
@@ -242,14 +267,14 @@ impl DiscordIpc {
 
             // Assets: strictly using keys "logo", "play", and "pause" as configured in Discord portal
             let assets = json!({
-                "large_text": "MyuJiku",
+                "large_text": large_text,
                 "large_image": img_key,
                 "small_image": if payload.paused { "pause" } else { "play" },
                 "small_text": if payload.paused { "Paused" } else { "Playing" },
             });
             act["assets"] = assets;
 
-            // Buttons
+            // Buttons: maximum 2 allowed by Discord
             let mut buttons = vec![json!({
                 "label": "Listen on MyuJiku",
                 "url": PRODUCTION_URL
@@ -269,19 +294,34 @@ impl DiscordIpc {
                 "cmd": "SET_ACTIVITY",
                 "args": {
                     "pid": std::process::id(),
-                    "activity": act
+                    "activity": act.clone()
                 },
                 "nonce": next_nonce()
-            })
-            .to_string();
+            });
 
-            Self::write_frame(file, 1, frame.as_bytes())
+            let frame_str = frame.to_string();
+            Self::write_frame(file, 1, frame_str.as_bytes())?;
+
+            // Read response from Discord
+            let (resp_opcode, resp_val) = Self::read_frame(file)?;
+            if resp_opcode == 2 {
+                let err_msg = resp_val
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("Discord SET_ACTIVITY rejected");
+                return Err(err_msg.to_string());
+            }
+
+            Ok((act, resp_val))
         };
 
-        match send_with_image(&mut self.file, &large_image) {
-            Ok(()) => Ok(()),
-            Err(e) if large_image != "logo" => {
-                log::warn!("[Discord IPC] Failed to set activity with cover URL, retrying with logo fallback: {}", e);
+        match send_with_image(&mut self.file, &preferred_large_image) {
+            Ok(res) => Ok(res),
+            Err(e) if preferred_large_image != "logo" => {
+                log::warn!(
+                    "[Discord IPC] Failed to set activity with cover URL, retrying with logo fallback: {}",
+                    e
+                );
                 send_with_image(&mut self.file, "logo")
             }
             Err(e) => Err(e),
@@ -297,10 +337,14 @@ impl DiscordIpc {
                 "activity": null
             },
             "nonce": next_nonce()
-        })
-        .to_string();
+        });
 
-        Self::write_frame(&mut self.file, 1, frame.as_bytes())
+        let frame_str = frame.to_string();
+        Self::write_frame(&mut self.file, 1, frame_str.as_bytes())?;
+
+        // Read clear response
+        let _ = Self::read_frame(&mut self.file);
+        Ok(())
     }
 }
 
@@ -311,6 +355,7 @@ pub struct DiscordManager {
     current_payload: Option<PresencePayload>,
     paused_at: Option<Instant>,
     backoff_secs: u64,
+    debug_info: DiscordDebugInfo,
 }
 
 impl DiscordManager {
@@ -327,11 +372,16 @@ impl DiscordManager {
             current_payload: None,
             paused_at: None,
             backoff_secs: 10,
+            debug_info: DiscordDebugInfo::default(),
         }
     }
 
     pub fn get_status(&self) -> DiscordConnectionStatus {
         self.status.clone()
+    }
+
+    pub fn get_debug_info(&self) -> DiscordDebugInfo {
+        self.debug_info.clone()
     }
 
     pub fn set_client_id(&mut self, new_id: String) {
@@ -372,17 +422,40 @@ impl DiscordManager {
             if let Some(paused_time) = self.paused_at {
                 if paused_time.elapsed() > Duration::from_secs(300) {
                     let _ = ipc.clear_activity();
+                    self.debug_info.last_payload_sent = None;
                     return;
                 }
             }
 
-            if let Err(e) = ipc.set_activity(payload) {
-                log::debug!("[Discord IPC] Pipe broken on set_activity: {}", e);
-                self.ipc = None;
-                self.status = DiscordConnectionStatus::NotRunning;
+            match ipc.set_activity(payload) {
+                Ok((act_json, resp_json)) => {
+                    self.debug_info.update_count += 1;
+                    self.debug_info.last_payload_sent = Some(act_json.clone());
+                    self.debug_info.last_response = Some(resp_json.clone());
+                    self.debug_info.last_error = None;
+
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[Discord IPC Update #{}] Sent: {}\nResponse: {}",
+                        self.debug_info.update_count, act_json, resp_json
+                    );
+                    log::info!(
+                        "[Discord IPC Update #{}] Sent: {}\nResponse: {}",
+                        self.debug_info.update_count, act_json, resp_json
+                    );
+                }
+                Err(e) => {
+                    log::debug!("[Discord IPC] Pipe error on set_activity: {}", e);
+                    self.debug_info.last_error = Some(e.clone());
+                    if e.contains("pipe") || e.contains("closed") {
+                        self.ipc = None;
+                        self.status = DiscordConnectionStatus::NotRunning;
+                    }
+                }
             }
         } else {
             let _ = ipc.clear_activity();
+            self.debug_info.last_payload_sent = None;
         }
     }
 
@@ -441,6 +514,7 @@ impl DiscordManager {
         let test_payload = PresencePayload {
             title: "Feel Good Inc.".into(),
             artist: "Gorillaz".into(),
+            album: Some("Demon Days".into()),
             cover_url: Some(format!("{}/api/cover?id=HyHNu342610", PRODUCTION_URL)),
             start_timestamp: Some(now_sec),
             end_timestamp: Some(now_sec + 223),
@@ -449,7 +523,19 @@ impl DiscordManager {
             hide_details: Some(false),
         };
 
-        ipc.set_activity(&test_payload)
+        match ipc.set_activity(&test_payload) {
+            Ok((act_json, resp_json)) => {
+                self.debug_info.update_count += 1;
+                self.debug_info.last_payload_sent = Some(act_json);
+                self.debug_info.last_response = Some(resp_json);
+                self.debug_info.last_error = None;
+                Ok(())
+            }
+            Err(e) => {
+                self.debug_info.last_error = Some(e.clone());
+                Err(e)
+            }
+        }
     }
 }
 

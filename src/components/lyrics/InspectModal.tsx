@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
 import { LyricsSettings } from '@/lib/lyrics/settings';
 import { WORD_EFFECTS, EFFECT_BY_ID } from '@/lib/lyrics/visuals/effects/catalog';
 import { EffectTriggerParams } from '@/lib/lyrics/visuals/effects/types';
+import { isTauri, getDiscordDebugInfo, type DiscordDebugInfo } from '@/lib/desktop';
 
 interface InspectModalProps {
   isOpen: boolean;
@@ -21,7 +22,29 @@ export default function InspectModal({
 }: InspectModalProps) {
   const { currentTrack } = usePlayback();
   const [selectedEffectId, setSelectedEffectId] = useState<string>('bomb');
+  const [discordDebug, setDiscordDebug] = useState<DiscordDebugInfo | null>(null);
+  const [showFullDiscordPayload, setShowFullDiscordPayload] = useState<boolean>(false);
   const seedCounterRef = React.useRef<number>(100);
+
+  // Poll Discord IPC debug info when open
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    const fetchDebug = async () => {
+      try {
+        const info = await getDiscordDebugInfo();
+        if (mounted) setDiscordDebug(info);
+      } catch {
+        // ignore
+      }
+    };
+    fetchDebug();
+    const interval = setInterval(fetchDebug, 2500);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [isOpen]);
 
   // Compute Discord Rich Presence large image source
   const ytId = (() => {
@@ -103,12 +126,23 @@ export default function InspectModal({
 
         {/* Content */}
         <div className="p-4 overflow-y-auto space-y-4 text-xs text-zinc-300">
-          {/* Discord Rich Presence Large Image Debug Line */}
-          <div className="bg-[#181818] p-3 rounded-xl border border-[#262626] flex flex-col gap-1 text-[11px] font-mono">
+          {/* Discord Rich Presence Spotify-Style Diagnostics */}
+          <div className="bg-[#181818] p-3.5 rounded-xl border border-[#262626] space-y-2 text-[11px] font-mono">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-zinc-400 uppercase tracking-wider text-[10px]">
-                Discord RPC Large Image Source
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-zinc-300 uppercase tracking-wider text-[11px]">
+                  Discord Rich Presence (Spotify-Style)
+                </span>
+                {isTauri() ? (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Desktop Native IPC
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-700/40 text-zinc-400 border border-zinc-600/40">
+                    Web (PreMiD/DOM Bridge)
+                  </span>
+                )}
+              </div>
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                   isCoverUrl
@@ -119,12 +153,65 @@ export default function InspectModal({
                 {isCoverUrl ? 'Cover URL' : 'Logo Fallback'}
               </span>
             </div>
-            <div className="text-zinc-300 truncate pt-0.5">
-              <span className="text-zinc-500">Source: </span>
-              <span className={isCoverUrl ? 'text-emerald-300 select-all' : 'text-amber-300'}>
-                {largeImageSource}
-              </span>
+
+            <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+              <div>
+                <span className="text-zinc-500">Activity Type: </span>
+                <span className="text-purple-300 font-semibold">2 (Listening)</span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Member List Display: </span>
+                <span className="text-purple-300 font-semibold">status_display_type: 1</span>
+              </div>
+              <div className="col-span-2 truncate">
+                <span className="text-zinc-500">Large Image: </span>
+                <span className={isCoverUrl ? 'text-emerald-300 select-all' : 'text-amber-300'}>
+                  {largeImageSource}
+                </span>
+              </div>
+              {discordDebug && (
+                <>
+                  <div>
+                    <span className="text-zinc-500">Updates Sent: </span>
+                    <span className="text-cyan-300 font-semibold">{discordDebug.updateCount}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">Status: </span>
+                    {discordDebug.lastError ? (
+                      <span className="text-red-400 font-semibold">Error: {discordDebug.lastError}</span>
+                    ) : discordDebug.lastResponse ? (
+                      <span className="text-emerald-400 font-semibold">Connected (RPC OK)</span>
+                    ) : (
+                      <span className="text-zinc-400">Idle / Initializing</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
+
+            {discordDebug?.lastPayloadSent && (
+              <div className="pt-2 border-t border-[#252525]">
+                <button
+                  type="button"
+                  onClick={() => setShowFullDiscordPayload(!showFullDiscordPayload)}
+                  className="text-[10px] text-amber-400 hover:text-amber-300 underline font-sans cursor-pointer"
+                >
+                  {showFullDiscordPayload ? 'Hide Wire JSON Payload ▲' : 'Show Wire JSON Payload ▼'}
+                </button>
+                {showFullDiscordPayload && (
+                  <pre className="mt-2 p-2.5 bg-[#0e0e0e] rounded-lg text-[10px] text-zinc-300 overflow-x-auto max-h-40 border border-[#202020]">
+                    {JSON.stringify(
+                      {
+                        sent_to_pipe: discordDebug.lastPayloadSent,
+                        discord_echo: discordDebug.lastResponse,
+                      },
+                      null,
+                      2
+                    )}
+                  </pre>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Active Word Effect Manual Trigger Section */}

@@ -189,10 +189,10 @@ export default function DiscordPresenceBridge() {
         el.setAttribute('data-updated-at', now.toString());
       }
 
-      // Native Tauri Desktop Presence IPC (rate-limited to ~15s except on track change)
+      // Native Tauri Desktop Presence IPC (rate-limited to ~15s except on track change, play state change, or seek)
       if (isTauri()) {
         const timeSinceLastIpc = now - lastIpcTimeRef.current;
-        if (trackChanged || playStateChanged || timeSinceLastIpc >= 14000) {
+        if (trackChanged || playStateChanged || seekOccurred || timeSinceLastIpc >= 14000) {
           lastIpcTimeRef.current = now;
           const trackDur = duration || currentTrack.duration || 0;
           const startTs = isPlaying ? Math.floor(now / 1000) - Math.floor(currentTime) : undefined;
@@ -202,6 +202,7 @@ export default function DiscordPresenceBridge() {
           setDesktopPresence({
             title: currentTrack.title || 'Untitled Track',
             artist: currentTrack.artist || 'Unknown Artist',
+            album: currentTrack.album,
             coverUrl,
             startTimestamp: startTs,
             endTimestamp: endTs,

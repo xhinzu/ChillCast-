@@ -27,6 +27,13 @@ fn get_discord_status(
 }
 
 #[tauri::command]
+fn get_discord_debug_info(
+    manager: tauri::State<'_, SharedDiscordManager>,
+) -> discord_ipc::DiscordDebugInfo {
+    manager.lock().unwrap().get_debug_info()
+}
+
+#[tauri::command]
 fn set_presence(
     payload: PresencePayload,
     manager: tauri::State<'_, SharedDiscordManager>,
@@ -202,6 +209,7 @@ pub fn run() {
         .manage(discord_manager)
         .invoke_handler(tauri::generate_handler![
             get_discord_status,
+            get_discord_debug_info,
             set_presence,
             clear_presence,
             send_test_presence,
@@ -227,6 +235,71 @@ pub fn run() {
                 Err(_) => WebviewUrl::App("../src-tauri/fallback/index.html".into()),
             };
 
+            const BRIDGE_SCRIPT: &str = r#"
+(function() {
+  function syncFromDom() {
+    try {
+      var el = document.getElementById('myujiku-discord-presence');
+      if (!el) return;
+      var title = el.getAttribute('data-title');
+      if (!title || !title.trim()) return;
+      var artist = el.getAttribute('data-artist') || 'Unknown Artist';
+      var coverUrl = el.getAttribute('data-cover-url') || '';
+      var duration = parseFloat(el.getAttribute('data-duration') || '0');
+      var position = parseFloat(el.getAttribute('data-position') || '0');
+      var status = el.getAttribute('data-status') || 'paused';
+      var roomCode = el.getAttribute('data-room-code') || '';
+      var isPaused = status !== 'playing';
+
+      var nowSec = Math.floor(Date.now() / 1000);
+      var startTs = !isPaused ? (nowSec - Math.floor(position)) : null;
+      var endTs = (!isPaused && duration > 0 && startTs) ? (startTs + Math.floor(duration)) : null;
+
+      var ytMatch = coverUrl.match(/\/vi\/([A-Za-z0-9_-]{11})\//);
+      var finalCover = ytMatch
+        ? ('https://myujiku.vercel.app/api/cover?id=' + ytMatch[1])
+        : (coverUrl.startsWith('https://') ? coverUrl : null);
+      var roomUrl = roomCode ? ('https://myujiku.vercel.app/together/' + roomCode) : null;
+
+      var payload = {
+        title: title,
+        artist: artist,
+        album: null,
+        coverUrl: finalCover,
+        startTimestamp: startTs,
+        endTimestamp: endTs,
+        paused: isPaused,
+        roomUrl: roomUrl,
+        hideDetails: localStorage.getItem('myujiku_discord_presence_hide_details') === 'true'
+      };
+
+      if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
+        window.__TAURI_INTERNALS__.invoke('set_presence', { payload: payload });
+      }
+    } catch (e) {
+      console.debug('[Desktop Bridge] sync error:', e);
+    }
+  }
+
+  function initObserver() {
+    var target = document.getElementById('myujiku-discord-presence');
+    if (target) {
+      var observer = new MutationObserver(syncFromDom);
+      observer.observe(target, { attributes: true, childList: true });
+      syncFromDom();
+    } else {
+      setTimeout(initObserver, 400);
+    }
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initObserver();
+  } else {
+    document.addEventListener('DOMContentLoaded', initObserver);
+  }
+})();
+"#;
+
             let _main_window = tauri::WebviewWindowBuilder::new(app, "main", webview_url)
                 .title("MyuJiku")
                 .inner_size(1280.0, 800.0)
@@ -234,6 +307,7 @@ pub fn run() {
                 .resizable(true)
                 .drag_and_drop(false)
                 .additional_browser_args("--autoplay-policy=no-user-gesture-required")
+                .initialization_script(BRIDGE_SCRIPT)
                 .on_navigation(move |url| {
                     let host = url.host_str().unwrap_or("");
                     let is_allowed = host == "myujiku.vercel.app"
