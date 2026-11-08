@@ -345,8 +345,8 @@ pub fn run() {
 
       var ytMatch = coverUrl ? coverUrl.match(/(?:v=|youtu\.be\/|\/vi\/|[?&]id=)([A-Za-z0-9_-]{11})/) : null;
       var finalCover = ytMatch
-        ? ('mp:https://i.ytimg.com/vi/' + ytMatch[1] + '/hqdefault.jpg')
-        : (coverUrl && coverUrl.startsWith('https://') && !coverUrl.includes('/api/cover') ? ('mp:' + coverUrl) : (coverUrl && coverUrl.startsWith('mp:') ? coverUrl : null));
+        ? ('https://myujiku.vercel.app/api/cover?id=' + ytMatch[1])
+        : (coverUrl && coverUrl.startsWith('https://') ? coverUrl : null);
       var roomUrl = roomCode ? ('https://myujiku.vercel.app/together/' + roomCode) : null;
 
       var payload = {

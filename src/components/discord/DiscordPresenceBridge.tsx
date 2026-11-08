@@ -172,11 +172,9 @@ export default function DiscordPresenceBridge() {
       })();
 
       const coverUrl = ytId
-        ? `mp:https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
-        : currentTrack.artworkUrl?.startsWith('mp:')
-        ? currentTrack.artworkUrl
+        ? `https://myujiku.vercel.app/api/cover?id=${ytId}`
         : currentTrack.artworkUrl?.startsWith('https://')
-        ? `mp:${currentTrack.artworkUrl}`
+        ? currentTrack.artworkUrl
         : undefined;
 
       if (el) {
