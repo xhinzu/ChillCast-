@@ -6,11 +6,9 @@ import {
   getDiscordPresenceEnabled,
   getDiscordPresenceHideDetails,
   getDiscordPresenceShareRoom,
-  getDiscordCustomClientId,
   setDiscordPresenceEnabled,
   setDiscordPresenceHideDetails,
   setDiscordPresenceShareRoom,
-  setDiscordCustomClientId,
 } from '@/lib/discord/presence-settings';
 import {
   getWebhookConfig,
@@ -48,8 +46,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [discordEnabled, setDiscordEnabled] = useState<boolean>(() => getDiscordPresenceEnabled());
   const [hideDetails, setHideDetails] = useState<boolean>(() => getDiscordPresenceHideDetails());
   const [shareRoom, setShareRoom] = useState<boolean>(() => getDiscordPresenceShareRoom());
-  const [customClientId, setCustomClientId] = useState<string>(() => getDiscordCustomClientId());
-  const [showClientIdInput, setShowClientIdInput] = useState<boolean>(false);
 
   // Webhook states
   const [webhookConfig, setLocalWebhookConfig] = useState<WebhookConfig>(() => getWebhookConfig());
@@ -85,7 +81,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setHideDetails(getDiscordPresenceHideDetails());
       setShareRoom(getDiscordPresenceShareRoom());
       setLocalWebhookConfig(getWebhookConfig());
-      setCustomClientId(getDiscordCustomClientId());
     };
     window.addEventListener(DISCORD_SETTINGS_CHANGED_EVENT, handleSync);
     window.addEventListener('storage', handleSync);
@@ -121,12 +116,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleToggleShareRoom = (checked: boolean) => {
     setShareRoom(checked);
     setDiscordPresenceShareRoom(checked);
-  };
-
-  const handleSaveCustomClientId = (e: React.FormEvent) => {
-    e.preventDefault();
-    setDiscordCustomClientId(customClientId);
-    setShowClientIdInput(false);
   };
 
   const handleTestPresence = async () => {
@@ -192,12 +181,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setDiscordPresenceEnabled(isDesktopApp);
     setDiscordPresenceHideDetails(false);
     setDiscordPresenceShareRoom(isDesktopApp);
-    setDiscordCustomClientId('');
     setWebhookConfig({ url: '', enabled: false, botName: 'MyuJiku', deleteOnStop: false });
     setDiscordEnabled(isDesktopApp);
     setHideDetails(false);
     setShareRoom(isDesktopApp);
-    setCustomClientId('');
     setLocalWebhookConfig({ url: '', enabled: false, botName: 'MyuJiku', deleteOnStop: false });
     setTestResult(null);
   };
@@ -336,13 +323,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       </span>
                       <span className="text-xs font-medium text-amber-300">Connecting to Discord IPC...</span>
                     </>
-                  ) : discordStatus.status === 'AppIdMissing' ? (
-                    <>
-                      <span className="w-3 h-3 rounded-full bg-blue-400" />
-                      <div className="text-xs font-medium text-blue-300">
-                        Discord Application ID required
-                      </div>
-                    </>
                   ) : (
                     <>
                       <span className="w-3 h-3 rounded-full bg-zinc-500" />
@@ -360,7 +340,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   )}
                 </div>
 
-                {/* Right action button: Test Status or App ID config */}
+                {/* Right action button: Test Status */}
                 <div className="flex items-center gap-2">
                   {discordStatus.status === 'Connected' && (
                     <button
@@ -378,15 +358,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         : 'Test Status'}
                     </button>
                   )}
-                  {discordStatus.status === 'AppIdMissing' && (
-                    <button
-                      type="button"
-                      onClick={() => setShowClientIdInput(!showClientIdInput)}
-                      className="px-2.5 py-1 rounded-md bg-[#5865F2] hover:bg-[#4752c4] text-[11px] font-semibold text-white transition-colors cursor-pointer"
-                    >
-                      Configure App ID
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -399,41 +370,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   MyuJiku connects to your Discord desktop app directly via local IPC. Just launch Discord (Stable, PTB, or Canary) and MyuJiku hooks up automatically — no logins, tokens, or webhooks required.
                 </p>
               </div>
-            )}
-
-            {/* Custom Client ID Input Box (Developer / custom ID) */}
-            {(showClientIdInput || discordStatus.status === 'AppIdMissing') && (
-              <form onSubmit={handleSaveCustomClientId} className="p-3 bg-[#131316] border border-[#2a2a35] rounded-lg space-y-2.5 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white">Discord Application ID</span>
-                  <a
-                    href="https://discord.com/developers/applications"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] text-[#5865F2] hover:underline"
-                  >
-                    Discord Developer Portal ↗
-                  </a>
-                </div>
-                <p className="text-[11px] text-zinc-400">
-                  Enter your Discord Application ID (Client ID) from the Discord Developer Portal to enable Rich Presence.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customClientId}
-                    onChange={(e) => setCustomClientId(e.target.value)}
-                    placeholder="e.g. 1303728080277962803"
-                    className="flex-1 bg-black/50 border border-[#33333e] rounded-md px-3 py-1.5 text-xs text-white placeholder-zinc-500 font-mono focus:outline-none focus:border-[#5865F2]"
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 rounded-md bg-[#5865F2] hover:bg-[#4752c4] text-xs font-semibold text-white cursor-pointer"
-                  >
-                    Save &amp; Connect
-                  </button>
-                </div>
-              </form>
             )}
 
             {/* Toggle 1: Share what I'm listening to on Discord (Opt-out) */}

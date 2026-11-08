@@ -4,11 +4,8 @@
  * validate the Discord Application ID, and test handshake.
  */
 import net from 'net';
-import fs from 'fs';
-import path from 'path';
 
-const DEFAULT_DISCORD_APP_ID = '1303728080277962803';
-const PLACEHOLDER = 'YOUR_DISCORD_APP_ID_HERE';
+const DEFAULT_DISCORD_APP_ID = '1567903090177343499';
 
 const envId = process.env.DISCORD_CLIENT_ID;
 const clientId = (envId && envId.trim()) || DEFAULT_DISCORD_APP_ID;
@@ -16,14 +13,13 @@ const clientId = (envId && envId.trim()) || DEFAULT_DISCORD_APP_ID;
 console.log('--- MyuJiku Discord RPC Checker ---');
 console.log(`Checking Discord Application ID: ${clientId}`);
 
-if (!clientId || clientId === PLACEHOLDER) {
-  console.error('\x1b[31m[ERROR] Discord Application ID is missing or set to placeholder!\x1b[0m');
+if (!clientId) {
+  console.error('\x1b[31m[ERROR] Discord Application ID is missing!\x1b[0m');
   console.log('\nTo configure:');
   console.log('1. Go to https://discord.com/developers/applications');
-  console.log('2. Create an Application named "MyuJiku"');
+  console.log('2. Select your Application');
   console.log('3. Copy the "Application ID" (Client ID)');
-  console.log('4. Set DISCORD_CLIENT_ID=<your-app-id> or update src-tauri/src/discord_ipc.rs');
-  console.log('5. Under Rich Presence -> Art Assets, upload "myujiku_logo", "play", and "pause" assets.');
+  console.log('4. Under Rich Presence -> Art Assets, upload "logo", "play", and "pause" assets.');
   process.exit(1);
 }
 
@@ -50,7 +46,7 @@ async function testPipe(index) {
         socket.destroy();
         resolve(null);
       }
-    }, 1500);
+    }, 2000);
 
     socket.on('data', (data) => {
       received = true;
@@ -84,7 +80,7 @@ for (let i = 0; i < 10; i++) {
   if (res) {
     connected = true;
     console.log(`\x1b[32m[SUCCESS]\x1b[0m Connected to \\\\.\\pipe\\discord-ipc-${res.index}!`);
-    console.log(`Opcode: ${res.opcode} (${res.opcode === 1 ? 'READY DISPATCH' : 'UNKNOWN'})`);
+    console.log(`Opcode: ${res.opcode} (${res.opcode === 1 ? 'READY DISPATCH' : res.opcode === 2 ? 'ERROR' : 'UNKNOWN'})`);
     if (res.data?.data?.user) {
       const u = res.data.data.user;
       console.log(`Discord User: ${u.username} (${u.global_name || u.username}) [ID: ${u.id}]`);

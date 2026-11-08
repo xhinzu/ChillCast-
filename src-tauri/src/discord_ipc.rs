@@ -9,8 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
-pub const DEFAULT_DISCORD_APP_ID: &str = "1303728080277962803";
-pub const DISCORD_APP_ID_PLACEHOLDER: &str = "YOUR_DISCORD_APP_ID_HERE";
+pub const DEFAULT_DISCORD_APP_ID: &str = "1567903090177343499";
 pub const PRODUCTION_URL: &str = "https://myujiku.vercel.app";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -25,7 +24,6 @@ pub enum DiscordConnectionStatus {
         #[serde(rename = "avatarUrl")]
         avatar_url: Option<String>,
     },
-    AppIdMissing,
     Error {
         kind: String,
     },
@@ -100,7 +98,7 @@ impl DiscordIpc {
                             .and_then(|m| m.as_str())
                             .unwrap_or("Unknown error");
                         log::warn!("[Discord IPC] Pipe {} handshake error {}: {}", i, code, msg);
-                        return Err(format!("Invalid Client ID: Discord rejected ID with code {}: {}", code, msg));
+                        return Err(format!("Discord error {}: {}", code, msg));
                     }
 
                     // Opcode 1 is a DISPATCH frame (READY)
@@ -219,7 +217,7 @@ impl DiscordIpc {
         };
 
         let mut act = json!({
-            "type": 2, // 2 = Listening!
+            "type": 2, // 2 = Listening
             "details": details,
             "state": state,
         });
@@ -235,22 +233,22 @@ impl DiscordIpc {
             }
         }
 
-        // Assets
+        // Assets: strictly using keys "logo", "play", and "pause" as configured in Discord portal
         let mut assets = json!({
             "large_text": "MyuJiku",
             "small_image": if payload.paused { "pause" } else { "play" },
             "small_text": if payload.paused { "Paused" } else { "Playing" },
         });
 
-        // Cover image: external URL if valid https, otherwise default asset
+        // Cover image: external URL if valid https, otherwise default asset key "logo"
         if let Some(ref url) = payload.cover_url {
             if url.starts_with("https://") && url.len() <= 256 {
                 assets["large_image"] = json!(url);
             } else {
-                assets["large_image"] = json!("myujiku_logo");
+                assets["large_image"] = json!("logo");
             }
         } else {
-            assets["large_image"] = json!("myujiku_logo");
+            assets["large_image"] = json!("logo");
         }
         act["assets"] = assets;
 
@@ -315,15 +313,9 @@ impl DiscordManager {
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| DEFAULT_DISCORD_APP_ID.to_string());
 
-        let status = if client_id.is_empty() || client_id == DISCORD_APP_ID_PLACEHOLDER {
-            DiscordConnectionStatus::AppIdMissing
-        } else {
-            DiscordConnectionStatus::NotRunning
-        };
-
         Self {
             ipc: None,
-            status,
+            status: DiscordConnectionStatus::NotRunning,
             client_id,
             current_payload: None,
             paused_at: None,
@@ -337,17 +329,13 @@ impl DiscordManager {
 
     pub fn set_client_id(&mut self, new_id: String) {
         let trimmed = new_id.trim().to_string();
-        if trimmed == self.client_id {
+        if trimmed.is_empty() || trimmed == self.client_id {
             return;
         }
         self.client_id = trimmed;
         self.ipc = None;
-        if self.client_id.is_empty() || self.client_id == DISCORD_APP_ID_PLACEHOLDER {
-            self.status = DiscordConnectionStatus::AppIdMissing;
-        } else {
-            self.status = DiscordConnectionStatus::Connecting;
-            self.backoff_secs = 2; // quick retry
-        }
+        self.status = DiscordConnectionStatus::Connecting;
+        self.backoff_secs = 2; // quick retry
     }
 
     pub fn set_payload(&mut self, payload: Option<PresencePayload>) {
@@ -393,14 +381,6 @@ impl DiscordManager {
 
     /// Background tick run periodically
     pub fn tick(&mut self) -> Option<DiscordConnectionStatus> {
-        if self.client_id.is_empty() || self.client_id == DISCORD_APP_ID_PLACEHOLDER {
-            if self.status != DiscordConnectionStatus::AppIdMissing {
-                self.status = DiscordConnectionStatus::AppIdMissing;
-                return Some(self.status.clone());
-            }
-            return None;
-        }
-
         if self.ipc.is_none() {
             // Attempt auto-connect
             match DiscordIpc::connect(&self.client_id) {
@@ -418,15 +398,11 @@ impl DiscordManager {
                     return Some(new_status);
                 }
                 Err(err) => {
-                    if err.contains("Invalid Client ID") {
-                        if self.status != DiscordConnectionStatus::AppIdMissing {
-                            self.status = DiscordConnectionStatus::AppIdMissing;
-                            return Some(DiscordConnectionStatus::AppIdMissing);
-                        }
-                    } else if self.status != DiscordConnectionStatus::NotRunning {
+                    if self.status != DiscordConnectionStatus::NotRunning {
                         self.status = DiscordConnectionStatus::NotRunning;
                         return Some(DiscordConnectionStatus::NotRunning);
                     }
+                    log::trace!("[Discord IPC] connect attempt failed: {}", err);
                     // Increase backoff up to 30s
                     self.backoff_secs = (self.backoff_secs + 5).min(30);
                 }

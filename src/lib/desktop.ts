@@ -22,7 +22,6 @@ export type DiscordConnectionStatus =
   | { status: 'NotRunning' }
   | { status: 'Connecting' }
   | { status: 'Connected'; data: { username: string; displayName?: string; avatarUrl?: string } }
-  | { status: 'AppIdMissing' }
   | { status: 'Error'; data: { kind: string } };
 
 export interface WebhookSendPayload {
