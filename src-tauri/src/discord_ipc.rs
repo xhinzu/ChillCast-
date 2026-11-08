@@ -216,69 +216,76 @@ impl DiscordIpc {
             }
         };
 
-        let mut act = json!({
-            "type": 2, // 2 = Listening
-            "details": details,
-            "state": state,
-        });
+        // Determine large image: URL if valid https & <= 256 chars, else fallback to "logo"
+        let large_image = match &payload.cover_url {
+            Some(url) if url.starts_with("https://") && url.len() <= 256 => url.clone(),
+            _ => "logo".to_string(),
+        };
 
-        // Timestamps (only when playing and not hidden)
-        if !payload.paused && !hide {
-            if let Some(start) = payload.start_timestamp {
-                let mut ts = json!({ "start": start });
-                if let Some(end) = payload.end_timestamp {
-                    ts["end"] = json!(end);
+        let send_with_image = |file: &mut File, img_key: &str| -> Result<(), String> {
+            let mut act = json!({
+                "type": 2, // 2 = Listening
+                "details": details,
+                "state": state,
+            });
+
+            // Timestamps (only when playing and not hidden)
+            if !payload.paused && !hide {
+                if let Some(start) = payload.start_timestamp {
+                    let mut ts = json!({ "start": start });
+                    if let Some(end) = payload.end_timestamp {
+                        ts["end"] = json!(end);
+                    }
+                    act["timestamps"] = ts;
                 }
-                act["timestamps"] = ts;
             }
-        }
 
-        // Assets: strictly using keys "logo", "play", and "pause" as configured in Discord portal
-        let mut assets = json!({
-            "large_text": "MyuJiku",
-            "small_image": if payload.paused { "pause" } else { "play" },
-            "small_text": if payload.paused { "Paused" } else { "Playing" },
-        });
+            // Assets: strictly using keys "logo", "play", and "pause" as configured in Discord portal
+            let assets = json!({
+                "large_text": "MyuJiku",
+                "large_image": img_key,
+                "small_image": if payload.paused { "pause" } else { "play" },
+                "small_text": if payload.paused { "Paused" } else { "Playing" },
+            });
+            act["assets"] = assets;
 
-        // Cover image: external URL if valid https, otherwise default asset key "logo"
-        if let Some(ref url) = payload.cover_url {
-            if url.starts_with("https://") && url.len() <= 256 {
-                assets["large_image"] = json!(url);
-            } else {
-                assets["large_image"] = json!("logo");
+            // Buttons
+            let mut buttons = vec![json!({
+                "label": "Listen on MyuJiku",
+                "url": PRODUCTION_URL
+            })];
+
+            if let Some(ref room_link) = payload.room_url {
+                if !hide && room_link.starts_with("https://") && room_link.len() <= 512 {
+                    buttons.push(json!({
+                        "label": "Join room",
+                        "url": room_link
+                    }));
+                }
             }
-        } else {
-            assets["large_image"] = json!("logo");
-        }
-        act["assets"] = assets;
+            act["buttons"] = json!(buttons);
 
-        // Buttons
-        let mut buttons = vec![json!({
-            "label": "Listen on MyuJiku",
-            "url": PRODUCTION_URL
-        })];
+            let frame = json!({
+                "cmd": "SET_ACTIVITY",
+                "args": {
+                    "pid": std::process::id(),
+                    "activity": act
+                },
+                "nonce": next_nonce()
+            })
+            .to_string();
 
-        if let Some(ref room_link) = payload.room_url {
-            if !hide && room_link.starts_with("https://") && room_link.len() <= 512 {
-                buttons.push(json!({
-                    "label": "Join room",
-                    "url": room_link
-                }));
+            Self::write_frame(file, 1, frame.as_bytes())
+        };
+
+        match send_with_image(&mut self.file, &large_image) {
+            Ok(()) => Ok(()),
+            Err(e) if large_image != "logo" => {
+                log::warn!("[Discord IPC] Failed to set activity with cover URL, retrying with logo fallback: {}", e);
+                send_with_image(&mut self.file, "logo")
             }
+            Err(e) => Err(e),
         }
-        act["buttons"] = json!(buttons);
-
-        let frame = json!({
-            "cmd": "SET_ACTIVITY",
-            "args": {
-                "pid": std::process::id(),
-                "activity": act
-            },
-            "nonce": next_nonce()
-        })
-        .to_string();
-
-        Self::write_frame(&mut self.file, 1, frame.as_bytes())
     }
 
     /// Clears any currently active Rich Presence
@@ -434,7 +441,7 @@ impl DiscordManager {
         let test_payload = PresencePayload {
             title: "Feel Good Inc.".into(),
             artist: "Gorillaz".into(),
-            cover_url: Some("https://myujiku.vercel.app/myujiku-logo.png".into()),
+            cover_url: Some(format!("{}/api/cover?id=HyHNu342610", PRODUCTION_URL)),
             start_timestamp: Some(now_sec),
             end_timestamp: Some(now_sec + 223),
             paused: false,

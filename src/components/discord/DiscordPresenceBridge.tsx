@@ -156,11 +156,32 @@ export default function DiscordPresenceBridge() {
       lastWallClockRef.current = now;
       lastRoomCodeRef.current = activeRoomCode;
 
+      // Compute reliable square 512x512 cover URL via Next.js serverless route
+      const ytId = (() => {
+        if (!currentTrack) return null;
+        if (/^[A-Za-z0-9_-]{11}$/.test(currentTrack.id)) return currentTrack.id;
+        if (currentTrack.artworkUrl) {
+          const m = currentTrack.artworkUrl.match(/\/vi\/([A-Za-z0-9_-]{11})/);
+          if (m) return m[1];
+        }
+        if (currentTrack.sourceUrl) {
+          const m = currentTrack.sourceUrl.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+          if (m) return m[1];
+        }
+        return null;
+      })();
+
+      const coverUrl = ytId
+        ? `https://myujiku.vercel.app/api/cover?id=${ytId}`
+        : currentTrack.artworkUrl?.startsWith('https://')
+        ? currentTrack.artworkUrl
+        : undefined;
+
       if (el) {
         el.setAttribute('data-app-name', 'MyuJiku');
         el.setAttribute('data-title', hideDetails ? 'MyuJiku' : (currentTrack.title || 'Untitled Track'));
         el.setAttribute('data-artist', hideDetails ? 'Lo-Fi Soundscapes' : (currentTrack.artist || 'Unknown Artist'));
-        el.setAttribute('data-cover-url', currentTrack.artworkUrl || '');
+        el.setAttribute('data-cover-url', coverUrl || currentTrack.artworkUrl || '');
         el.setAttribute('data-duration', Math.round(duration || currentTrack.duration || 0).toString());
         el.setAttribute('data-position', Math.round(currentTime).toString());
         el.setAttribute('data-status', isPlaying ? 'playing' : 'paused');
@@ -181,7 +202,7 @@ export default function DiscordPresenceBridge() {
           setDesktopPresence({
             title: currentTrack.title || 'Untitled Track',
             artist: currentTrack.artist || 'Unknown Artist',
-            coverUrl: currentTrack.artworkUrl,
+            coverUrl,
             startTimestamp: startTs,
             endTimestamp: endTs,
             paused: !isPlaying,
@@ -196,7 +217,7 @@ export default function DiscordPresenceBridge() {
         updateWebhookNowPlaying({
           title: currentTrack.title || 'Untitled Track',
           artist: currentTrack.artist || 'Unknown Artist',
-          coverUrl: currentTrack.artworkUrl,
+          coverUrl: coverUrl || currentTrack.artworkUrl,
           duration: duration || currentTrack.duration,
           roomCode: activeRoomCode,
         });

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePlayback } from '@/context/PlaybackContext';
 import { LyricsSettings } from '@/lib/lyrics/settings';
 import { WORD_EFFECTS, EFFECT_BY_ID } from '@/lib/lyrics/visuals/effects/catalog';
 import { EffectTriggerParams } from '@/lib/lyrics/visuals/effects/types';
@@ -18,8 +19,33 @@ export default function InspectModal({
   settings,
   onTriggerEffect,
 }: InspectModalProps) {
+  const { currentTrack } = usePlayback();
   const [selectedEffectId, setSelectedEffectId] = useState<string>('bomb');
   const seedCounterRef = React.useRef<number>(100);
+
+  // Compute Discord Rich Presence large image source
+  const ytId = (() => {
+    if (!currentTrack) return null;
+    if (/^[A-Za-z0-9_-]{11}$/.test(currentTrack.id)) return currentTrack.id;
+    if (currentTrack.artworkUrl) {
+      const m = currentTrack.artworkUrl.match(/\/vi\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+    if (currentTrack.sourceUrl) {
+      const m = currentTrack.sourceUrl.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+    return null;
+  })();
+
+  const coverUrl = ytId
+    ? `https://myujiku.vercel.app/api/cover?id=${ytId}`
+    : currentTrack?.artworkUrl?.startsWith('https://')
+    ? currentTrack.artworkUrl
+    : null;
+
+  const isCoverUrl = Boolean(coverUrl);
+  const largeImageSource = coverUrl || 'logo fallback ("logo")';
 
   if (!isOpen) return null;
 
@@ -76,7 +102,31 @@ export default function InspectModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto space-y-5 text-xs text-zinc-300">
+        <div className="p-4 overflow-y-auto space-y-4 text-xs text-zinc-300">
+          {/* Discord Rich Presence Large Image Debug Line */}
+          <div className="bg-[#181818] p-3 rounded-xl border border-[#262626] flex flex-col gap-1 text-[11px] font-mono">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-zinc-400 uppercase tracking-wider text-[10px]">
+                Discord RPC Large Image Source
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  isCoverUrl
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                }`}
+              >
+                {isCoverUrl ? 'Cover URL' : 'Logo Fallback'}
+              </span>
+            </div>
+            <div className="text-zinc-300 truncate pt-0.5">
+              <span className="text-zinc-500">Source: </span>
+              <span className={isCoverUrl ? 'text-emerald-300 select-all' : 'text-amber-300'}>
+                {largeImageSource}
+              </span>
+            </div>
+          </div>
+
           {/* Active Word Effect Manual Trigger Section */}
           <div className="bg-[#181818] p-3.5 rounded-xl border border-[#262626] space-y-3">
             <div className="flex items-center justify-between">
