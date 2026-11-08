@@ -1,5 +1,6 @@
 import { BasePlaybackAdapter } from './base-adapter';
 import { AdapterType, TrackInfo } from '@/types/playback';
+import { getDspEngine } from '@/lib/audio/dsp-engine';
 
 export const DEFAULT_LOCAL_TRACK: TrackInfo = {
   id: 'local-chill-1',
@@ -76,49 +77,12 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
   public setMuffled(enabled: boolean): void {
     this.isMuffledActive = enabled;
-    if (!this.audioCtx) {
-      this.initDsp();
-    }
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
-    }
-    if (this.muffledFilter && this.audioCtx) {
-      const targetFreq = enabled ? 350 : 22000;
-      const targetQ = enabled ? 2.5 : 0.7;
-      this.muffledFilter.frequency.setTargetAtTime(targetFreq, this.audioCtx.currentTime, 0.05);
-      this.muffledFilter.Q.setTargetAtTime(targetQ, this.audioCtx.currentTime, 0.05);
-    }
+    getDspEngine().setMuffled(enabled);
   }
 
   public setSpatial8D(enabled: boolean): void {
     this.isSpatial8DActive = enabled;
-
-    if (this.spatialIntervalId !== null) {
-      clearInterval(this.spatialIntervalId);
-      this.spatialIntervalId = null;
-    }
-
-    if (!this.audioCtx) {
-      this.initDsp();
-    }
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
-    }
-
-    if (!enabled) {
-      if (this.pannerNode && this.audioCtx) {
-        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.04);
-      }
-      return;
-    }
-
-    // Dynamic 8D headphone orbit across left and right ears (~4.5s cycle)
-    this.spatialIntervalId = window.setInterval(() => {
-      if (!this.pannerNode || !this.audioCtx) return;
-      this.spatialAngle += 0.065;
-      const pan = Math.sin(this.spatialAngle) * 0.98;
-      this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.035);
-    }, 35);
+    getDspEngine().set8D(enabled);
   }
 
   public async initialize(): Promise<void> {
@@ -130,6 +94,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
       this.audio.preload = 'metadata';
       this.audio.volume = this.volume;
       this.audio.loop = this.isLooping;
+      getDspEngine().connectMediaElement(this.audio);
 
       this.audio.addEventListener('timeupdate', () => {
         if (this.audio) {
@@ -272,17 +237,7 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
   }
 
   public getAnalyser(): AnalyserNode | null {
-    if (!this.analyserNode && this.audioCtx && this.gainNode) {
-      try {
-        this.analyserNode = this.audioCtx.createAnalyser();
-        this.analyserNode.fftSize = 256;
-        this.analyserNode.smoothingTimeConstant = 0.8;
-        this.gainNode.connect(this.analyserNode);
-      } catch (err) {
-        console.warn('Failed to attach AnalyserNode to LocalAudio gainNode:', err);
-      }
-    }
-    return this.analyserNode;
+    return getDspEngine().getAnalyserNode();
   }
 
   public override getPosition(): number {

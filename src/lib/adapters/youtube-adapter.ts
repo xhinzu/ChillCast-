@@ -3,6 +3,7 @@ import { AdapterType, TrackInfo } from '@/types/playback';
 import { parseYouTubeInput } from '@/lib/youtube-utils';
 import { YTPlayer, YTPlayerOptions } from '@/types/youtube';
 import { formatCleanDisplayTrack } from '@/lib/lyrics/normalize';
+import { getDspEngine } from '@/lib/audio/dsp-engine';
 
 // Default curated chill playlist (Lofi Girl chill beats)
 export const DEFAULT_CHILL_PLAYLIST_ID = 'PL6NdkXsTSxKMU_F2LTuicHw6N67Fm1sWp';
@@ -96,6 +97,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   public setMuffled(enabled: boolean): void {
     this.isMuffledActive = enabled;
+    getDspEngine().setMuffled(enabled);
     if (!this.audioCtx) {
       this.initDsp();
     }
@@ -133,6 +135,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   public setSpatial8D(enabled: boolean): void {
     this.isSpatial8DActive = enabled;
+    getDspEngine().set8D(enabled);
 
     if (this.spatialIntervalId !== null) {
       clearInterval(this.spatialIntervalId);
@@ -199,6 +202,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.streamAudio.crossOrigin = 'anonymous';
     this.streamAudio.preload = 'auto';
     this.streamAudio.volume = this.volume;
+    getDspEngine().connectMediaElement(this.streamAudio);
 
     this.streamAudio.addEventListener('playing', () => {
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
@@ -948,17 +952,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public getAnalyser(): AnalyserNode | null {
-    if (!this.analyserNode && this.audioCtx && this.gainNode) {
-      try {
-        this.analyserNode = this.audioCtx.createAnalyser();
-        this.analyserNode.fftSize = 256;
-        this.analyserNode.smoothingTimeConstant = 0.8;
-        this.gainNode.connect(this.analyserNode);
-      } catch (err) {
-        console.warn('Failed to attach AnalyserNode to YouTube gainNode:', err);
-      }
-    }
-    return this.analyserNode;
+    return getDspEngine().getAnalyserNode();
   }
 
   public override getPosition(): number {

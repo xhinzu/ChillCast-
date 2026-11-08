@@ -3,92 +3,38 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/lib/settings/useSettings';
 import { usePlayback } from '@/context/PlaybackContext';
+import { getDspEngine } from '@/lib/audio/dsp-engine';
 
 export default function AudioSection() {
   const { settings, updateSettings, resetSection } = useSettings();
   const { activeAdapter, isSpatial8D, isMuffled, toggleSpatial8D, toggleMuffled } = usePlayback();
   const audio = settings.audio;
 
-  const [contextState, setContextState] = useState<string>('unknown');
+  const [contextState, setContextState] = useState<string>('uninitialized');
   const [isPlayingTestTone, setIsPlayingTestTone] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        try {
-          const testCtx = new AudioCtx();
-          setContextState(testCtx.state);
-          testCtx.close().catch(() => {});
-        } catch {
-          setContextState('unavailable');
-        }
-      }
+      const dsp = getDspEngine();
+      setContextState(dsp.getState().contextState);
     }
   }, []);
 
-  // Play short tone sweep through Web Audio chain to verify effect audibility
+  // Play short tone sweep through the live Web Audio chain to verify effect audibility
   const handlePlayTestSweep = async () => {
     if (typeof window === 'undefined') return;
     setIsPlayingTestTone(true);
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AudioCtx();
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-      setContextState(ctx.state);
+      const dsp = getDspEngine();
+      dsp.set8D(audio.spatial8DEnabled || isSpatial8D, audio.spatial8DSpeed, audio.spatial8DWidth);
+      dsp.setMuffled(audio.muffledEnabled || isMuffled, audio.muffledCutoff);
+      dsp.playTestSweep();
+      setContextState(dsp.getState().contextState);
 
-      const osc = ctx.createOscillator();
-      const sweepGain = ctx.createGain();
-
-      // Muffled filter
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(audio.muffledEnabled ? audio.muffledCutoff : 20000, ctx.currentTime);
-
-      // Panner node
-      let panner: StereoPannerNode | null = null;
-      if (ctx.createStereoPanner) {
-        panner = ctx.createStereoPanner();
-        panner.pan.setValueAtTime(0, ctx.currentTime);
-        if (audio.spatial8DEnabled) {
-          panner.pan.setValueAtTime(-audio.spatial8DWidth, ctx.currentTime);
-          panner.pan.linearRampToValueAtTime(audio.spatial8DWidth, ctx.currentTime + 1.2);
-          panner.pan.linearRampToValueAtTime(-audio.spatial8DWidth, ctx.currentTime + 2.4);
-        }
-      }
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(220, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 2.5);
-
-      sweepGain.gain.setValueAtTime(0.001, ctx.currentTime);
-      sweepGain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.1);
-      sweepGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
-
-      // Connect graph
-      if (panner) {
-        osc.connect(filter);
-        filter.connect(panner);
-        panner.connect(sweepGain);
-        sweepGain.connect(ctx.destination);
-      } else {
-        osc.connect(filter);
-        filter.connect(sweepGain);
-        sweepGain.connect(ctx.destination);
-      }
-
-      osc.start();
-      osc.stop(ctx.currentTime + 2.6);
       setTimeout(() => {
         setIsPlayingTestTone(false);
-        ctx.close().catch(() => {});
-      }, 2700);
+        setContextState(dsp.getState().contextState);
+      }, 3100);
     } catch (err) {
       console.warn('Test sweep error:', err);
       setIsPlayingTestTone(false);
