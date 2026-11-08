@@ -221,6 +221,59 @@ body {
   }
 }
 
+/* Part 3b: Interface Glow Highlights */
+[data-ui-glow="true"] {
+  /* Active nav items & buttons */
+  nav button[aria-current="page"],
+  nav a[aria-current="page"],
+  .nav-active {
+    box-shadow: 0 0 calc(12px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 60%, transparent);
+  }
+
+  /* Focused inputs */
+  input:focus,
+  textarea:focus {
+    box-shadow: 0 0 0 2px var(--ui-glow-color, var(--accent)), 0 0 calc(14px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 40%, transparent) !important;
+  }
+
+  /* Progress bar thumb */
+  .spotify-slider:hover::-webkit-slider-thumb,
+  .spotify-slider:active::-webkit-slider-thumb {
+    box-shadow: 0 0 calc(12px * var(--ui-glow-scale, 0.6)) var(--ui-glow-color, var(--accent)), 0 2px 4px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  /* Primary action buttons & Play buttons */
+  button.bg-white,
+  button.bg-emerald-500,
+  button.bg-violet-500,
+  button[data-primary="true"] {
+    box-shadow: 0 0 calc(16px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 45%, transparent);
+  }
+
+  /* Active switch toggles */
+  button[role="switch"][aria-checked="true"] {
+    box-shadow: 0 0 calc(10px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 50%, transparent);
+  }
+
+  /* Hovered playlist & music cards */
+  .spotify-card:hover {
+    box-shadow: 0 8px calc(20px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 20%, transparent);
+  }
+}
+
+[data-theme="light"][data-ui-glow="true"] {
+  /* Softer highlights in light mode */
+  nav button[aria-current="page"],
+  nav a[aria-current="page"],
+  .nav-active {
+    box-shadow: 0 0 calc(8px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 30%, transparent);
+  }
+
+  .spotify-card:hover {
+    box-shadow: 0 4px calc(12px * var(--ui-glow-scale, 0.6)) color-mix(in srgb, var(--ui-glow-color, var(--accent)) 15%, transparent);
+  }
+}
+
 /* Chillify Minimal Grey Range Slider */
 .spotify-slider {
   -webkit-appearance: none;

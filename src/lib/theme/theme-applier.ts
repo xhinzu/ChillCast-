@@ -118,6 +118,19 @@ export function applyTheme(appearance: AppearanceSettings, coverArtPalette?: str
   if (document.body) {
     document.body.style.backgroundColor = computedBg;
   }
+
+  // Part 3b: UI Glow Synchronization
+  try {
+    const glow = getSettings().glow;
+    if (glow) {
+      root.setAttribute('data-ui-glow', glow.uiGlowEnabled ? 'true' : 'false');
+      root.style.setProperty('--ui-glow-scale', String(glow.uiGlowIntensity || 0.6));
+      const glowColor = glow.uiGlowColor === 'custom' && glow.uiGlowCustomColor
+        ? glow.uiGlowCustomColor
+        : activeAccent;
+      root.style.setProperty('--ui-glow-color', glowColor);
+    }
+  } catch {}
 }
 
 /**
