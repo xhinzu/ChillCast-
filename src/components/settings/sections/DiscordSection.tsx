@@ -35,6 +35,68 @@ export default function DiscordSection() {
   const [isPreMiDHelpOpen, setIsPreMiDHelpOpen] = useState(false);
   const [copiedStatus, setCopiedStatus] = useState(false);
 
+  const [testingCover, setTestingCover] = useState(false);
+  const [coverTestResult, setCoverTestResult] = useState<{
+    status: number;
+    contentType: string;
+    size: string;
+    url: string;
+    previewUrl: string;
+    error?: string;
+  } | null>(null);
+
+  const handleTestCover = async () => {
+    setTestingCover(true);
+    setCoverTestResult(null);
+
+    const ytId = (() => {
+      if (!currentTrack) return null;
+      if (/^[A-Za-z0-9_-]{11}$/.test(currentTrack.id)) return currentTrack.id;
+      if (currentTrack.artworkUrl) {
+        const m = currentTrack.artworkUrl.match(/\/vi\/([A-Za-z0-9_-]{11})/);
+        if (m) return m[1];
+      }
+      if (currentTrack.sourceUrl) {
+        const m = currentTrack.sourceUrl.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+        if (m) return m[1];
+      }
+      return null;
+    })();
+
+    const targetUrl = ytId
+      ? `https://myujiku.vercel.app/api/cover?id=${ytId}`
+      : currentTrack?.artworkUrl || 'https://myujiku.vercel.app/api/cover?id=HyHNu342610';
+
+    try {
+      const res = await fetch(targetUrl, { method: 'GET' });
+      const contentType = res.headers.get('content-type') || 'unknown';
+      const contentLength = res.headers.get('content-length');
+      const size = contentLength
+        ? `${Math.round(parseInt(contentLength, 10) / 1024)} KB`
+        : 'stream';
+
+      setCoverTestResult({
+        status: res.status,
+        contentType,
+        size,
+        url: targetUrl,
+        previewUrl: targetUrl,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setCoverTestResult({
+        status: 0,
+        contentType: 'error',
+        size: '0 KB',
+        url: targetUrl,
+        previewUrl: targetUrl,
+        error: msg,
+      });
+    } finally {
+      setTestingCover(false);
+    }
+  };
+
   useEffect(() => {
     if (!isDesktopApp) return;
     getDiscordStatus().then(setDiscordStatus);
@@ -222,8 +284,18 @@ export default function DiscordSection() {
               )}
             </div>
 
-            {/* Right action button: Test Status */}
+            {/* Action buttons: Test Cover & Test Status */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleTestCover}
+                disabled={testingCover}
+                className="px-3 py-1 rounded-md bg-[#24242c] hover:bg-[#32323e] border border-[#383848] text-[11px] font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
+                title="Verify current track cover art URL and response headers"
+              >
+                {testingCover ? 'Testing cover...' : 'Test cover'}
+              </button>
+
               {discordStatus.status === 'Connected' && (
                 <button
                   type="button"
@@ -241,6 +313,66 @@ export default function DiscordSection() {
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Cover Diagnostic Result Card */}
+        {coverTestResult && (
+          <div className="p-3 bg-[#111115] border border-[#262632] rounded-xl flex items-start gap-3.5 animate-in fade-in duration-150">
+            {coverTestResult.status === 200 ? (
+              <img
+                src={coverTestResult.previewUrl}
+                alt="Cover Preview"
+                className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0 shadow"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-500 font-mono text-xs">
+                N/A
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-xs text-white">Cover Art Diagnostic Result</span>
+                <span
+                  style={
+                    coverTestResult.status === 200
+                      ? {
+                          backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                          color: 'var(--accent)',
+                          borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
+                        }
+                      : { backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }
+                  }
+                  className="px-2 py-0.5 rounded text-[10px] font-mono border"
+                >
+                  HTTP {coverTestResult.status} {coverTestResult.status === 200 ? 'OK' : 'FAIL'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-zinc-400">
+                <div>Type: <span className="text-zinc-200">{coverTestResult.contentType}</span></div>
+                <div>Size: <span className="text-zinc-200">{coverTestResult.size}</span></div>
+              </div>
+
+              <div className="text-[10px] font-mono text-zinc-500 truncate pt-0.5" title={coverTestResult.url}>
+                URL: {coverTestResult.url}
+              </div>
+
+              {coverTestResult.error && (
+                <div className="text-[10px] text-rose-400 pt-0.5">
+                  Error: {coverTestResult.error}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCoverTestResult(null)}
+              className="text-zinc-500 hover:text-white text-xs cursor-pointer"
+            >
+              <SettingsCloseIcon className="w-3 h-3" />
+            </button>
           </div>
         )}
 

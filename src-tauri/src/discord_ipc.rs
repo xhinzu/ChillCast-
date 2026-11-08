@@ -239,13 +239,15 @@ impl DiscordIpc {
             "MyuJiku",
         );
 
-        // Determine large image: media proxy URL (prefixed with mp:) or fallback to "logo"
-        let preferred_large_image = match &payload.cover_url {
-            Some(url) if url.starts_with("mp:") => url.clone(),
-            Some(url) if url.starts_with("https://") && url.len() <= 256 => {
-                format!("mp:{}", url)
+        // Determine large image: direct https:// image URL (Discord RPC media proxy handles caching) or fallback to "logo"
+        let preferred_large_image = if hide {
+            "logo".to_string()
+        } else {
+            match &payload.cover_url {
+                Some(url) if url.starts_with("mp:") => url.clone(),
+                Some(url) if url.starts_with("https://") && url.len() <= 256 => url.clone(),
+                _ => "logo".to_string(),
             }
-            _ => "logo".to_string(),
         };
 
         let send_with_image = |file: &mut File, img_key: &str| -> Result<(Value, Value), String> {
