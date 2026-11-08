@@ -261,6 +261,8 @@ export async function listenTrayControls(handlers: {
   onPlayPause?: () => void;
   onNext?: () => void;
   onPrev?: () => void;
+  onShowMiniplayer?: () => void;
+  onShowApp?: () => void;
 }): Promise<() => void> {
   if (!isTauri()) return () => {};
   const unlistens: (() => void)[] = [];
@@ -273,6 +275,12 @@ export async function listenTrayControls(handlers: {
     }
     if (handlers.onPrev) {
       unlistens.push(await listen('tray-prev-track', () => handlers.onPrev?.()));
+    }
+    if (handlers.onShowMiniplayer) {
+      unlistens.push(await listen('tray-show-miniplayer', () => handlers.onShowMiniplayer?.()));
+    }
+    if (handlers.onShowApp) {
+      unlistens.push(await listen('tray-show-app', () => handlers.onShowApp?.()));
     }
   } catch (err) {
     console.debug('[Desktop] listenTrayControls error:', err);

@@ -42,6 +42,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   private isSpatial8DActive = false;
   private isMuffledActive = false;
+  private isReverbActive = false;
+  private isChorusActive = false;
+  private isNoiseGateActive = false;
   private shouldPlayOnReady = false;
 
   public setMuffled(enabled: boolean): void {
@@ -87,6 +90,78 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
     } else {
       // Stream audio not yet active; keep YouTube player unmuted so music never stops!
+      if (this.player) {
+        try {
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
+        } catch {}
+      }
+    }
+
+    if (this.streamAudio && this.streamAudio.paused && this.state === 'playing') {
+      this.streamAudio.play().catch(() => {});
+    }
+  }
+
+  public setReverb(enabled: boolean): void {
+    this.isReverbActive = enabled;
+    const dsp = getDspEngine();
+    dsp.setReverb(enabled);
+    dsp.resumeContext().catch(() => {});
+
+    if (this.isStreamingActive) {
+      if (this.player) {
+        try { this.player.mute(); } catch {}
+      }
+    } else {
+      if (this.player) {
+        try {
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
+        } catch {}
+      }
+    }
+
+    if (this.streamAudio && this.streamAudio.paused && this.state === 'playing') {
+      this.streamAudio.play().catch(() => {});
+    }
+  }
+
+  public setChorus(enabled: boolean): void {
+    this.isChorusActive = enabled;
+    const dsp = getDspEngine();
+    dsp.setChorus(enabled);
+    dsp.resumeContext().catch(() => {});
+
+    if (this.isStreamingActive) {
+      if (this.player) {
+        try { this.player.mute(); } catch {}
+      }
+    } else {
+      if (this.player) {
+        try {
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
+        } catch {}
+      }
+    }
+
+    if (this.streamAudio && this.streamAudio.paused && this.state === 'playing') {
+      this.streamAudio.play().catch(() => {});
+    }
+  }
+
+  public setNoiseGate(enabled: boolean): void {
+    this.isNoiseGateActive = enabled;
+    const dsp = getDspEngine();
+    dsp.setNoiseGate(enabled);
+    dsp.resumeContext().catch(() => {});
+
+    if (this.isStreamingActive) {
+      if (this.player) {
+        try { this.player.mute(); } catch {}
+      }
+    } else {
       if (this.player) {
         try {
           if (typeof this.player.unMute === 'function') this.player.unMute();

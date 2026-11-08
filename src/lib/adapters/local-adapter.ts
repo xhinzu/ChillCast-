@@ -85,6 +85,18 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
     getDspEngine().set8D(enabled);
   }
 
+  public setReverb(enabled: boolean): void {
+    getDspEngine().setReverb(enabled);
+  }
+
+  public setChorus(enabled: boolean): void {
+    getDspEngine().setChorus(enabled);
+  }
+
+  public setNoiseGate(enabled: boolean): void {
+    getDspEngine().setNoiseGate(enabled);
+  }
+
   public async initialize(): Promise<void> {
     if (typeof window === 'undefined') return;
 

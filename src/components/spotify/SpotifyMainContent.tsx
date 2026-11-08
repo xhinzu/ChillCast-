@@ -30,6 +30,7 @@ import {
   toggleLikedSong,
   PLAYLISTS_UPDATED_EVENT,
 } from '@/lib/playlist-storage';
+import { getPublicPlaylistShareUrl } from '@/lib/playlist-share';
 import {
   HeartIcon,
   PlayIcon,
@@ -530,15 +531,37 @@ export default function SpotifyMainContent({
               </button>
 
               {currentPlaylist.id !== 'liked-songs' ? (
-                <button
-                  type="button"
-                  onClick={() => handleDeletePlaylist(currentPlaylist.id)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-800/40 transition-colors cursor-pointer"
-                  title="Delete Playlist"
-                >
-                  <TrashIcon className="w-3.5 h-3.5" />
-                  <span>Delete Playlist</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = getPublicPlaylistShareUrl(currentPlaylist);
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        navigator.clipboard.writeText(url).then(() => {
+                          setAddedToast(`Copied share link for "${currentPlaylist.title}"!`);
+                          setTimeout(() => setAddedToast(null), 3000);
+                        }).catch(() => {});
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/20 transition-colors cursor-pointer"
+                    title="Share Playlist"
+                  >
+                    <svg className="w-3.5 h-3.5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    <span>Share Playlist</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePlaylist(currentPlaylist.id)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-800/40 transition-colors cursor-pointer"
+                    title="Delete Playlist"
+                  >
+                    <TrashIcon className="w-3.5 h-3.5" />
+                    <span>Delete Playlist</span>
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"

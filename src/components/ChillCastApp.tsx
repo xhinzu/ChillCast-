@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { PlaybackProvider, usePlayback } from '@/context/PlaybackContext';
 import { AmbientProvider } from '@/context/AmbientContext';
 import { RoomProvider, useRoom } from '@/context/RoomContext';
@@ -19,6 +19,8 @@ import Miniplayer from '@/components/player/Miniplayer';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { initThemeApplier } from '@/lib/theme/theme-applier';
 import { useSettings } from '@/lib/settings/useSettings';
+import { decodePlaylistShareData } from '@/lib/playlist-share';
+import { addOrUpdatePlaylist, SavedPlaylistItem } from '@/lib/playlist-storage';
 import {
   isTauri,
   hideWindow,
@@ -46,6 +48,8 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
   const [showCloseModal, setShowCloseModal] = useState<boolean>(false);
   const [showShortcutsOverlay, setShowShortcutsOverlay] = useState<boolean>(false);
   const [showMiniplayer, setShowMiniplayer] = useState<boolean>(false);
+  const showMiniplayerRef = useRef<boolean>(false);
+  showMiniplayerRef.current = showMiniplayer;
   const [trayNotice, setTrayNotice] = useState<string | null>(null);
 
   // Global Keyboard Shortcuts Engine
@@ -110,6 +114,42 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
     };
   }, []);
 
+  // Import shared playlist from URL if present
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      const importId = url.searchParams.get('import_playlist');
+      const d = url.searchParams.get('d');
+      if (importId && d) {
+        const data = decodePlaylistShareData(d);
+        if (data) {
+          const newPlaylist: SavedPlaylistItem = {
+            id: data.id || importId,
+            title: data.title || 'Shared Playlist',
+            subtitle: data.description || `${data.tracks?.length || 0} songs • Shared`,
+            type: 'custom',
+            targetUrl: '',
+            icon: 'music',
+            coverUrl: data.coverUrl,
+            createdAt: Date.now(),
+            tracks: (data.tracks || []).map((t) => ({
+              id: t.id,
+              title: t.title,
+              artist: t.artist,
+              duration: t.duration || '3:00',
+              thumbnail: t.thumbnail,
+              addedAt: Date.now(),
+            })),
+          };
+          addOrUpdatePlaylist(newPlaylist);
+          setActiveView(`playlist:${newPlaylist.id}`);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    } catch {}
+  }, []);
+
   // Desktop integration: Window close handler, tray controls, tray tooltip
   useEffect(() => {
     if (!isTauri()) return;
@@ -117,6 +157,12 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
     // Listen for window close requested
     let unlistenClose: (() => void) | undefined;
     listenWindowCloseRequested(async () => {
+      // If miniplayer is active, closing window minimizes to tray so music and popup state remain safe
+      if (showMiniplayerRef.current) {
+        await hideWindow();
+        return;
+      }
+
       const action = settings.desktop.closeAction;
       if (action === 'tray') {
         const hasSeenNotice = localStorage.getItem('myujiku_seen_tray_notice') === 'true';
@@ -137,12 +183,24 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
       unlistenClose = fn;
     });
 
-    // Listen for tray playback controls (Show, Play/Pause, Next, Prev, Quit)
+    // Listen for tray playback controls (Show, Miniplayer, Play/Pause, Next, Prev, Quit)
     let unlistenTray: (() => void) | undefined;
     listenTrayControls({
       onPlayPause: () => togglePlay(),
       onNext: () => nextTrack(),
       onPrev: () => previousTrack(),
+      onShowMiniplayer: () => {
+        setShowMiniplayer(true);
+        if (isTauri()) {
+          toggleDesktopMiniplayer(true).catch(() => {});
+        }
+      },
+      onShowApp: () => {
+        setShowMiniplayer(false);
+        if (isTauri()) {
+          toggleDesktopMiniplayer(false).catch(() => {});
+        }
+      },
     }).then((fn) => {
       unlistenTray = fn;
     });
@@ -331,6 +389,13 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
       <CloseConfirmationModal
         isOpen={showCloseModal}
         onClose={() => setShowCloseModal(false)}
+        onSwitchToMiniplayer={() => {
+          setShowCloseModal(false);
+          setShowMiniplayer(true);
+          if (isTauri()) {
+            toggleDesktopMiniplayer(true).catch(() => {});
+          }
+        }}
         onFirstTimeTrayNotify={() => {
           setTrayNotice('MyuJiku is minimized to the system tray. Music will keep playing in the background.');
           setTimeout(() => setTrayNotice(null), 5000);

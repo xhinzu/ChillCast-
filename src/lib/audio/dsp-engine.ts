@@ -19,6 +19,9 @@ export interface DspState {
   width: number;
   isMuffledActive: boolean;
   muffledCutoff: number;
+  isReverbActive: boolean;
+  isChorusActive: boolean;
+  isNoiseGateActive: boolean;
   sampleRate: number;
 }
 
@@ -84,6 +87,23 @@ export class DspEngine {
   private isMuffledActive = false;
   private muffledCutoff = 700; // Hz
 
+  // Reverb State
+  private isReverbActive = false;
+  private reverbConvolver: ConvolverNode | null = null;
+  private reverbWetGain: GainNode | null = null;
+  private reverbDryGain: GainNode | null = null;
+
+  // Chorus State
+  private isChorusActive = false;
+  private chorusDelay: DelayNode | null = null;
+  private chorusLfo: OscillatorNode | null = null;
+  private chorusLfoGain: GainNode | null = null;
+  private chorusWetGain: GainNode | null = null;
+
+  // Noise Gate State
+  private isNoiseGateActive = false;
+  private noiseGateNode: DynamicsCompressorNode | null = null;
+
   // Diagnostic Sweep Oscillator
   private sweepOsc: OscillatorNode | null = null;
 
@@ -133,6 +153,21 @@ export class DspEngine {
     return Promise.resolve();
   }
 
+  private generateImpulseResponse(durationSec = 2.2, decayRate = 2.0): AudioBuffer {
+    if (!this.ctx) throw new Error('AudioContext not ready');
+    const rate = this.ctx.sampleRate || 44100;
+    const length = Math.floor(rate * durationSec);
+    const impulse = this.ctx.createBuffer(2, length, rate);
+    for (let c = 0; c < 2; c++) {
+      const data = impulse.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        const t = i / length;
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, decayRate);
+      }
+    }
+    return impulse;
+  }
+
   private buildGraph() {
     if (!this.ctx) return;
 
@@ -150,11 +185,59 @@ export class DspEngine {
     );
     this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 1.6 : 0.0001, this.ctx.currentTime);
 
-    // 3. 8D Panner Node (HRTF Panner preferred for true 3D spatial orbit; fallback to StereoPanner)
+    // 3. Effects Stage (Dry + Reverb + Chorus)
+    const effectsSum = this.ctx.createGain();
+    effectsSum.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    // Direct Dry Line
+    this.reverbDryGain = this.ctx.createGain();
+    this.reverbDryGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+    this.muffledFilter.connect(this.reverbDryGain);
+    this.reverbDryGain.connect(effectsSum);
+
+    // Reverb Branch
+    if (typeof this.ctx.createConvolver === 'function' && typeof this.ctx.createBuffer === 'function') {
+      try {
+        this.reverbConvolver = this.ctx.createConvolver();
+        this.reverbConvolver.buffer = this.generateImpulseResponse(2.2, 2.0);
+        this.reverbWetGain = this.ctx.createGain();
+        this.reverbWetGain.gain.setValueAtTime(this.isReverbActive ? 0.38 : 0.0, this.ctx.currentTime);
+        this.muffledFilter.connect(this.reverbConvolver);
+        this.reverbConvolver.connect(this.reverbWetGain);
+        this.reverbWetGain.connect(effectsSum);
+      } catch (e) {
+        console.warn('[DspEngine] Convolver init:', e);
+      }
+    }
+
+    // Chorus Branch
+    if (typeof this.ctx.createDelay === 'function') {
+      try {
+        this.chorusDelay = this.ctx.createDelay(0.1);
+        this.chorusDelay.delayTime.setValueAtTime(0.022, this.ctx.currentTime);
+        this.chorusLfoGain = this.ctx.createGain();
+        this.chorusLfoGain.gain.setValueAtTime(0.0025, this.ctx.currentTime);
+        this.chorusLfo = this.ctx.createOscillator();
+        this.chorusLfo.type = 'sine';
+        this.chorusLfo.frequency.setValueAtTime(1.2, this.ctx.currentTime);
+        this.chorusLfo.connect(this.chorusLfoGain);
+        this.chorusLfoGain.connect(this.chorusDelay.delayTime);
+        this.chorusLfo.start();
+
+        this.chorusWetGain = this.ctx.createGain();
+        this.chorusWetGain.gain.setValueAtTime(this.isChorusActive ? 0.42 : 0.0, this.ctx.currentTime);
+        this.muffledFilter.connect(this.chorusDelay);
+        this.chorusDelay.connect(this.chorusWetGain);
+        this.chorusWetGain.connect(effectsSum);
+      } catch (e) {
+        console.warn('[DspEngine] Chorus init:', e);
+      }
+    }
+
+    // 4. 8D Panner Node (HRTF Panner preferred for true 3D spatial orbit; fallback to StereoPanner)
     try {
       const panner = this.ctx.createPanner();
       panner.panningModel = 'HRTF';
-      // Rolloff factor 0 completely disables distance attenuation and high-frequency dampening for maximum clarity
       panner.distanceModel = 'inverse';
       panner.refDistance = 1;
       panner.maxDistance = 10000;
@@ -173,19 +256,39 @@ export class DspEngine {
       this.isHRTFPanner = false;
     }
 
-    // 4. Master Gain Node
+    // Connect effectsSum into Panner
+    effectsSum.connect(this.pannerNode);
+
+    // 5. Noise Gate (Dynamics Compressor tuned to suppress silence/hiss below -46dB)
+    if (typeof this.ctx.createDynamicsCompressor === 'function') {
+      try {
+        this.noiseGateNode = this.ctx.createDynamicsCompressor();
+        this.noiseGateNode.threshold.setValueAtTime(this.isNoiseGateActive ? -45 : -100, this.ctx.currentTime);
+        this.noiseGateNode.knee.setValueAtTime(30, this.ctx.currentTime);
+        this.noiseGateNode.ratio.setValueAtTime(this.isNoiseGateActive ? 12 : 1, this.ctx.currentTime);
+        this.noiseGateNode.attack.setValueAtTime(0.003, this.ctx.currentTime);
+        this.noiseGateNode.release.setValueAtTime(0.25, this.ctx.currentTime);
+      } catch (e) {
+        console.warn('[DspEngine] Noise gate init:', e);
+      }
+    }
+
+    // 6. Master Gain Node
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
 
-    // 5. Analyser Node for edge glow & lyrics audio sync
+    // 7. Analyser Node for edge glow & lyrics audio sync
     this.analyserNode = this.ctx.createAnalyser();
     this.analyserNode.fftSize = 256;
     this.analyserNode.smoothingTimeConstant = 0.8;
 
-    // Connect Chain: inputGain -> muffledFilter -> pannerNode -> masterGain -> analyserNode -> destination
-    this.inputGain.connect(this.muffledFilter);
-    this.muffledFilter.connect(this.pannerNode);
-    this.pannerNode.connect(this.masterGain);
+    // Connect Chain: pannerNode -> (noiseGateNode) -> masterGain -> analyserNode -> destination
+    if (this.noiseGateNode) {
+      this.pannerNode.connect(this.noiseGateNode);
+      this.noiseGateNode.connect(this.masterGain);
+    } else {
+      this.pannerNode.connect(this.masterGain);
+    }
     this.masterGain.connect(this.analyserNode);
     this.analyserNode.connect(this.ctx.destination);
   }
@@ -308,6 +411,41 @@ export class DspEngine {
   }
 
   /**
+   * Updates Reverb convolution effect
+   */
+  public setReverb(enabled: boolean): void {
+    this.isReverbActive = enabled;
+    if (!this.ctx) this.getContext();
+    if (!this.reverbWetGain || !this.ctx) return;
+    const targetWet = enabled ? 0.38 : 0.0;
+    this.reverbWetGain.gain.setTargetAtTime(targetWet, this.ctx.currentTime, 0.05);
+  }
+
+  /**
+   * Updates Chorus modulation effect
+   */
+  public setChorus(enabled: boolean): void {
+    this.isChorusActive = enabled;
+    if (!this.ctx) this.getContext();
+    if (!this.chorusWetGain || !this.ctx) return;
+    const targetWet = enabled ? 0.42 : 0.0;
+    this.chorusWetGain.gain.setTargetAtTime(targetWet, this.ctx.currentTime, 0.05);
+  }
+
+  /**
+   * Updates Noise Gate dynamics suppressor
+   */
+  public setNoiseGate(enabled: boolean): void {
+    this.isNoiseGateActive = enabled;
+    if (!this.ctx) this.getContext();
+    if (!this.noiseGateNode || !this.ctx) return;
+    const threshold = enabled ? -45 : -100;
+    const ratio = enabled ? 12 : 1;
+    this.noiseGateNode.threshold.setTargetAtTime(threshold, this.ctx.currentTime, 0.05);
+    this.noiseGateNode.ratio.setTargetAtTime(ratio, this.ctx.currentTime, 0.05);
+  }
+
+  /**
    * Sets master playback volume (0 to 1) mapped through psychoacoustic curve
    */
   public setVolume(vol: number): void {
@@ -391,6 +529,9 @@ export class DspEngine {
       width: this.orbitWidth,
       isMuffledActive: this.isMuffledActive,
       muffledCutoff: this.muffledCutoff,
+      isReverbActive: this.isReverbActive,
+      isChorusActive: this.isChorusActive,
+      isNoiseGateActive: this.isNoiseGateActive,
       sampleRate: this.ctx ? this.ctx.sampleRate : 44100,
     };
   }

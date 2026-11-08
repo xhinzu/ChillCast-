@@ -8,12 +8,14 @@ interface CloseConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onFirstTimeTrayNotify?: () => void;
+  onSwitchToMiniplayer?: () => void;
 }
 
 export default function CloseConfirmationModal({
   isOpen,
   onClose,
   onFirstTimeTrayNotify,
+  onSwitchToMiniplayer,
 }: CloseConfirmationModalProps) {
   const { updateSettings } = useSettings();
   const [rememberChoice, setRememberChoice] = useState(false);
@@ -93,7 +95,7 @@ export default function CloseConfirmationModal({
         </label>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-2">
+        <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2">
           <button
             type="button"
             onClick={onClose}
@@ -101,6 +103,15 @@ export default function CloseConfirmationModal({
           >
             Cancel
           </button>
+          {onSwitchToMiniplayer && (
+            <button
+              type="button"
+              onClick={onSwitchToMiniplayer}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              Show Miniplayer
+            </button>
+          )}
           <button
             type="button"
             onClick={handleQuit}

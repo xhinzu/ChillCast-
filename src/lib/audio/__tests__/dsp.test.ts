@@ -58,6 +58,31 @@ class MockOscillatorNode extends MockAudioNode {
   onended: (() => void) | null = null;
 }
 
+class MockConvolverNode extends MockAudioNode {
+  buffer: unknown = null;
+}
+
+class MockDelayNode extends MockAudioNode {
+  delayTime = new MockAudioParam(0);
+  constructor(public maxDelayTime = 1) { super(); }
+}
+
+class MockDynamicsCompressorNode extends MockAudioNode {
+  threshold = new MockAudioParam(-24);
+  knee = new MockAudioParam(30);
+  ratio = new MockAudioParam(12);
+  attack = new MockAudioParam(0.003);
+  release = new MockAudioParam(0.25);
+}
+
+class MockAudioBuffer {
+  private channels: Float32Array[];
+  constructor(numberOfChannels: number, length: number, public sampleRate: number) {
+    this.channels = Array.from({ length: numberOfChannels }, () => new Float32Array(length));
+  }
+  getChannelData(c: number) { return this.channels[c] || new Float32Array(0); }
+}
+
 class MockAudioContext {
   state: AudioContextState = 'running';
   currentTime = 100;
@@ -70,6 +95,12 @@ class MockAudioContext {
   createStereoPanner() { return new MockStereoPannerNode(); }
   createAnalyser() { return new MockAnalyserNode(); }
   createOscillator() { return new MockOscillatorNode(); }
+  createConvolver() { return new MockConvolverNode(); }
+  createDelay(max?: number) { return new MockDelayNode(max); }
+  createDynamicsCompressor() { return new MockDynamicsCompressorNode(); }
+  createBuffer(channels: number, length: number, sampleRate: number) {
+    return new MockAudioBuffer(channels, length, sampleRate);
+  }
   createMediaElementSource() { return new MockAudioNode() as unknown as MediaElementAudioSourceNode; }
   async resume() { this.state = 'running'; }
   async close() { this.state = 'closed'; }

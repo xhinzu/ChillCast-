@@ -63,10 +63,13 @@ export interface PlaybackAdapter {
   onError(callback: ErrorCallback): () => void;
 
   /**
-   * Optional spatial and filter DSP effects
+   * Optional spatial, dynamics, and filter DSP effects
    */
   setSpatial8D?(enabled: boolean): void;
   setMuffled?(enabled: boolean): void;
+  setReverb?(enabled: boolean): void;
+  setChorus?(enabled: boolean): void;
+  setNoiseGate?(enabled: boolean): void;
 
   /**
    * Optional Web Audio AnalyserNode for beat-reactive visualizers

@@ -320,6 +320,24 @@ export class SpotifyAdapter extends BasePlaybackAdapter {
     }
   }
 
+  public setReverb(enabled: boolean): void {
+    if (this.youtubeResolver && typeof this.youtubeResolver.setReverb === 'function') {
+      this.youtubeResolver.setReverb(enabled);
+    }
+  }
+
+  public setChorus(enabled: boolean): void {
+    if (this.youtubeResolver && typeof this.youtubeResolver.setChorus === 'function') {
+      this.youtubeResolver.setChorus(enabled);
+    }
+  }
+
+  public setNoiseGate(enabled: boolean): void {
+    if (this.youtubeResolver && typeof this.youtubeResolver.setNoiseGate === 'function') {
+      this.youtubeResolver.setNoiseGate(enabled);
+    }
+  }
+
   public override cleanup(): void {
     if (this.positionInterval !== null) {
       clearInterval(this.positionInterval);

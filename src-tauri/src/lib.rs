@@ -431,6 +431,7 @@ pub fn run() {
 
             // Build System Tray Menu
             let show_item = MenuItem::with_id(app, "show", "Show MyuJiku", true, None::<&str>)?;
+            let miniplayer_item = MenuItem::with_id(app, "miniplayer", "Show Miniplayer", true, None::<&str>)?;
             let play_pause_item = MenuItem::with_id(app, "play_pause", "Play / Pause", true, None::<&str>)?;
             let next_item = MenuItem::with_id(app, "next", "Next Track", true, None::<&str>)?;
             let prev_item = MenuItem::with_id(app, "prev", "Previous Track", true, None::<&str>)?;
@@ -440,6 +441,7 @@ pub fn run() {
                 app,
                 &[
                     &show_item,
+                    &miniplayer_item,
                     &play_pause_item,
                     &next_item,
                     &prev_item,
@@ -474,8 +476,18 @@ pub fn run() {
                     "show" => {
                         if let Some(w) = app.get_webview_window("main") {
                             let _ = w.show();
+                            let _ = w.unminimize();
                             let _ = w.set_focus();
                         }
+                        let _ = app.emit("tray-show-app", ());
+                    }
+                    "miniplayer" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.unminimize();
+                            let _ = w.set_focus();
+                        }
+                        let _ = app.emit("tray-show-miniplayer", ());
                     }
                     "play_pause" => {
                         let _ = app.emit("tray-play-pause", ());
@@ -503,7 +515,7 @@ pub fn run() {
             let _main_window = tauri::WebviewWindowBuilder::new(app, "main", webview_url)
                 .title("MyuJiku")
                 .inner_size(1280.0, 800.0)
-                .min_inner_size(900.0, 600.0)
+                .min_inner_size(320.0, 180.0)
                 .resizable(true)
                 .drag_and_drop(false)
                 .devtools(true)

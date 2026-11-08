@@ -18,6 +18,7 @@ import {
   PlaylistCoverIcon,
   FolderIcon,
 } from '@/components/common/MinimalIcons';
+import { getPublicPlaylistShareUrl } from '@/lib/playlist-share';
 
 interface SpotifySidebarProps {
   activeView: string;
@@ -36,6 +37,16 @@ export default function SpotifySidebar({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
+  const [menuPlaylistId, setMenuPlaylistId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Close 3-dots playlist popover on outside click
+  useEffect(() => {
+    if (!menuPlaylistId) return;
+    const handleOutside = () => setMenuPlaylistId(null);
+    window.addEventListener('click', handleOutside);
+    return () => window.removeEventListener('click', handleOutside);
+  }, [menuPlaylistId]);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
 
   // Load saved playlists from localStorage and sync across events
@@ -72,6 +83,19 @@ export default function SpotifySidebar({
     if (activeView === `playlist:${id}`) {
       setActiveView('home');
     }
+    setMenuPlaylistId(null);
+  };
+
+  const handleSharePlaylist = (item: SavedPlaylistItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = getPublicPlaylistShareUrl(item);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setToastMessage(`Copied share link for "${item.title}"`);
+        setTimeout(() => setToastMessage(null), 3000);
+      }).catch(() => {});
+    }
+    setMenuPlaylistId(null);
   };
 
   const handleSelectPlaylist = (item: SavedPlaylistItem) => {
@@ -317,16 +341,58 @@ export default function SpotifySidebar({
                         </div>
                       </div>
 
-                      {!isLikedPlaylist && (
+                      {/* 3-dots playlist options menu (Share & Delete) */}
+                      <div className="relative shrink-0">
                         <button
                           type="button"
-                          onClick={(e) => handleRemovePlaylist(item.id, e)}
-                          className="opacity-0 group-hover:opacity-100 text-[#666666] hover:text-rose-400 text-xs p-1 transition-opacity cursor-pointer"
-                          title="Remove playlist"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuPlaylistId((prev) => (prev === item.id ? null : item.id));
+                          }}
+                          className={`text-[#888888] hover:text-white p-1 rounded-md hover:bg-white/10 transition-all cursor-pointer ${
+                            menuPlaylistId === item.id ? 'opacity-100 bg-white/10 text-white' : 'opacity-0 group-hover:opacity-100'
+                          }`}
+                          title="Playlist options"
+                          aria-label="Playlist options"
                         >
-                          ✕
+                          <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                            <circle cx="12" cy="5" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="12" cy="19" r="2" />
+                          </svg>
                         </button>
-                      )}
+
+                        {menuPlaylistId === item.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 top-7 z-50 w-44 bg-[#18181f] border border-[#2c2c36] rounded-xl shadow-2xl p-1.5 space-y-0.5 text-xs animate-in fade-in zoom-in-95 duration-100"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => handleSharePlaylist(item, e)}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-left font-medium"
+                            >
+                              <svg className="w-3.5 h-3.5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                              </svg>
+                              <span>Share Playlist</span>
+                            </button>
+
+                            {!isLikedPlaylist && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleRemovePlaylist(item.id, e)}
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer text-left font-medium"
+                              >
+                                <svg className="w-3.5 h-3.5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>Delete Playlist</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 });
@@ -385,6 +451,16 @@ export default function SpotifySidebar({
           loadCustomLocalFile(file);
         }}
       />
+
+      {/* Share Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 rounded-xl bg-[#1e1e28] border border-white/20 text-white text-xs font-medium shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <svg className="w-4 h-4 text-[var(--accent)]" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </>
   );
 }

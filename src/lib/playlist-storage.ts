@@ -2,6 +2,7 @@
 
 import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
 import type { SavedPlaylistItem, CustomPlaylistTrack } from '@/components/spotify/AddSourceModal';
+export type { SavedPlaylistItem, CustomPlaylistTrack };
 import { playlistSyncEngine, isPlaylistDeleted } from '@/lib/sync/playlist-sync';
 
 export const PLAYLISTS_STORAGE_KEY = 'chillify_saved_playlists';

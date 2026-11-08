@@ -31,6 +31,9 @@ interface PlaybackContextValue {
   errorMessage: string | null;
   isSpatial8D: boolean;
   isMuffled: boolean;
+  isReverb: boolean;
+  isChorus: boolean;
+  isNoiseGate: boolean;
   isShuffle: boolean;
   isRepeat: boolean;
   nextTrackInQueue: TrackInfo | null;
@@ -55,6 +58,9 @@ interface PlaybackContextValue {
   loadCustomLocalFile: (file: File) => Promise<void>;
   toggleSpatial8D: () => void;
   toggleMuffled: () => void;
+  toggleReverb: () => void;
+  toggleChorus: () => void;
+  toggleNoiseGate: () => void;
   playCustomTrackList: (tracks: TrackInfo[], startIndex?: number) => Promise<void>;
   getAudioAnalyser: () => AnalyserNode | null;
   getAudioElement: () => HTMLAudioElement | null;
@@ -85,6 +91,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const [isSpatial8D, setIsSpatial8D] = useState<boolean>(false);
   const [isMuffled, setIsMuffled] = useState<boolean>(false);
+  const [isReverb, setIsReverb] = useState<boolean>(false);
+  const [isChorus, setIsChorus] = useState<boolean>(false);
+  const [isNoiseGate, setIsNoiseGate] = useState<boolean>(false);
 
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const isShuffleRef = useRef<boolean>(false);
@@ -533,6 +542,39 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const toggleReverb = useCallback(() => {
+    setIsReverb((prev) => {
+      const next = !prev;
+      const adapter = adapterRef.current;
+      if (adapter && 'setReverb' in adapter && typeof (adapter as unknown as { setReverb: (b: boolean) => void }).setReverb === 'function') {
+        (adapter as unknown as { setReverb: (b: boolean) => void }).setReverb(next);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleChorus = useCallback(() => {
+    setIsChorus((prev) => {
+      const next = !prev;
+      const adapter = adapterRef.current;
+      if (adapter && 'setChorus' in adapter && typeof (adapter as unknown as { setChorus: (b: boolean) => void }).setChorus === 'function') {
+        (adapter as unknown as { setChorus: (b: boolean) => void }).setChorus(next);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleNoiseGate = useCallback(() => {
+    setIsNoiseGate((prev) => {
+      const next = !prev;
+      const adapter = adapterRef.current;
+      if (adapter && 'setNoiseGate' in adapter && typeof (adapter as unknown as { setNoiseGate: (b: boolean) => void }).setNoiseGate === 'function') {
+        (adapter as unknown as { setNoiseGate: (b: boolean) => void }).setNoiseGate(next);
+      }
+      return next;
+    });
+  }, []);
+
   // Keep adapter effects in sync
   useEffect(() => {
     const adapter = adapterRef.current;
@@ -542,7 +584,16 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     if (adapter && 'setMuffled' in adapter && typeof (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled === 'function') {
       (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled(isMuffled);
     }
-  }, [activeAdapter, isSpatial8D, isMuffled]);
+    if (adapter && 'setReverb' in adapter && typeof (adapter as unknown as { setReverb: (b: boolean) => void }).setReverb === 'function') {
+      (adapter as unknown as { setReverb: (b: boolean) => void }).setReverb(isReverb);
+    }
+    if (adapter && 'setChorus' in adapter && typeof (adapter as unknown as { setChorus: (b: boolean) => void }).setChorus === 'function') {
+      (adapter as unknown as { setChorus: (b: boolean) => void }).setChorus(isChorus);
+    }
+    if (adapter && 'setNoiseGate' in adapter && typeof (adapter as unknown as { setNoiseGate: (b: boolean) => void }).setNoiseGate === 'function') {
+      (adapter as unknown as { setNoiseGate: (b: boolean) => void }).setNoiseGate(isNoiseGate);
+    }
+  }, [activeAdapter, isSpatial8D, isMuffled, isReverb, isChorus, isNoiseGate]);
 
   const isPlaying = playbackState === 'playing';
 
@@ -596,6 +647,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         errorMessage,
         isSpatial8D,
         isMuffled,
+        isReverb,
+        isChorus,
+        isNoiseGate,
         isShuffle,
         isRepeat,
         nextTrackInQueue,
@@ -618,6 +672,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         loadCustomLocalFile,
         toggleSpatial8D,
         toggleMuffled,
+        toggleReverb,
+        toggleChorus,
+        toggleNoiseGate,
         playCustomTrackList,
         getAudioAnalyser,
         getAudioElement,
