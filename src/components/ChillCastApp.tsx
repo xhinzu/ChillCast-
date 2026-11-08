@@ -12,6 +12,7 @@ import MobileTabBar from '@/components/spotify/MobileTabBar';
 import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel';
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 import DiscordPresenceBridge from '@/components/discord/DiscordPresenceBridge';
+import InspectModal from '@/components/lyrics/InspectModal';
 import { initThemeApplier } from '@/lib/theme/theme-applier';
 
 export interface ChillCastAppProps {
@@ -26,6 +27,13 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
+  const [showInspectModal, setShowInspectModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleOpen = () => setShowInspectModal(true);
+    window.addEventListener('myujiku_open_inspect_modal', handleOpen);
+    return () => window.removeEventListener('myujiku_open_inspect_modal', handleOpen);
+  }, []);
   const [searchViewMode, setSearchViewMode] = useState<'list' | 'grid'>(() => {
     if (typeof window === 'undefined') return 'list';
     try {
@@ -168,6 +176,12 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
 
       {/* 6. Discord Rich Presence Bridge (PreMiD support) */}
       <DiscordPresenceBridge />
+
+      {/* 7. Hidden Inspect / About Diagnostics Modal (7-tap logo trigger) */}
+      <InspectModal
+        isOpen={showInspectModal}
+        onClose={() => setShowInspectModal(false)}
+      />
     </div>
   );
 }

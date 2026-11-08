@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
-import { LyricsSettings } from '@/lib/lyrics/settings';
+import { LyricsSettings, loadLyricsSettings } from '@/lib/lyrics/settings';
 import { WORD_EFFECTS, EFFECT_BY_ID } from '@/lib/lyrics/visuals/effects/catalog';
 import { EffectTriggerParams } from '@/lib/lyrics/visuals/effects/types';
 import { isTauri, getDiscordDebugInfo, type DiscordDebugInfo } from '@/lib/desktop';
@@ -10,16 +10,17 @@ import { isTauri, getDiscordDebugInfo, type DiscordDebugInfo } from '@/lib/deskt
 interface InspectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  settings: LyricsSettings;
+  settings?: LyricsSettings;
   onTriggerEffect?: (effectId: string, params: EffectTriggerParams) => void;
 }
 
 export default function InspectModal({
   isOpen,
   onClose,
-  settings,
+  settings: propSettings,
   onTriggerEffect,
 }: InspectModalProps) {
+  const settings = propSettings || loadLyricsSettings();
   const { currentTrack } = usePlayback();
   const [selectedEffectId, setSelectedEffectId] = useState<string>('bomb');
   const [discordDebug, setDiscordDebug] = useState<DiscordDebugInfo | null>(null);

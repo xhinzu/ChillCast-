@@ -6,6 +6,7 @@ import { usePlayback } from '@/context/PlaybackContext';
 import { CoffeeIcon } from '@/components/common/MinimalIcons';
 import UserMenu from '@/components/auth/UserMenu';
 import SettingsModal from '@/components/settings/SettingsModal';
+import LogoInspector from '@/components/common/LogoInspector';
 
 interface SpotifyTopNavProps {
   activeView: string;
@@ -68,38 +69,15 @@ export default function SpotifyTopNav({
     <header className="h-14 w-full bg-black flex items-center justify-between px-2.5 sm:px-6 shrink-0 z-40 select-none border-b border-[#1c1c1c] titlebar-drag">
       {/* Left: Brand & Navigation arrows */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0 titlebar-no-drag">
-        <div
-          onClick={() => {
+        <LogoInspector
+          onHomeClick={() => {
             setActiveView('home');
             setSearchQuery('');
           }}
-          className="flex items-center gap-2 cursor-pointer group"
-          title="ChillCast Home"
-        >
-          {/* MyuJiku Mascot Logo */}
-          <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
-            <Image
-              src="/myujiku-logo.png"
-              alt="ChillCast Logo"
-              width={36}
-              height={36}
-              className="w-full h-full object-contain filter drop-shadow-[0_2px_6px_rgba(255,255,255,0.12)]"
-              priority
-            />
-          </div>
-
-          {/* MyuJiku Stylized Text */}
-          <div className="relative h-6 sm:h-7 flex items-center transition-transform group-hover:scale-105 shrink-0">
-            <Image
-              src="/myujiku-text.png"
-              alt="ChillCast"
-              width={78}
-              height={30}
-              className="h-5 sm:h-6 w-auto object-contain"
-              priority
-            />
-          </div>
-        </div>
+          onOpenInspectModal={() => {
+            window.dispatchEvent(new CustomEvent('myujiku_open_inspect_modal'));
+          }}
+        />
 
         {/* Navigation arrows (Desktop only) */}
         <div className="hidden sm:flex items-center gap-2 ml-2">
