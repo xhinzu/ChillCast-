@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { isTauri } from '@/lib/desktop';
+import { SettingsSparklesIcon } from '../SettingsIcons';
 
 interface AboutSectionProps {
   onOpenLyricsSettings?: () => void;
@@ -80,7 +81,7 @@ export default function AboutSection({ onOpenLyricsSettings }: AboutSectionProps
             onClick={handleOpenLyricsSettings}
             className="px-3.5 py-1.5 rounded-lg bg-[#222228] hover:bg-[#2c2c34] border border-[#33333e] text-xs font-semibold text-white transition-colors cursor-pointer inline-flex items-center gap-2"
           >
-            <span>✨</span>
+            <SettingsSparklesIcon className="w-4 h-4 text-zinc-300" />
             <span>Open Lyrics Appearance Popover</span>
           </button>
           <a

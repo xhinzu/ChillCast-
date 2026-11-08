@@ -5,6 +5,7 @@ import { useSettings } from '@/lib/settings/useSettings';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { playlistSyncEngine, type SyncStatus } from '@/lib/sync/playlist-sync';
 import type { User } from '@supabase/supabase-js';
+import { SettingsCheckIcon } from '../SettingsIcons';
 
 export default function AccountSection() {
   const { settings, updateSettings, resetSection } = useSettings();
@@ -281,7 +282,7 @@ export default function AccountSection() {
           }}
           className="p-3 rounded-xl border text-xs flex items-center gap-2"
         >
-          <span>✓</span>
+          <SettingsCheckIcon className="w-3.5 h-3.5 shrink-0" />
           <span>{actionNotice}</span>
         </div>
       )}

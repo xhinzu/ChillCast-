@@ -12,6 +12,19 @@ import DiscordSection from './sections/DiscordSection';
 import AccountSection from './sections/AccountSection';
 import ShortcutsSection from './sections/ShortcutsSection';
 import AboutSection from './sections/AboutSection';
+import {
+  SettingsAppearanceIcon,
+  SettingsGlowIcon,
+  SettingsAudioIcon,
+  SettingsPlaybackIcon,
+  SettingsDesktopIcon,
+  SettingsDiscordIcon,
+  SettingsAccountIcon,
+  SettingsShortcutsIcon,
+  SettingsAboutIcon,
+  SettingsCloseIcon,
+  SettingsCheckIcon,
+} from './SettingsIcons';
 import { useSettings } from '@/lib/settings/useSettings';
 import type { AppSettings } from '@/lib/settings/settings-store';
 
@@ -29,7 +42,7 @@ export type SettingsSectionId =
 interface SectionMeta {
   id: SettingsSectionId;
   label: string;
-  icon: string;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
   desc: string;
   keywords: string[];
 }
@@ -38,63 +51,63 @@ const SECTIONS: SectionMeta[] = [
   {
     id: 'appearance',
     label: 'Appearance',
-    icon: '🎨',
+    icon: SettingsAppearanceIcon,
     desc: 'Themes, accent colors, and custom UI styling',
     keywords: ['theme', 'dark', 'light', 'amoled', 'system', 'accent', 'color', 'tint', 'contrast', 'wcag', 'inspect', 'logo'],
   },
   {
     id: 'glow',
     label: 'Glow & Lighting',
-    icon: '✨',
+    icon: SettingsGlowIcon,
     desc: 'Atmospheric UI highlights & lyrics edge glow',
     keywords: ['glow', 'lighting', 'edge', 'bloom', 'aurora', 'vignette', 'conic', 'intensity', 'music sync', 'blur'],
   },
   {
     id: 'audio',
     label: 'Audio',
-    icon: '🔊',
+    icon: SettingsAudioIcon,
     desc: '8D spatial audio, muffled filter, and DSP diagnostics',
     keywords: ['8d', 'spatial', 'orbit', 'binaural', 'panner', 'muffled', 'lowpass', 'dsp', 'filter', 'sweep', 'test', 'audio'],
   },
   {
     id: 'playback',
     label: 'Playback',
-    icon: '⏯️',
+    icon: SettingsPlaybackIcon,
     desc: 'Autoplay and queue transition preferences',
     keywords: ['autoplay', 'similar', 'queue', 'mix', 'radio', 'loop', 'playback'],
   },
   {
     id: 'desktop',
     label: 'Desktop',
-    icon: '🖥️',
+    icon: SettingsDesktopIcon,
     desc: 'System tray, background audio, and window close behavior',
     keywords: ['desktop', 'tray', 'close', 'quit', 'minimize', 'windows', 'startup', 'tauri'],
   },
   {
     id: 'discord',
     label: 'Discord',
-    icon: '💬',
+    icon: SettingsDiscordIcon,
     desc: 'Rich Presence, channel webhooks, and custom status',
     keywords: ['discord', 'presence', 'rich presence', 'webhook', 'custom status', 'activity', 'listening to', 'avatar'],
   },
   {
     id: 'account',
     label: 'Account & Sync',
-    icon: '👤',
+    icon: SettingsAccountIcon,
     desc: 'Local-first cloud backup and device sync',
     keywords: ['account', 'sync', 'cloud', 'backup', 'export', 'login', 'supabase', 'discord login', 'playlists'],
   },
   {
     id: 'shortcuts',
     label: 'Keyboard Shortcuts',
-    icon: '⌨️',
+    icon: SettingsShortcutsIcon,
     desc: 'Hotkeys and custom key bindings',
     keywords: ['shortcuts', 'hotkeys', 'keyboard', 'bindings', 'keys', 'play', 'pause', 'seek', 'volume'],
   },
   {
     id: 'about',
     label: 'About',
-    icon: 'ℹ️',
+    icon: SettingsAboutIcon,
     desc: 'App version, engine specs, and credits',
     keywords: ['about', 'version', 'credits', 'license', 'specs', 'lyrics settings'],
   },
@@ -265,7 +278,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
               className="w-8 h-8 rounded-full bg-[#1e1e24] hover:bg-[#2c2c36] text-zinc-400 hover:text-white flex items-center justify-center transition-colors text-sm cursor-pointer ml-1"
               title="Close settings"
             >
-              ✕
+              <SettingsCloseIcon className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -290,7 +303,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                     onClick={() => setSearchQuery('')}
                     className="absolute right-2.5 top-2 text-zinc-500 hover:text-white text-xs"
                   >
-                    ✕
+                    <SettingsCloseIcon className="w-3 h-3" />
                   </button>
                 )}
               </div>
@@ -305,6 +318,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
               ) : (
                 matchingSections.map((sec) => {
                   const isActive = activeSection === sec.id;
+                  const Icon = sec.icon;
                   return (
                     <button
                       key={sec.id}
@@ -318,14 +332,16 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                             }
                           : undefined
                       }
-                      className={`w-full px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                      className={`w-full px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between gap-2.5 group ${
                         isActive
                           ? 'text-white font-semibold border shadow-sm'
                           : 'text-zinc-400 hover:text-white hover:bg-[#1a1a20]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-sm shrink-0">{sec.icon}</span>
+                        <span className="shrink-0 text-zinc-400 group-hover:text-white">
+                          <Icon className="w-4 h-4" />
+                        </span>
                         <span className="text-xs truncate">{sec.label}</span>
                       </div>
                       {searchQuery && (
@@ -346,7 +362,9 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
             <div className="px-6 py-4 border-b border-[#202028] bg-[#121216] flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <span>{currentMeta.icon}</span>
+                  <span className="shrink-0 text-zinc-300">
+                    <currentMeta.icon className="w-4 h-4" />
+                  </span>
                   <span>{currentMeta.label}</span>
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">{currentMeta.desc}</p>
@@ -408,9 +426,9 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                 <button
                   type="button"
                   onClick={() => setIsImportModalOpen(false)}
-                  className="text-zinc-400 hover:text-white text-xs"
+                  className="text-zinc-400 hover:text-white text-xs cursor-pointer"
                 >
-                  ✕
+                  <SettingsCloseIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -463,9 +481,10 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                     borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
                     color: 'var(--accent)',
                   }}
-                  className="p-2.5 rounded-lg border text-xs font-semibold"
+                  className="p-2.5 rounded-lg border text-xs font-semibold flex items-center gap-2"
                 >
-                  ✓ Settings successfully imported and applied!
+                  <SettingsCheckIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span>Settings successfully imported and applied!</span>
                 </div>
               )}
 

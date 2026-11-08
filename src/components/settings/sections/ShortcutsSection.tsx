@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useSettings } from '@/lib/settings/useSettings';
 import { DEFAULT_KEY_BINDINGS } from '@/lib/settings/settings-store';
+import { SettingsCloseIcon } from '../SettingsIcons';
 
 export interface ShortcutDefinition {
   id: string;
@@ -49,9 +50,9 @@ export function formatKeyDisplay(keyStr: string): string {
   return parts
     .map((p) => {
       const lower = p.toLowerCase();
-      if (lower === 'ctrl') return isMac ? '⌘' : 'Ctrl';
-      if (lower === 'alt') return isMac ? '⌥' : 'Alt';
-      if (lower === 'shift') return isMac ? '⇧' : 'Shift';
+      if (lower === 'ctrl') return isMac ? 'Cmd' : 'Ctrl';
+      if (lower === 'alt') return isMac ? 'Opt' : 'Alt';
+      if (lower === 'shift') return isMac ? 'Shift' : 'Shift';
       if (p.startsWith('Key')) return p.slice(3);
       if (p.startsWith('Digit')) return p.slice(5);
       if (p === 'ArrowLeft') return '←';
@@ -178,7 +179,7 @@ export default function ShortcutsSection() {
             onClick={() => setSearch('')}
             className="absolute right-3 top-2.5 text-zinc-500 hover:text-white"
           >
-            ✕
+            <SettingsCloseIcon className="w-3 h-3" />
           </button>
         )}
       </div>
@@ -278,7 +279,11 @@ export default function ShortcutsSection() {
       </div>
 
       <div className="p-3 bg-[#141418] border border-[#262630] rounded-xl text-[11px] text-zinc-400 flex items-center gap-2">
-        <span>💡</span>
+        <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
         <span>
           Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-white font-mono text-[10px]">?</kbd> anywhere in the app to view the quick shortcuts sheet overlay.
         </span>

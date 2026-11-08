@@ -3,6 +3,13 @@
 import React, { useState } from 'react';
 import { useSettings } from '@/lib/settings/useSettings';
 import type { ThemeMode } from '@/lib/settings/settings-store';
+import {
+  ThemeMoonIcon,
+  ThemeSunIcon,
+  ThemeAmoledIcon,
+  ThemeSystemIcon,
+  SettingsCheckIcon,
+} from '../SettingsIcons';
 
 export const ACCENT_PRESETS = [
   { id: 'emerald', name: 'Emerald', hex: '#10b981' },
@@ -88,12 +95,13 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
         <label className="text-xs font-semibold text-white block">Theme Mode</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {[
-            { id: 'dark', label: 'Dark', icon: '🌙', desc: 'Deep zinc & obsidian' },
-            { id: 'light', label: 'Light', icon: '☀️', desc: 'Clean bright surfaces' },
-            { id: 'amoled', label: 'AMOLED', icon: '🖤', desc: 'Pure #000000 black' },
-            { id: 'system', label: 'System', icon: '💻', desc: 'Matches your OS' },
+            { id: 'dark', label: 'Dark', icon: ThemeMoonIcon, desc: 'Deep zinc & obsidian' },
+            { id: 'light', label: 'Light', icon: ThemeSunIcon, desc: 'Clean bright surfaces' },
+            { id: 'amoled', label: 'AMOLED', icon: ThemeAmoledIcon, desc: 'Pure #000000 black' },
+            { id: 'system', label: 'System', icon: ThemeSystemIcon, desc: 'Matches your OS' },
           ].map((theme) => {
             const isSelected = currentTheme === theme.id;
+            const Icon = theme.icon;
             return (
               <button
                 key={theme.id}
@@ -114,7 +122,9 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                     : 'border-[#2a2a34] bg-[#121215] text-zinc-300 hover:bg-[#1a1a20]'
                 }`}
               >
-                <div className="text-base mb-1">{theme.icon}</div>
+                <div className="mb-1.5 text-zinc-300">
+                  <Icon className="w-4 h-4" />
+                </div>
                 <div className="font-semibold text-xs text-white">{theme.label}</div>
                 <div className="text-[10px] text-zinc-400 mt-0.5">{theme.desc}</div>
               </button>
@@ -174,7 +184,7 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
                 }`}
                 style={{ backgroundColor: preset.hex }}
               >
-                {isSelected && <span className="text-white text-xs font-bold drop-shadow">✓</span>}
+                {isSelected && <SettingsCheckIcon className="w-3.5 h-3.5 text-white drop-shadow" />}
               </button>
             );
           })}
@@ -414,9 +424,12 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
           <button
             type="button"
             onClick={handleOpenLyricsSettings}
-            className="px-3 py-1.5 rounded-lg bg-[#24242c] hover:bg-[#32323e] border border-[#383848] text-xs font-semibold text-white transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 rounded-lg bg-[#24242c] hover:bg-[#32323e] border border-[#383848] text-xs font-semibold text-white transition-colors cursor-pointer inline-flex items-center gap-1.5"
           >
-            Open Lyrics Settings ➔
+            <span>Open Lyrics Settings</span>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>

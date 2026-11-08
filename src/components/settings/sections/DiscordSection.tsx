@@ -15,6 +15,7 @@ import {
 } from '@/lib/discord/webhook';
 import { copyDiscordCustomStatus } from '@/lib/discord/custom-status';
 import { useSettings } from '@/lib/settings/useSettings';
+import { SettingsCheckIcon, SettingsCloseIcon } from '../SettingsIcons';
 
 export default function DiscordSection() {
   const { currentTrack } = usePlayback();
@@ -233,9 +234,9 @@ export default function DiscordSection() {
                   {testingPresence
                     ? 'Testing...'
                     : testPresenceSuccess === true
-                    ? '✓ Sent 10s sample!'
+                    ? 'Sent 10s sample'
                     : testPresenceSuccess === false
-                    ? '✕ Send failed'
+                    ? 'Send failed'
                     : 'Test Status'}
                 </button>
               )}
@@ -355,13 +356,17 @@ export default function DiscordSection() {
 
         {/* Discord Activity Privacy Hint */}
         <div className="pt-2 border-t border-[#22222a] flex items-start gap-2 text-[10px] text-zinc-400">
-          <span className="text-[#5865F2] font-bold">ℹ</span>
+          <svg className="w-3.5 h-3.5 text-[#5865F2] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
           <p className="leading-relaxed">
             <strong>Activity Privacy:</strong> If your activity does not appear to friends, ensure{' '}
             <span className="text-zinc-200 underline decoration-zinc-600">
               &quot;Display current activity as a status message&quot;
             </span>{' '}
-            is switched ON inside your Discord desktop client under <em>User Settings ➔ Activity Privacy</em>.
+            is switched ON inside your Discord desktop client under <em>User Settings -&gt; Activity Privacy</em>.
           </p>
         </div>
       </div>
@@ -474,7 +479,11 @@ export default function DiscordSection() {
                           : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
                       }`}
                     >
-                      <span>{testResult.success ? '✓' : '✕'}</span>
+                      {testResult.success ? (
+                        <SettingsCheckIcon className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <SettingsCloseIcon className="w-3.5 h-3.5 shrink-0" />
+                      )}
                       <span>{testResult.message}</span>
                     </div>
                   )}
@@ -490,7 +499,7 @@ export default function DiscordSection() {
                   Copies current song formatted for Discord custom status:
                 </p>
                 <code className="text-[10px] text-zinc-400 bg-black/40 px-2 py-0.5 rounded inline-block mt-1 font-mono">
-                  🎧 {currentTrack?.artist || 'Artist'} - {currentTrack?.title || 'Song'} | MyuJiku
+                  {currentTrack?.artist || 'Artist'} - {currentTrack?.title || 'Song'} | MyuJiku
                 </code>
               </div>
 
@@ -499,7 +508,7 @@ export default function DiscordSection() {
                 onClick={handleCopyCurrentStatus}
                 className="px-3 py-1.5 rounded-lg bg-[#24242c] hover:bg-[#32323e] border border-[#383848] text-xs font-semibold text-white transition-colors cursor-pointer shrink-0"
               >
-                {copiedStatus ? '✓ Copied!' : 'Copy Status'}
+                {copiedStatus ? 'Copied!' : 'Copy Status'}
               </button>
             </div>
           </div>

@@ -61,7 +61,11 @@ export default function PlaybackSection() {
 
         {isInRoom && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-[11px] flex items-center gap-2">
-            <span>ℹ</span>
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
             <span>Autoplay is automatically paused while you are in a Listen Together room.</span>
           </div>
         )}
