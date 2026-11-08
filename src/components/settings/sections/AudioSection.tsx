@@ -1,0 +1,292 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/lib/settings/useSettings';
+import { usePlayback } from '@/context/PlaybackContext';
+
+export default function AudioSection() {
+  const { settings, updateSettings, resetSection } = useSettings();
+  const { activeAdapter, isSpatial8D, isMuffled, toggleSpatial8D, toggleMuffled } = usePlayback();
+  const audio = settings.audio;
+
+  const [contextState, setContextState] = useState<string>('unknown');
+  const [isPlayingTestTone, setIsPlayingTestTone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        try {
+          const testCtx = new AudioCtx();
+          setContextState(testCtx.state);
+          testCtx.close().catch(() => {});
+        } catch {
+          setContextState('unavailable');
+        }
+      }
+    }
+  }, []);
+
+  // Play short tone sweep through Web Audio chain to verify effect audibility
+  const handlePlayTestSweep = async () => {
+    if (typeof window === 'undefined') return;
+    setIsPlayingTestTone(true);
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      setContextState(ctx.state);
+
+      const osc = ctx.createOscillator();
+      const sweepGain = ctx.createGain();
+
+      // Muffled filter
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(audio.muffledEnabled ? audio.muffledCutoff : 20000, ctx.currentTime);
+
+      // Panner node
+      let panner: StereoPannerNode | null = null;
+      if (ctx.createStereoPanner) {
+        panner = ctx.createStereoPanner();
+        panner.pan.setValueAtTime(0, ctx.currentTime);
+        if (audio.spatial8DEnabled) {
+          panner.pan.setValueAtTime(-audio.spatial8DWidth, ctx.currentTime);
+          panner.pan.linearRampToValueAtTime(audio.spatial8DWidth, ctx.currentTime + 1.2);
+          panner.pan.linearRampToValueAtTime(-audio.spatial8DWidth, ctx.currentTime + 2.4);
+        }
+      }
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 2.5);
+
+      sweepGain.gain.setValueAtTime(0.001, ctx.currentTime);
+      sweepGain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.1);
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+
+      // Connect graph
+      if (panner) {
+        osc.connect(filter);
+        filter.connect(panner);
+        panner.connect(sweepGain);
+        sweepGain.connect(ctx.destination);
+      } else {
+        osc.connect(filter);
+        filter.connect(sweepGain);
+        sweepGain.connect(ctx.destination);
+      }
+
+      osc.start();
+      osc.stop(ctx.currentTime + 2.6);
+      setTimeout(() => {
+        setIsPlayingTestTone(false);
+        ctx.close().catch(() => {});
+      }, 2700);
+    } catch (err) {
+      console.warn('Test sweep error:', err);
+      setIsPlayingTestTone(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 text-xs text-zinc-300">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-violet-400" />
+            Audio Engine &amp; DSP Effects
+          </h3>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Binaural 8D spatial audio orbit, muffled filter, and Web Audio diagnostics
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => resetSection('audio')}
+          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+          title="Reset audio settings to defaults"
+        >
+          Reset Audio
+        </button>
+      </div>
+
+      {/* ─────────────────── 8D SPATIAL AUDIO ─────────────────── */}
+      <div className="bg-[#17171a] border border-[#282830] rounded-xl p-4 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h4 className="text-xs font-semibold text-white">8D Spatial Audio (Binaural Orbit)</h4>
+            <p className="text-[11px] text-zinc-400">
+              Rotates the stereo soundscape around the listener using continuous smooth HRTF panning.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={audio.spatial8DEnabled || isSpatial8D}
+            onClick={() => {
+              const next = !audio.spatial8DEnabled;
+              updateSettings('audio', { spatial8DEnabled: next });
+              if (toggleSpatial8D) toggleSpatial8D();
+            }}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              audio.spatial8DEnabled || isSpatial8D ? 'bg-violet-500' : 'bg-[#2e2e36]'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
+                audio.spatial8DEnabled || isSpatial8D ? 'translate-x-4 bg-white' : 'translate-x-0 bg-zinc-400'
+              }`}
+            />
+          </button>
+        </div>
+
+        {(audio.spatial8DEnabled || isSpatial8D) && (
+          <div className="pt-3 border-t border-[#22222a] space-y-3 animate-in fade-in duration-150">
+            <div>
+              <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+                <span>Orbit Rotation Period (Speed)</span>
+                <span className="font-mono text-zinc-300">{audio.spatial8DSpeed} seconds per cycle</span>
+              </div>
+              <input
+                type="range"
+                min="4"
+                max="20"
+                step="1"
+                value={audio.spatial8DSpeed}
+                onChange={(e) => updateSettings('audio', { spatial8DSpeed: parseInt(e.target.value, 10) })}
+                className="w-full accent-violet-400"
+              />
+              <div className="flex justify-between text-[10px] text-zinc-500 mt-0.5">
+                <span>Fast (4s)</span>
+                <span>Default (8s)</span>
+                <span>Relaxed (20s)</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+                <span>Stereo Width / Depth</span>
+                <span className="font-mono text-zinc-300">{Math.round(audio.spatial8DWidth * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.3"
+                max="1.0"
+                step="0.05"
+                value={audio.spatial8DWidth}
+                onChange={(e) => updateSettings('audio', { spatial8DWidth: parseFloat(e.target.value) })}
+                className="w-full accent-violet-400"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────── MUFFLED FILTER ─────────────────── */}
+      <div className="bg-[#17171a] border border-[#282830] rounded-xl p-4 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h4 className="text-xs font-semibold text-white">Muffled Sound (Next Room Effect)</h4>
+            <p className="text-[11px] text-zinc-400">
+              Low-pass biquad filter simulating hearing music through a bedroom door or outside a club.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={audio.muffledEnabled || isMuffled}
+            onClick={() => {
+              const next = !audio.muffledEnabled;
+              updateSettings('audio', { muffledEnabled: next });
+              if (toggleMuffled) toggleMuffled();
+            }}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              audio.muffledEnabled || isMuffled ? 'bg-violet-500' : 'bg-[#2e2e36]'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out ${
+                audio.muffledEnabled || isMuffled ? 'translate-x-4 bg-white' : 'translate-x-0 bg-zinc-400'
+              }`}
+            />
+          </button>
+        </div>
+
+        {(audio.muffledEnabled || isMuffled) && (
+          <div className="pt-3 border-t border-[#22222a] space-y-3 animate-in fade-in duration-150">
+            <div>
+              <div className="flex justify-between text-[11px] text-zinc-400 mb-1">
+                <span>Cutoff Frequency</span>
+                <span className="font-mono text-zinc-300">{audio.muffledCutoff} Hz</span>
+              </div>
+              <input
+                type="range"
+                min="300"
+                max="2000"
+                step="50"
+                value={audio.muffledCutoff}
+                onChange={(e) => updateSettings('audio', { muffledCutoff: parseInt(e.target.value, 10) })}
+                className="w-full accent-violet-400"
+              />
+              <div className="flex justify-between text-[10px] text-zinc-500 mt-0.5">
+                <span>Deep / Submerged (300Hz)</span>
+                <span>Default (700Hz)</span>
+                <span>Light Muffle (2000Hz)</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────── AUDIO DIAGNOSTICS & TEST SWEEP ─────────────────── */}
+      <div className="bg-[#17171a] border border-[#282830] rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-semibold text-white">Audio Pipeline Diagnostics</h4>
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-violet-500/20 text-violet-300 border border-violet-500/30">
+            State: {contextState}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] font-mono bg-[#111114] p-3 rounded-lg border border-[#222228]">
+          <div>
+            <span className="text-zinc-500 block text-[9px] uppercase">Active Adapter</span>
+            <span className="text-zinc-200">{activeAdapter ? 'Online' : 'Initializing'}</span>
+          </div>
+          <div>
+            <span className="text-zinc-500 block text-[9px] uppercase">8D Panner</span>
+            <span className={audio.spatial8DEnabled || isSpatial8D ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}>
+              {audio.spatial8DEnabled || isSpatial8D ? 'Active' : 'Bypassed'}
+            </span>
+          </div>
+          <div>
+            <span className="text-zinc-500 block text-[9px] uppercase">Muffled Low-pass</span>
+            <span className={audio.muffledEnabled || isMuffled ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}>
+              {audio.muffledEnabled || isMuffled ? `${audio.muffledCutoff}Hz` : 'Bypassed (20kHz)'}
+            </span>
+          </div>
+        </div>
+
+        <div className="pt-2 flex items-center justify-between">
+          <p className="text-[11px] text-zinc-400">
+            Play a 2.5-second tone sweep through the DSP chain to verify effects audibly:
+          </p>
+          <button
+            type="button"
+            onClick={handlePlayTestSweep}
+            disabled={isPlayingTestTone}
+            className="px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            {isPlayingTestTone ? 'Playing Tone Sweep...' : 'Play Test Sweep'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
