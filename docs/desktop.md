@@ -1,6 +1,6 @@
 # MyuJiku Desktop (Tauri 2) Guide
 
-MyuJiku Desktop is a lightweight, ultra-performance Windows application built with **Tauri 2**. It wraps the hosted MyuJiku web experience (`https://myujiku.vercel.app`) with full native operating system integration, including **Discord Rich Presence (IPC)**, **Now Playing Webhook**, and HTML5 desktop parity.
+MyuJiku Desktop is a lightweight, ultra-performance Windows application built with **Tauri 2**. It wraps the hosted MyuJiku web experience (`https://myujiku.vercel.app`) with full native operating system integration, including **Automatic Spotify-Style Discord Rich Presence (IPC)**, **Now Playing Webhook**, and HTML5 desktop parity.
 
 ---
 
@@ -36,7 +36,21 @@ The following shared components cannot reside exclusively on `F:` and reside on 
 
 ---
 
-## 2. Running in Development
+## 2. Automatic Discord Rich Presence (Spotify-Style)
+
+The desktop app features **zero-setup automatic Discord Rich Presence**:
+- **Background Worker**: Auto-detects and connects quietly to any running Discord client (`discord-ipc-0` through `discord-ipc-9`, covering Stable, PTB, and Canary).
+- **Auto-Reconnect**: If Discord starts later or restarts, the app reconnects with exponential backoff (10s–30s).
+- **Listening Activity (Type 2)**: Displays "Listening to [Song Title]" with artist, cover art, elapsed/remaining progress timestamps, "Listen on MyuJiku", and "Join room" buttons.
+- **Privacy Controls**:
+  - Opt-out toggle in Settings ("Share what I'm listening to on Discord", default ON in desktop).
+  - "Hide song details" option (displays only "Listening to MyuJiku").
+  - Auto-pause timeout: Automatically clears activity after 5 minutes of paused playback.
+- **Verification Script**: Run `node scripts/check-discord.mjs` to test pipe connectivity and Application ID.
+
+---
+
+## 3. Running in Development
 
 Ensure the local dev server is running or let Tauri launch it automatically:
 
@@ -49,7 +63,7 @@ In dev mode, WebView2 DevTools (`F12`) and the right-click context menu are enab
 
 ---
 
-## 3. Building the Production Installer
+## 4. Building the Production Installer
 
 To produce the standalone Windows NSIS installer `.exe`:
 
@@ -65,26 +79,29 @@ A copy is placed in `F:\vbcode\releases\`.
 
 ---
 
-## 4. Exposed Tauri IPC Commands
+## 5. Exposed Tauri IPC Commands
 
-In accordance with least-privilege security, the remote web app can ONLY invoke the following 3 commands:
+In accordance with least-privilege security, the remote web app can ONLY invoke the following commands:
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
+| `get_discord_status` | *none* | Returns current IPC status: `NotRunning`, `Connecting`, `Connected { username, displayName?, avatarUrl? }`, `AppIdMissing`, or `Error`. |
 | `set_presence` | `{ payload: PresencePayload }` | Updates Discord Rich Presence with track title, artist, album art, timestamps, and buttons. |
 | `clear_presence` | *none* | Clears active Discord presence when stopped or paused. |
+| `send_test_presence` | *none* | Sends a 10-second sample presence to Discord for testing. |
+| `set_discord_client_id` | `{ clientId: string }` | Dynamically configures or updates the Discord Application ID. |
 | `send_discord_webhook` | `{ webhook_url, method?, message_id?, payload? }` | Sends/edits Now Playing embeds directly to Discord webhooks without browser CORS restrictions. |
 
 The webview cannot access the filesystem, command shell, or arbitrary HTTP APIs.
 
 ---
 
-## 5. Discord Developer Portal Setup
+## 6. Discord Developer Portal Setup
 
 To configure custom branding in Discord Rich Presence:
 
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Click **New Application** and name it **MyuJiku** (this is the name that appears as "Playing MyuJiku" in Discord).
+2. Click **New Application** and name it **MyuJiku** (this is the name that appears as "Listening to MyuJiku" in Discord).
 3. Under **Rich Presence** $\rightarrow$ **Rich Presence Assets**:
    - Upload `myujiku_logo` (1024x1024 PNG recommended) with key `myujiku_logo`.
    - Upload small icons for `play` and `pause`.
@@ -93,30 +110,14 @@ To configure custom branding in Discord Rich Presence:
    ```env
    DISCORD_CLIENT_ID=<Your_Application_ID>
    ```
-   *(Default fallback client ID `1303728080277962803` is pre-configured).*
+   Or enter the Application ID directly inside the app's Settings under Discord Rich Presence.
+6. **Activity Privacy in Discord**: If status does not appear on your profile, make sure *"Display current activity as a status message"* is toggled ON under Discord *User Settings ➔ Activity Privacy*.
 
 ---
 
-## 6. Code Signing & Windows SmartScreen
+## 7. Code Signing & Windows SmartScreen
 
-When users install an unsigned `.exe` on Windows, **Windows SmartScreen** shows a blue warning (*"Windows protected your PC"*).
-
-### Options for Code Signing:
-1. **Self-Signed / Community (Free)**:
-   - Users click *"More info"* $\rightarrow$ *"Run anyway"* once.
-2. **Microsoft Trusted Signing / EV Code Signing Certificate**:
-   - For enterprise releases, configure Azure Trusted Signing or a Sectigo/DigiCert EV certificate in GitHub Actions using `tauri-action` inputs:
-     - `TAURI_SIGNING_PRIVATE_KEY`
-     - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-
----
-
-## 7. Troubleshooting
-
-- **"linker `link.exe` not found"**:
-  Run `F:\vbcode\install_build_tools.bat` as Administrator to install the Visual Studio C++ build tools and Windows SDK to `F:\vbcode\BuildTools`.
-- **WebView2 Not Found**:
-  Windows 10/11 includes Evergreen WebView2 by default. If running on Windows Server or LTSC, install the Evergreen Bootstrapper from [Microsoft WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
-- **Discord Rich Presence not updating**:
-  Verify the Discord desktop application is open and logged in. In Discord settings $\rightarrow$ **Activity Privacy**, ensure **"Display current activity as a status message"** is turned ON.
-
+When distributing outside the Microsoft Store without an EV code signing certificate:
+- The installer executable is signed or self-contained.
+- Windows SmartScreen may present an *"Unrecognized app"* prompt on initial launch.
+- Users can click **More info** $\rightarrow$ **Run anyway** to install.

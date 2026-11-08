@@ -1,26 +1,13 @@
-use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+mod discord_ipc;
+
+use discord_ipc::{
+    start_background_discord_worker, DiscordConnectionStatus, DiscordManager, PresencePayload,
+    SharedDiscordManager, PRODUCTION_URL,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{Manager, WebviewUrl};
+use tauri::{AppHandle, Manager, WebviewUrl};
 use tauri_plugin_opener::OpenerExt;
-
-const DEFAULT_DISCORD_CLIENT_ID: &str = "1303728080277962803";
-const PRODUCTION_URL: &str = "https://myujiku.vercel.app";
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PresencePayload {
-    pub title: String,
-    pub artist: String,
-    #[serde(rename = "coverUrl")]
-    pub cover_url: Option<String>,
-    #[serde(rename = "startTimestamp")]
-    pub start_timestamp: Option<i64>,
-    #[serde(rename = "endTimestamp")]
-    pub end_timestamp: Option<i64>,
-    pub paused: bool,
-    #[serde(rename = "roomUrl")]
-    pub room_url: Option<String>,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WebhookResponse {
@@ -32,85 +19,52 @@ pub struct WebhookResponse {
     pub not_found: Option<bool>,
 }
 
-struct DiscordState {
-    client: Option<DiscordIpcClient>,
-    client_id: String,
+#[tauri::command]
+fn get_discord_status(
+    manager: tauri::State<'_, SharedDiscordManager>,
+) -> DiscordConnectionStatus {
+    manager.lock().unwrap().get_status()
 }
-
-type DiscordStateHandle = Arc<Mutex<DiscordState>>;
 
 #[tauri::command]
 fn set_presence(
     payload: PresencePayload,
-    state: tauri::State<'_, DiscordStateHandle>,
+    manager: tauri::State<'_, SharedDiscordManager>,
 ) -> Result<(), String> {
-    let mut state_guard = state.lock().map_err(|e| e.to_string())?;
-
-    // Attempt connection if not already connected
-    if state_guard.client.is_none() {
-        let client_id = state_guard.client_id.clone();
-        let mut new_client = DiscordIpcClient::new(&client_id);
-        if new_client.connect().is_ok() {
-            state_guard.client = Some(new_client);
-        }
-    }
-
-    if let Some(client) = state_guard.client.as_mut() {
-        let mut act = activity::Activity::new();
-        act = act.details(&payload.title);
-        act = act.state(&payload.artist);
-
-        // Timestamps (only when playing)
-        if !payload.paused {
-            if let Some(start) = payload.start_timestamp {
-                let mut ts = activity::Timestamps::new().start(start);
-                if let Some(end) = payload.end_timestamp {
-                    ts = ts.end(end);
-                }
-                act = act.timestamps(ts);
-            }
-        }
-
-        // Assets
-        let mut assets = activity::Assets::new();
-        if let Some(cover) = &payload.cover_url {
-            assets = assets.large_image(cover);
-        } else {
-            assets = assets.large_image("myujiku_logo");
-        }
-        assets = assets.large_text("MyuJiku");
-
-        if payload.paused {
-            assets = assets.small_image("pause").small_text("Paused");
-        } else {
-            assets = assets.small_image("play").small_text("Playing");
-        }
-        act = act.assets(assets);
-
-        // Buttons: Listen on MyuJiku + optional Join room
-        let mut buttons = Vec::new();
-        buttons.push(activity::Button::new("Listen on MyuJiku", PRODUCTION_URL));
-        if let Some(room_link) = &payload.room_url {
-            buttons.push(activity::Button::new("Join room", room_link));
-        }
-        act = act.buttons(buttons);
-
-        if let Err(err) = client.set_activity(act) {
-            log::debug!("[Discord IPC] Failed to set activity: {:?}", err);
-            // If pipe broke, drop client to trigger reconnect next time
-            state_guard.client = None;
-        }
-    }
-
+    manager.lock().unwrap().set_payload(Some(payload));
     Ok(())
 }
 
 #[tauri::command]
-fn clear_presence(state: tauri::State<'_, DiscordStateHandle>) -> Result<(), String> {
-    let mut state_guard = state.lock().map_err(|e| e.to_string())?;
-    if let Some(client) = state_guard.client.as_mut() {
-        let _ = client.clear_activity();
-    }
+fn clear_presence(manager: tauri::State<'_, SharedDiscordManager>) -> Result<(), String> {
+    manager.lock().unwrap().set_payload(None);
+    Ok(())
+}
+
+#[tauri::command]
+fn send_test_presence(
+    manager: tauri::State<'_, SharedDiscordManager>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    manager.lock().unwrap().send_test_presence()?;
+
+    // Schedule clearing the test presence after 10 seconds
+    let manager_clone = manager.inner().clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        manager_clone.lock().unwrap().sync_presence();
+    });
+
+    let _ = app_handle;
+    Ok(())
+}
+
+#[tauri::command]
+fn set_discord_client_id(
+    client_id: String,
+    manager: tauri::State<'_, SharedDiscordManager>,
+) -> Result<(), String> {
+    manager.lock().unwrap().set_client_id(client_id);
     Ok(())
 }
 
@@ -204,7 +158,10 @@ async fn send_discord_webhook(
             }
 
             if let Ok(json_body) = res.json::<serde_json::Value>().await {
-                let msg_id = json_body.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let msg_id = json_body
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
                 Ok(WebhookResponse {
                     success: true,
                     message_id: msg_id,
@@ -230,13 +187,8 @@ async fn send_discord_webhook(
 }
 
 pub fn run() {
-    let client_id = std::env::var("DISCORD_CLIENT_ID")
-        .unwrap_or_else(|_| DEFAULT_DISCORD_CLIENT_ID.to_string());
-
-    let discord_state: DiscordStateHandle = Arc::new(Mutex::new(DiscordState {
-        client: None,
-        client_id,
-    }));
+    let discord_manager: SharedDiscordManager = Arc::new(Mutex::new(DiscordManager::new()));
+    let worker_manager = discord_manager.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -247,14 +199,21 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
-        .manage(discord_state)
+        .manage(discord_manager)
         .invoke_handler(tauri::generate_handler![
+            get_discord_status,
             set_presence,
             clear_presence,
+            send_test_presence,
+            set_discord_client_id,
             send_discord_webhook
         ])
-        .setup(|app| {
+        .setup(move |app| {
+            let app_handle = app.handle().clone();
             let opener_handle = app.handle().clone();
+
+            // Start background worker to auto-detect and auto-connect Discord IPC
+            start_background_discord_worker(app_handle, worker_manager);
 
             // Load remote site in release, or localhost in debug
             let target_url = if cfg!(debug_assertions) {
