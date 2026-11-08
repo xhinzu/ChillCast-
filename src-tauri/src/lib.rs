@@ -237,33 +237,76 @@ pub fn run() {
 
             const BRIDGE_SCRIPT: &str = r#"
 (function() {
+  // Ensure presence is enabled in desktop localStorage
+  try {
+    if (localStorage.getItem('myujiku_discord_presence_enabled') !== 'false') {
+      localStorage.setItem('myujiku_discord_presence_enabled', 'true');
+    }
+  } catch (e) {}
+
+  var lastSentJson = '';
+
+  function invokeSetPresence(payload) {
+    try {
+      var jsonStr = JSON.stringify(payload);
+      if (jsonStr === lastSentJson) return;
+      lastSentJson = jsonStr;
+      console.log('[Desktop Bridge] Invoking set_presence:', payload);
+      if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
+        window.__TAURI_INTERNALS__.invoke('set_presence', { payload: payload });
+      } else if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+        window.__TAURI__.core.invoke('set_presence', { payload: payload });
+      }
+    } catch (err) {
+      console.error('[Desktop Bridge] invoke error:', err);
+    }
+  }
+
   function syncFromDom() {
     try {
       var el = document.getElementById('myujiku-discord-presence');
-      if (!el) return;
-      var title = el.getAttribute('data-title');
-      if (!title || !title.trim()) return;
-      var artist = el.getAttribute('data-artist') || 'Unknown Artist';
-      var coverUrl = el.getAttribute('data-cover-url') || '';
-      var duration = parseFloat(el.getAttribute('data-duration') || '0');
-      var position = parseFloat(el.getAttribute('data-position') || '0');
-      var status = el.getAttribute('data-status') || 'paused';
-      var roomCode = el.getAttribute('data-room-code') || '';
-      var isPaused = status !== 'playing';
+      var title = el ? el.getAttribute('data-title') : null;
+      var artist = el ? el.getAttribute('data-artist') : null;
+      var coverUrl = el ? el.getAttribute('data-cover-url') : null;
+      var duration = el ? parseFloat(el.getAttribute('data-duration') || '0') : 0;
+      var position = el ? parseFloat(el.getAttribute('data-position') || '0') : 0;
+      var status = el ? (el.getAttribute('data-status') || 'paused') : 'paused';
+      var roomCode = el ? (el.getAttribute('data-room-code') || '') : '';
 
+      // Fallback: If #myujiku-discord-presence attributes are not yet set, parse from DOM player bar
+      if (!title || !title.trim()) {
+        var titleElem = document.querySelector('div.flex.flex-col.justify-center.min-w-0.flex-1 p:first-child');
+        if (titleElem && titleElem.textContent && titleElem.textContent.trim() !== 'ChillCast • Ready' && titleElem.textContent.trim() !== 'No Track Selected') {
+          title = titleElem.textContent.trim();
+        }
+        var artistElem = document.querySelector('div.flex.flex-col.justify-center.min-w-0.flex-1 p:nth-child(2)');
+        if (artistElem && artistElem.textContent && artistElem.textContent.trim() !== 'Ready' && artistElem.textContent.trim() !== 'Select a playlist or track') {
+          artist = artistElem.textContent.trim();
+        }
+        var imgElem = document.querySelector('div.relative.w-14.h-14 img');
+        if (imgElem && imgElem.src) {
+          coverUrl = imgElem.src;
+        }
+      }
+
+      if (!title || !title.trim() || title === 'ChillCast • Ready' || title === 'No Track Selected') {
+        return;
+      }
+
+      var isPaused = status !== 'playing';
       var nowSec = Math.floor(Date.now() / 1000);
       var startTs = !isPaused ? (nowSec - Math.floor(position)) : null;
       var endTs = (!isPaused && duration > 0 && startTs) ? (startTs + Math.floor(duration)) : null;
 
-      var ytMatch = coverUrl.match(/\/vi\/([A-Za-z0-9_-]{11})\//);
+      var ytMatch = coverUrl ? coverUrl.match(/\/vi\/([A-Za-z0-9_-]{11})\//) : null;
       var finalCover = ytMatch
         ? ('https://myujiku.vercel.app/api/cover?id=' + ytMatch[1])
-        : (coverUrl.startsWith('https://') ? coverUrl : null);
+        : (coverUrl && coverUrl.startsWith('https://') ? coverUrl : null);
       var roomUrl = roomCode ? ('https://myujiku.vercel.app/together/' + roomCode) : null;
 
       var payload = {
         title: title,
-        artist: artist,
+        artist: artist || 'Unknown Artist',
         album: null,
         coverUrl: finalCover,
         startTimestamp: startTs,
@@ -273,9 +316,7 @@ pub fn run() {
         hideDetails: localStorage.getItem('myujiku_discord_presence_hide_details') === 'true'
       };
 
-      if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
-        window.__TAURI_INTERNALS__.invoke('set_presence', { payload: payload });
-      }
+      invokeSetPresence(payload);
     } catch (e) {
       console.debug('[Desktop Bridge] sync error:', e);
     }
@@ -286,10 +327,9 @@ pub fn run() {
     if (target) {
       var observer = new MutationObserver(syncFromDom);
       observer.observe(target, { attributes: true, childList: true });
-      syncFromDom();
-    } else {
-      setTimeout(initObserver, 400);
     }
+    syncFromDom();
+    setInterval(syncFromDom, 3000);
   }
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -306,6 +346,7 @@ pub fn run() {
                 .min_inner_size(900.0, 600.0)
                 .resizable(true)
                 .drag_and_drop(false)
+                .devtools(true)
                 .additional_browser_args("--autoplay-policy=no-user-gesture-required")
                 .initialization_script(BRIDGE_SCRIPT)
                 .on_navigation(move |url| {

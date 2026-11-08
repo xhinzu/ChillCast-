@@ -8,7 +8,14 @@
   ],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "allow-get-discord-status",
+    "allow-get-discord-debug-info",
+    "allow-set-presence",
+    "allow-clear-presence",
+    "allow-send-test-presence",
+    "allow-set-discord-client-id",
+    "allow-send-discord-webhook"
   ],
   "remote": {
     "urls": [

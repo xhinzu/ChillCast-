@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-discord-client-id"
+description = "Enables the set_discord_client_id command without any pre-configured scope."
+commands.allow = ["set_discord_client_id"]
+
+[[permission]]
+identifier = "deny-set-discord-client-id"
+description = "Denies the set_discord_client_id command without any pre-configured scope."
+commands.deny = ["set_discord_client_id"]
