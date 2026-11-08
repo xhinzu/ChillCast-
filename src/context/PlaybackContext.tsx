@@ -15,6 +15,8 @@ import {
   TrackInfo,
 } from '@/types/playback';
 import { createAdapter, LocalAudioAdapter } from '@/lib/adapters';
+import { resolveNextAutoplayTrack, type AutoplayResult } from '@/lib/playback/autoplay';
+import { getSettings } from '@/lib/settings/settings-store';
 
 interface PlaybackContextValue {
   activeAdapterType: AdapterType;
@@ -31,6 +33,11 @@ interface PlaybackContextValue {
   isMuffled: boolean;
   isShuffle: boolean;
   isRepeat: boolean;
+
+  upcomingAutoplay: AutoplayResult | null;
+  skipUpcomingAutoplay: () => void;
+  isAutoplayTrack: boolean;
+  autoplayReason: string;
 
   switchAdapter: (type: AdapterType) => Promise<PlaybackAdapter>;
   play: () => Promise<void>;
@@ -97,6 +104,44 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Autoplay State & Queue
+  const [upcomingAutoplay, setUpcomingAutoplay] = useState<AutoplayResult | null>(null);
+  const upcomingAutoplayRef = useRef<AutoplayResult | null>(null);
+  const [isAutoplayTrack, setIsAutoplayTrack] = useState<boolean>(false);
+  const [autoplayReason, setAutoplayReason] = useState<string>('');
+  const historyTrackIdsRef = useRef<Set<string>>(new Set());
+  const recentArtistsRef = useRef<string[]>([]);
+  const isResolvingAutoplayRef = useRef<boolean>(false);
+
+  const triggerAutoplayPrefetch = useCallback(async (track: TrackInfo) => {
+    if (isResolvingAutoplayRef.current || upcomingAutoplayRef.current) return;
+    const settings = getSettings();
+    if (!settings.playback.autoplay) return;
+
+    isResolvingAutoplayRef.current = true;
+    try {
+      const res = await resolveNextAutoplayTrack(
+        track,
+        historyTrackIdsRef.current,
+        recentArtistsRef.current,
+        false
+      );
+      if (res) {
+        upcomingAutoplayRef.current = res;
+        setUpcomingAutoplay(res);
+      }
+    } catch {}
+    isResolvingAutoplayRef.current = false;
+  }, []);
+
+  const skipUpcomingAutoplay = useCallback(() => {
+    upcomingAutoplayRef.current = null;
+    setUpcomingAutoplay(null);
+    if (currentTrack) {
+      triggerAutoplayPrefetch(currentTrack);
+    }
+  }, [currentTrack, triggerAutoplayPrefetch]);
+
   const playCustomTrackListRef = useRef<((tracks: TrackInfo[], startIndex?: number) => Promise<void>) | null>(null);
 
   // Bind subscriptions from an adapter
@@ -107,10 +152,27 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       const d = adapter.getDuration();
       if (d > 0) {
         setDuration(d);
+        // Prefetch next autoplay candidate ~20s before song ends
+        if (d - pos <= 22 && currentTrack) {
+          triggerAutoplayPrefetch(currentTrack);
+        }
       }
     });
     const unsubTrack = adapter.onTrackChange((track) => {
       setCurrentTrack(track);
+      if (track) {
+        historyTrackIdsRef.current.add(track.id);
+        if (historyTrackIdsRef.current.size > 50) {
+          const first = historyTrackIdsRef.current.values().next().value;
+          if (first) historyTrackIdsRef.current.delete(first);
+        }
+        if (track.artist) {
+          recentArtistsRef.current.push(track.artist);
+          if (recentArtistsRef.current.length > 50) {
+            recentArtistsRef.current.shift();
+          }
+        }
+      }
       if (track && track.duration > 0) {
         setDuration(track.duration);
       } else {
@@ -135,7 +197,21 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
             playCustomTrackListRef.current(tracks, currentIndex + 1);
           } else if (isRepeatRef.current) {
             playCustomTrackListRef.current(tracks, 0);
+          } else if (upcomingAutoplayRef.current && getSettings().playback.autoplay) {
+            const nextPick = upcomingAutoplayRef.current;
+            upcomingAutoplayRef.current = null;
+            setUpcomingAutoplay(null);
+            setIsAutoplayTrack(true);
+            setAutoplayReason(nextPick.reason);
+            playCustomTrackListRef.current([nextPick.track], 0);
           }
+        } else if (upcomingAutoplayRef.current && getSettings().playback.autoplay && playCustomTrackListRef.current) {
+          const nextPick = upcomingAutoplayRef.current;
+          upcomingAutoplayRef.current = null;
+          setUpcomingAutoplay(null);
+          setIsAutoplayTrack(true);
+          setAutoplayReason(nextPick.reason);
+          playCustomTrackListRef.current([nextPick.track], 0);
         }
       }
     });
@@ -147,7 +223,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       unsubState();
       unsubErr();
     };
-  }, []);
+  }, [currentTrack, triggerAutoplayPrefetch]);
 
   // Initialize active adapter on mount or type change
   useEffect(() => {
@@ -315,6 +391,15 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
       if (isRepeatRef.current) {
         playCustomTrackList(tracks, 0);
+        return;
+      }
+      if (upcomingAutoplayRef.current && getSettings().playback.autoplay) {
+        const nextPick = upcomingAutoplayRef.current;
+        upcomingAutoplayRef.current = null;
+        setUpcomingAutoplay(null);
+        setIsAutoplayTrack(true);
+        setAutoplayReason(nextPick.reason);
+        playCustomTrackList([nextPick.track], 0);
         return;
       }
     }
@@ -507,6 +592,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         isMuffled,
         isShuffle,
         isRepeat,
+        upcomingAutoplay,
+        skipUpcomingAutoplay,
+        isAutoplayTrack,
+        autoplayReason,
         switchAdapter,
         play,
         pause,

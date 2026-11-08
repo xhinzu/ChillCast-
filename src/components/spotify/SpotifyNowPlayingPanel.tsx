@@ -38,6 +38,10 @@ export default function SpotifyNowPlayingPanel({
     duration,
     isSpatial8D,
     isMuffled,
+    upcomingAutoplay,
+    skipUpcomingAutoplay,
+    isAutoplayTrack,
+    autoplayReason,
   } = usePlayback();
   const { room, canAdd, addToQueue } = useRoom();
 
@@ -248,6 +252,16 @@ export default function SpotifyNowPlayingPanel({
                     {currentTrack.album}
                   </p>
                 )}
+                {isAutoplayTrack && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Autoplay
+                    </span>
+                    <span className="text-[10px] text-zinc-400 truncate">
+                      {autoplayReason || 'Similar track'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Actions: Like & Add to Playlist */}
@@ -382,6 +396,36 @@ export default function SpotifyNowPlayingPanel({
                 </div>
               )}
             </div>
+
+            {/* Upcoming Autoplay Candidate Card */}
+            {upcomingAutoplay && (
+              <div className="p-3 rounded-xl bg-[#141417] border border-[#262630] space-y-1.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      Up Next • Autoplay
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={skipUpcomingAutoplay}
+                    className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-[#202026] hover:bg-[#2c2c36] transition-colors cursor-pointer"
+                    title="Skip this suggestion and find another"
+                  >
+                    Skip ✕
+                  </button>
+                </div>
+                <div className="min-w-0">
+                  <h5 className="text-xs font-semibold text-white truncate" title={upcomingAutoplay.track.title}>
+                    {upcomingAutoplay.track.title}
+                  </h5>
+                  <p className="text-[10px] text-zinc-400 truncate">
+                    {upcomingAutoplay.track.artist} • <span className="italic text-zinc-400">{upcomingAutoplay.reason}</span>
+                  </p>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
