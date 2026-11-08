@@ -1,9 +1,11 @@
 mod discord_ipc;
+mod stream_server;
 
 use discord_ipc::{
     start_background_discord_worker, DiscordConnectionStatus, DiscordManager, PresencePayload,
     SharedDiscordManager, PRODUCTION_URL,
 };
+use stream_server::{start_stream_server, StreamServerState};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::menu::{Menu, MenuItem};
@@ -222,9 +224,33 @@ fn update_tray_tooltip(app_handle: AppHandle, title: String, artist: String) -> 
     Ok(())
 }
 
+#[tauri::command]
+fn get_stream_port(server_state: tauri::State<'_, Arc<StreamServerState>>) -> u16 {
+    server_state.port
+}
+
+#[tauri::command]
+fn get_youtube_stream_url(
+    video_id: String,
+    server_state: tauri::State<'_, Arc<StreamServerState>>,
+) -> String {
+    format!(
+        "http://127.0.0.1:{}/stream?v={}",
+        server_state.port, video_id
+    )
+}
+
 pub fn run() {
     let discord_manager: SharedDiscordManager = Arc::new(Mutex::new(DiscordManager::new()));
     let worker_manager = discord_manager.clone();
+
+    let (stream_port, stream_state) = match start_stream_server() {
+        Ok(res) => res,
+        Err(e) => {
+            log::error!("Failed to start local stream server: {}", e);
+            (34567, Arc::new(StreamServerState::new(34567)))
+        }
+    };
 
     tauri::Builder::default()
         .on_window_event(|window, event| {
@@ -242,6 +268,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .manage(discord_manager)
+        .manage(stream_state)
         .invoke_handler(tauri::generate_handler![
             get_discord_status,
             get_discord_debug_info,
@@ -252,7 +279,9 @@ pub fn run() {
             send_discord_webhook,
             hide_window,
             quit_app,
-            update_tray_tooltip
+            update_tray_tooltip,
+            get_stream_port,
+            get_youtube_stream_url
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();
@@ -451,6 +480,11 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            let full_bridge_script = format!(
+                "window.__MYUJIKU_STREAM_PORT__ = {};\n{}",
+                stream_port, BRIDGE_SCRIPT
+            );
+
             let _main_window = tauri::WebviewWindowBuilder::new(app, "main", webview_url)
                 .title("MyuJiku")
                 .inner_size(1280.0, 800.0)
@@ -461,7 +495,7 @@ pub fn run() {
                 .additional_browser_args(
                     "--autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
                 )
-                .initialization_script(BRIDGE_SCRIPT)
+                .initialization_script(&full_bridge_script)
                 .on_navigation(move |url| {
                     let host = url.host_str().unwrap_or("");
                     let is_allowed = host == "myujiku.vercel.app"
