@@ -26,3 +26,4 @@ This document tracks feature parity between the hosted MyuJiku web app and the n
 | **Discord Suite** | Native Discord Rich Presence (IPC) | **PASS** | Rust `set_presence` command talks to local Discord client via named pipe (`\\.\pipe\discord-ipc-0`). |
 | **Discord Suite** | Now Playing Webhook | **PASS** | Bypasses browser CORS via Rust command; supports automated message editing (PATCH) and cleanup on stop. |
 | **Discord Suite** | Copy Custom Status button | **PASS** | One-click button in player bar and settings formats `🎧 <Artist> - <Title> | MyuJiku` directly to system clipboard with toast. |
+

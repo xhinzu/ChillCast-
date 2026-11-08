@@ -37,3 +37,4 @@ export async function copyDiscordCustomStatus(
     return { success: false, text: statusText };
   }
 }
+

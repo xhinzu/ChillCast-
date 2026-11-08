@@ -49,10 +49,9 @@ fn set_presence(
     // Attempt connection if not already connected
     if state_guard.client.is_none() {
         let client_id = state_guard.client_id.clone();
-        if let Ok(mut new_client) = DiscordIpcClient::new(&client_id) {
-            if new_client.connect().is_ok() {
-                state_guard.client = Some(new_client);
-            }
+        let mut new_client = DiscordIpcClient::new(&client_id);
+        if new_client.connect().is_ok() {
+            state_guard.client = Some(new_client);
         }
     }
 
@@ -255,8 +254,7 @@ pub fn run() {
             send_discord_webhook
         ])
         .setup(|app| {
-            let handle = app.handle();
-            let opener_handle = handle.clone();
+            let opener_handle = app.handle().clone();
 
             // Load remote site in release, or localhost in debug
             let target_url = if cfg!(debug_assertions) {
@@ -265,14 +263,19 @@ pub fn run() {
                 PRODUCTION_URL
             };
 
-            if let Some(window) = app.get_webview_window("main") {
-                // Navigate to target URL
-                if let Ok(parsed_url) = target_url.parse() {
-                    let _ = window.navigate(WebviewUrl::External(parsed_url));
-                }
+            let webview_url = match target_url.parse::<tauri::Url>() {
+                Ok(url) => WebviewUrl::External(url),
+                Err(_) => WebviewUrl::App("../src-tauri/fallback/index.html".into()),
+            };
 
-                // Setup navigation rules: allow site, Discord OAuth, Supabase; open others in system browser
-                let _ = window.on_navigation(move |url| {
+            let _main_window = tauri::WebviewWindowBuilder::new(app, "main", webview_url)
+                .title("MyuJiku")
+                .inner_size(1280.0, 800.0)
+                .min_inner_size(900.0, 600.0)
+                .resizable(true)
+                .drag_and_drop(false)
+                .additional_browser_args("--autoplay-policy=no-user-gesture-required")
+                .on_navigation(move |url| {
                     let host = url.host_str().unwrap_or("");
                     let is_allowed = host == "myujiku.vercel.app"
                         || host == "localhost"
@@ -289,8 +292,8 @@ pub fn run() {
                         let _ = opener_handle.opener().open_url(url.as_str(), None::<&str>);
                         false
                     }
-                });
-            }
+                })
+                .build()?;
 
             Ok(())
         })

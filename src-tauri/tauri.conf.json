@@ -8,21 +8,7 @@
     "devUrl": "http://localhost:3000"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "MyuJiku",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 900,
-        "minHeight": 600,
-        "resizable": true,
-        "fullscreen": false,
-        "dragDropEnabled": false,
-        "backgroundColor": "#000000",
-        "additionalBrowserArgs": "--autoplay-policy=no-user-gesture-required"
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
@@ -39,7 +25,7 @@
     "windows": {
       "nsis": {
         "installerIcon": "icons/icon.ico",
-        "languages": ["en-US"],
+        "languages": ["English"],
         "displayLanguageSelector": false
       }
     }

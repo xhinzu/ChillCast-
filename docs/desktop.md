@@ -119,3 +119,4 @@ When users install an unsigned `.exe` on Windows, **Windows SmartScreen** shows 
   Windows 10/11 includes Evergreen WebView2 by default. If running on Windows Server or LTSC, install the Evergreen Bootstrapper from [Microsoft WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
 - **Discord Rich Presence not updating**:
   Verify the Discord desktop application is open and logged in. In Discord settings $\rightarrow$ **Activity Privacy**, ensure **"Display current activity as a status message"** is turned ON.
+
