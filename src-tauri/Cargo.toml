@@ -1,0 +1,25 @@
+[package]
+name = "myujiku"
+version = "1.0.0"
+description = "MyuJiku Desktop Application"
+authors = ["MyuJiku"]
+edition = "2021"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4" }
+
+[dependencies]
+tauri = { version = "2.12.5" }
+tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+discord-rich-presence = "1.1.0"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["sync", "time"] }
+log = "0.4"

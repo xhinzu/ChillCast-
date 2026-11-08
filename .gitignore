@@ -49,3 +49,9 @@ next-env.d.ts
 
 # scratch
 scratch/
+
+# tauri & desktop build artifacts
+src-tauri/target/
+dist-desktop/
+releases/
+*.msi

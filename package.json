@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "npx tsx src/lib/lyrics/visuals/__tests__/visuals.test.ts && npx tsx src/lib/lyrics/visuals/effects/__tests__/effects.test.ts && npx tsx src/lib/auth/__tests__/redirect.test.ts && npx tsx src/lib/auth/__tests__/validation.test.ts && npx tsx src/lib/rooms/__tests__/rooms.test.ts && npx tsx src/lib/discord/__tests__/discord-presence.test.ts",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "electron:dev": "electron .",
     "electron:build": "node scripts/build-desktop.js"
   },
@@ -25,6 +27,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

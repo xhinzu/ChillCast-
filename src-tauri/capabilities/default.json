@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default permissions for MyuJiku",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "opener:default"
+  ],
+  "remote": {
+    "urls": [
+      "https://myujiku.vercel.app",
+      "https://myujiku.vercel.app/*",
+      "http://localhost:3000",
+      "http://localhost:3000/*"
+    ]
+  }
+}

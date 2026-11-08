@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyuJiku — Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 24px;
+      user-select: none;
+    }
+    .logo-container {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 20px;
+      background: #141416;
+      border: 1px solid #26262c;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+    .logo-svg {
+      width: 42px;
+      height: 42px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 1.5;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 13px;
+      color: #888892;
+      max-width: 320px;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+    .btn-retry {
+      background-color: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 9999px;
+      padding: 10px 28px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+    }
+    .btn-retry:hover {
+      background-color: #e5e5e5;
+      transform: scale(1.03);
+    }
+    .btn-retry:active {
+      transform: scale(0.97);
+    }
+    .status-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #e11d48;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <svg class="logo-svg" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm12 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z" />
+    </svg>
+  </div>
+  <h1>Unable to Connect</h1>
+  <p><span class="status-dot"></span>MyuJiku could not reach the server. Please check your internet connection and try again.</p>
+  <button class="btn-retry" onclick="retryConnection()">Retry Connection</button>
+
+  <script>
+    function retryConnection() {
+      const target = window.__MYUJIKU_TARGET_URL__ || 'https://myujiku.vercel.app';
+      window.location.href = target;
+    }
+  </script>
+</body>
+</html>
