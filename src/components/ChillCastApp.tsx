@@ -14,6 +14,8 @@ import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 import DiscordPresenceBridge from '@/components/discord/DiscordPresenceBridge';
 import InspectModal from '@/components/lyrics/InspectModal';
 import CloseConfirmationModal from '@/components/desktop/CloseConfirmationModal';
+import ShortcutsOverlayModal from '@/components/common/ShortcutsOverlayModal';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { initThemeApplier } from '@/lib/theme/theme-applier';
 import { useSettings } from '@/lib/settings/useSettings';
 import {
@@ -40,7 +42,58 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
   const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
   const [showInspectModal, setShowInspectModal] = useState<boolean>(false);
   const [showCloseModal, setShowCloseModal] = useState<boolean>(false);
+  const [showShortcutsOverlay, setShowShortcutsOverlay] = useState<boolean>(false);
   const [trayNotice, setTrayNotice] = useState<string | null>(null);
+
+  // Global Keyboard Shortcuts Engine
+  useKeyboardShortcuts({
+    onOpenLyrics: () => setActiveView('lyrics'),
+    onOpenSettings: () => {
+      window.dispatchEvent(new CustomEvent('myujiku_open_settings'));
+    },
+    onToggleShortcutsOverlay: () => setShowShortcutsOverlay((prev) => !prev),
+    onCloseModals: () => {
+      setShowShortcutsOverlay(false);
+      setShowInspectModal(false);
+      setShowCloseModal(false);
+    },
+    onFocusSearch: () => {
+      const searchInput = document.querySelector<HTMLInputElement>(
+        'input[type="search"], input[placeholder*="Search"], input[placeholder*="search"]'
+      );
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    },
+  });
+
+  // Listen to navigation events from shortcuts or modals
+  useEffect(() => {
+    const handleNav = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === 'string') {
+        setActiveView(detail);
+      }
+    };
+    const handleClose = () => {
+      setShowShortcutsOverlay(false);
+      setShowInspectModal(false);
+      setShowCloseModal(false);
+    };
+    const handleToggleShortcuts = () => {
+      setShowShortcutsOverlay((prev) => !prev);
+    };
+
+    window.addEventListener('myujiku_navigate_view', handleNav);
+    window.addEventListener('myujiku_close_modals', handleClose);
+    window.addEventListener('myujiku_toggle_shortcuts_overlay', handleToggleShortcuts);
+    return () => {
+      window.removeEventListener('myujiku_navigate_view', handleNav);
+      window.removeEventListener('myujiku_close_modals', handleClose);
+      window.removeEventListener('myujiku_toggle_shortcuts_overlay', handleToggleShortcuts);
+    };
+  }, []);
 
   // Desktop integration: Window close handler, tray controls, tray tooltip
   useEffect(() => {
@@ -256,6 +309,15 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
         onFirstTimeTrayNotify={() => {
           setTrayNotice('MyuJiku is minimized to the system tray. Music will keep playing in the background.');
           setTimeout(() => setTrayNotice(null), 5000);
+        }}
+      />
+
+      {/* 9. Shortcuts Quick Sheet Modal */}
+      <ShortcutsOverlayModal
+        isOpen={showShortcutsOverlay}
+        onClose={() => setShowShortcutsOverlay(false)}
+        onOpenSettings={() => {
+          window.dispatchEvent(new CustomEvent('myujiku_open_settings'));
         }}
       />
 

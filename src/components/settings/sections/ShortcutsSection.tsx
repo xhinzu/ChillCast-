@@ -43,6 +43,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
 ];
 
 export function formatKeyDisplay(keyStr: string): string {
+  if (keyStr === 'Shift+Slash' || keyStr === '?') return '?';
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.userAgent);
   const parts = keyStr.split('+');
   return parts
