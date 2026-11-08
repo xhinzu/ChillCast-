@@ -201,3 +201,83 @@ export async function sendDesktopWebhook(
     return { success: false, error: msg };
   }
 }
+
+/**
+ * Hide the main window to the system tray (desktop only)
+ */
+export async function hideWindow(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke('hide_window');
+  } catch (err) {
+    console.debug('[Desktop] hide_window error:', err);
+  }
+}
+
+/**
+ * Quit the application completely (clears Discord presence and exits)
+ */
+export async function quitApp(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke('quit_app');
+  } catch (err) {
+    console.debug('[Desktop] quit_app error:', err);
+  }
+}
+
+/**
+ * Update the system tray icon tooltip with the current song info
+ */
+export async function updateTrayTooltip(title: string, artist: string): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke('update_tray_tooltip', { title, artist });
+  } catch (err) {
+    console.debug('[Desktop] update_tray_tooltip error:', err);
+  }
+}
+
+/**
+ * Listen for the window close requested event from Tauri
+ */
+export async function listenWindowCloseRequested(callback: () => void): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  try {
+    const unlisten = await listen('window-close-requested', () => {
+      callback();
+    });
+    return unlisten;
+  } catch (err) {
+    console.debug('[Desktop] listenWindowCloseRequested error:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Listen for tray playback control events
+ */
+export async function listenTrayControls(handlers: {
+  onPlayPause?: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
+}): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  const unlistens: (() => void)[] = [];
+  try {
+    if (handlers.onPlayPause) {
+      unlistens.push(await listen('tray-play-pause', () => handlers.onPlayPause?.()));
+    }
+    if (handlers.onNext) {
+      unlistens.push(await listen('tray-next-track', () => handlers.onNext?.()));
+    }
+    if (handlers.onPrev) {
+      unlistens.push(await listen('tray-prev-track', () => handlers.onPrev?.()));
+    }
+  } catch (err) {
+    console.debug('[Desktop] listenTrayControls error:', err);
+  }
+  return () => {
+    unlistens.forEach((fn) => fn());
+  };
+}

@@ -15,7 +15,10 @@
     "allow-clear-presence",
     "allow-send-test-presence",
     "allow-set-discord-client-id",
-    "allow-send-discord-webhook"
+    "allow-send-discord-webhook",
+    "allow-hide-window",
+    "allow-quit-app",
+    "allow-update-tray-tooltip"
   ],
   "remote": {
     "urls": [

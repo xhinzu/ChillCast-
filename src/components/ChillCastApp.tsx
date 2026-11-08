@@ -13,7 +13,17 @@ import SpotifyNowPlayingPanel from '@/components/spotify/SpotifyNowPlayingPanel'
 import FloatingLyrics from '@/components/lyrics/FloatingLyrics';
 import DiscordPresenceBridge from '@/components/discord/DiscordPresenceBridge';
 import InspectModal from '@/components/lyrics/InspectModal';
+import CloseConfirmationModal from '@/components/desktop/CloseConfirmationModal';
 import { initThemeApplier } from '@/lib/theme/theme-applier';
+import { useSettings } from '@/lib/settings/useSettings';
+import {
+  isTauri,
+  hideWindow,
+  quitApp,
+  updateTrayTooltip,
+  listenWindowCloseRequested,
+  listenTrayControls,
+} from '@/lib/desktop';
 
 export interface ChillCastAppProps {
   initialView?: string;
@@ -21,13 +31,69 @@ export interface ChillCastAppProps {
 }
 
 function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppProps) {
-  const { togglePlay, currentTrack } = usePlayback();
+  const { togglePlay, nextTrack, previousTrack, currentTrack } = usePlayback();
   const { joinRoom, room } = useRoom();
+  const { settings } = useSettings();
   const [activeView, setActiveView] = useState<string>(initialView);
   const [showVideo, setShowVideo] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showNowPlaying, setShowNowPlaying] = useState<boolean>(true);
   const [showInspectModal, setShowInspectModal] = useState<boolean>(false);
+  const [showCloseModal, setShowCloseModal] = useState<boolean>(false);
+  const [trayNotice, setTrayNotice] = useState<string | null>(null);
+
+  // Desktop integration: Window close handler, tray controls, tray tooltip
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    // Listen for window close requested
+    let unlistenClose: (() => void) | undefined;
+    listenWindowCloseRequested(async () => {
+      const action = settings.desktop.closeAction;
+      if (action === 'tray') {
+        const hasSeenNotice = localStorage.getItem('myujiku_seen_tray_notice') === 'true';
+        if (!hasSeenNotice) {
+          try {
+            localStorage.setItem('myujiku_seen_tray_notice', 'true');
+          } catch {}
+          setTrayNotice('MyuJiku is minimized to the system tray. Music will keep playing in the background.');
+          setTimeout(() => setTrayNotice(null), 5000);
+        }
+        await hideWindow();
+      } else if (action === 'quit') {
+        await quitApp();
+      } else {
+        setShowCloseModal(true);
+      }
+    }).then((fn) => {
+      unlistenClose = fn;
+    });
+
+    // Listen for tray playback controls (Show, Play/Pause, Next, Prev, Quit)
+    let unlistenTray: (() => void) | undefined;
+    listenTrayControls({
+      onPlayPause: () => togglePlay(),
+      onNext: () => nextTrack(),
+      onPrev: () => previousTrack(),
+    }).then((fn) => {
+      unlistenTray = fn;
+    });
+
+    return () => {
+      if (unlistenClose) unlistenClose();
+      if (unlistenTray) unlistenTray();
+    };
+  }, [settings.desktop.closeAction, togglePlay, nextTrack, previousTrack]);
+
+  // Update system tray tooltip with current song info
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (currentTrack) {
+      updateTrayTooltip(currentTrack.title || 'Untitled', currentTrack.artist || 'Unknown Artist');
+    } else {
+      updateTrayTooltip('Ready', 'MyuJiku');
+    }
+  }, [currentTrack]);
 
   useEffect(() => {
     const handleOpen = () => setShowInspectModal(true);
@@ -182,6 +248,24 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
         isOpen={showInspectModal}
         onClose={() => setShowInspectModal(false)}
       />
+
+      {/* 8. Desktop Close Confirmation Modal */}
+      <CloseConfirmationModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        onFirstTimeTrayNotify={() => {
+          setTrayNotice('MyuJiku is minimized to the system tray. Music will keep playing in the background.');
+          setTimeout(() => setTrayNotice(null), 5000);
+        }}
+      />
+
+      {/* 9. One-time Tray Notification Toast */}
+      {trayNotice && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-xl bg-[#1e1e28] border border-blue-500/40 text-white text-xs font-medium shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+          <span>{trayNotice}</span>
+        </div>
+      )}
     </div>
   );
 }

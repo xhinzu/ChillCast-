@@ -9,6 +9,9 @@ fn main() {
                 "send_test_presence",
                 "set_discord_client_id",
                 "send_discord_webhook",
+                "hide_window",
+                "quit_app",
+                "update_tray_tooltip",
             ]),
         ),
     )

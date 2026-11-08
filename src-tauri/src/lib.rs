@@ -6,7 +6,9 @@ use discord_ipc::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, WebviewUrl};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl};
 use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -193,11 +195,44 @@ async fn send_discord_webhook(
     }
 }
 
+#[tauri::command]
+fn hide_window(app_handle: AppHandle) -> Result<(), String> {
+    if let Some(w) = app_handle.get_webview_window("main") {
+        let _ = w.hide();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn quit_app(
+    app_handle: AppHandle,
+    manager: tauri::State<'_, SharedDiscordManager>,
+) -> Result<(), String> {
+    manager.lock().unwrap().set_payload(None);
+    app_handle.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+fn update_tray_tooltip(app_handle: AppHandle, title: String, artist: String) -> Result<(), String> {
+    if let Some(tray) = app_handle.tray_by_id("main-tray") {
+        let tooltip = format!("MyuJiku • {} - {}", title, artist);
+        let _ = tray.set_tooltip(Some(tooltip));
+    }
+    Ok(())
+}
+
 pub fn run() {
     let discord_manager: SharedDiscordManager = Arc::new(Mutex::new(DiscordManager::new()));
     let worker_manager = discord_manager.clone();
 
     tauri::Builder::default()
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.emit("window-close-requested", ());
+            }
+        })
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
@@ -214,7 +249,10 @@ pub fn run() {
             clear_presence,
             send_test_presence,
             set_discord_client_id,
-            send_discord_webhook
+            send_discord_webhook,
+            hide_window,
+            quit_app,
+            update_tray_tooltip
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();
@@ -307,8 +345,8 @@ pub fn run() {
 
       var ytMatch = coverUrl ? coverUrl.match(/(?:v=|youtu\.be\/|\/vi\/|[?&]id=)([A-Za-z0-9_-]{11})/) : null;
       var finalCover = ytMatch
-        ? ('https://i.ytimg.com/vi/' + ytMatch[1] + '/hqdefault.jpg')
-        : (coverUrl && coverUrl.startsWith('https://') && !coverUrl.includes('/api/cover') ? coverUrl : null);
+        ? ('mp:https://i.ytimg.com/vi/' + ytMatch[1] + '/hqdefault.jpg')
+        : (coverUrl && coverUrl.startsWith('https://') && !coverUrl.includes('/api/cover') ? ('mp:' + coverUrl) : (coverUrl && coverUrl.startsWith('mp:') ? coverUrl : null));
       var roomUrl = roomCode ? ('https://myujiku.vercel.app/together/' + roomCode) : null;
 
       var payload = {
@@ -347,6 +385,72 @@ pub fn run() {
 })();
 "#;
 
+            // Build System Tray Menu
+            let show_item = MenuItem::with_id(app, "show", "Show MyuJiku", true, None::<&str>)?;
+            let play_pause_item = MenuItem::with_id(app, "play_pause", "Play / Pause", true, None::<&str>)?;
+            let next_item = MenuItem::with_id(app, "next", "Next Track", true, None::<&str>)?;
+            let prev_item = MenuItem::with_id(app, "prev", "Previous Track", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+            let tray_menu = Menu::with_items(
+                app,
+                &[
+                    &show_item,
+                    &play_pause_item,
+                    &next_item,
+                    &prev_item,
+                    &quit_item,
+                ],
+            )?;
+
+            let _tray = TrayIconBuilder::with_id("main-tray")
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("MyuJiku")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "play_pause" => {
+                        let _ = app.emit("tray-play-pause", ());
+                    }
+                    "next" => {
+                        let _ = app.emit("tray-next-track", ());
+                    }
+                    "prev" => {
+                        let _ = app.emit("tray-prev-track", ());
+                    }
+                    "quit" => {
+                        let manager = app.state::<SharedDiscordManager>();
+                        manager.lock().unwrap().set_payload(None);
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
             let _main_window = tauri::WebviewWindowBuilder::new(app, "main", webview_url)
                 .title("MyuJiku")
                 .inner_size(1280.0, 800.0)
@@ -354,7 +458,9 @@ pub fn run() {
                 .resizable(true)
                 .drag_and_drop(false)
                 .devtools(true)
-                .additional_browser_args("--autoplay-policy=no-user-gesture-required")
+                .additional_browser_args(
+                    "--autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
+                )
                 .initialization_script(BRIDGE_SCRIPT)
                 .on_navigation(move |url| {
                     let host = url.host_str().unwrap_or("");
