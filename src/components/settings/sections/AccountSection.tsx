@@ -48,8 +48,8 @@ export default function AccountSection() {
     if (!user) return;
     setIsSyncingNow(true);
     try {
-      await playlistSyncEngine.pullChanges();
       await playlistSyncEngine.pushChanges();
+      await playlistSyncEngine.pullChanges();
       setLastSyncedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch {
       // handled inside engine

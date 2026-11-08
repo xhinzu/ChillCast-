@@ -2,6 +2,7 @@
 
 import { DEFAULT_STARTER_PLAYLISTS } from '@/lib/music-data';
 import type { SavedPlaylistItem, CustomPlaylistTrack } from '@/components/spotify/AddSourceModal';
+import { playlistSyncEngine, isPlaylistDeleted } from '@/lib/sync/playlist-sync';
 
 export const PLAYLISTS_STORAGE_KEY = 'chillify_saved_playlists';
 export const PLAYLISTS_UPDATED_EVENT = 'chillify_playlists_updated';
@@ -58,8 +59,8 @@ export function normalizePlaylist(p: any): SavedPlaylistItem {
     `${trackCount} song${trackCount === 1 ? '' : 's'} • ${
       isLiked ? 'Liked Songs' : 'Custom Playlist'
     }`;
-  const coverUrl =
-    p.coverUrl || p.cover_url || (tracks.length > 0 ? tracks[0].thumbnail : undefined);
+  const firstThumb = tracks.length > 0 && tracks[0].thumbnail ? tracks[0].thumbnail : undefined;
+  const coverUrl = p.coverUrl || p.cover_url || firstThumb;
 
   return {
     ...p,
@@ -70,6 +71,7 @@ export function normalizePlaylist(p: any): SavedPlaylistItem {
     targetUrl: p.targetUrl || '',
     icon: p.icon || (isLiked ? 'heart' : 'music'),
     coverUrl,
+    cover_url: coverUrl,
     tracks,
     description: p.description,
     createdAt:
@@ -81,7 +83,7 @@ export function normalizePlaylist(p: any): SavedPlaylistItem {
 
 /**
  * Retrieve saved playlists from localStorage safely.
- * Filters out nulls, undefineds, or empty/corrupted objects.
+ * Filters out nulls, undefineds, or empty/corrupted objects, and respects deletion tombstones.
  */
 export function getSavedPlaylists(): SavedPlaylistItem[] {
   if (typeof window === 'undefined') return [];
@@ -93,7 +95,10 @@ export function getSavedPlaylists(): SavedPlaylistItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_STARTER_PLAYLISTS;
 
-    const valid = parsed.filter(isValidPlaylist).map(normalizePlaylist);
+    const valid = parsed
+      .filter(isValidPlaylist)
+      .map(normalizePlaylist)
+      .filter((p) => !isPlaylistDeleted(p.id) && !isPlaylistDeleted((p as any).syncId));
 
     // Ensure liked-songs is always present if not already
     const hasLiked = valid.some((p) => p.id === 'liked-songs');
@@ -170,8 +175,12 @@ export function addOrUpdatePlaylist(item: SavedPlaylistItem): SavedPlaylistItem[
 
 /**
  * Deletes a playlist by its ID (except liked-songs which is cleared instead of deleted).
+ * Actively informs the sync engine to soft-delete in Supabase cloud and prevent resurrection.
  */
 export function deletePlaylist(playlistId: string): SavedPlaylistItem[] {
+  // 1. Actively record tombstone and propagate deletion to cloud
+  playlistSyncEngine.deletePlaylist(playlistId);
+
   const current = getSavedPlaylists();
 
   let updated: SavedPlaylistItem[];

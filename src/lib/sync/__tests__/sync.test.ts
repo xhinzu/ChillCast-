@@ -156,4 +156,53 @@ assert.strictEqual(sorted[0].items![1].track.title, 'Two');
 assert.strictEqual(sorted[0].items![2].track.title, 'Three');
 console.log('   ✓ Items sorted correctly by fractional position key');
 
+// 5. Playlist Deletion Tombstone & Non-Resurrection Test
+console.log('\n5. Testing Playlist Deletion Tombstone & Prevention of Resurrection...');
+import { recordDeletedPlaylist, isPlaylistDeleted } from '../playlist-sync';
+
+const deletedPlId = 'pl-deleted-by-user';
+recordDeletedPlaylist(deletedPlId);
+assert.strictEqual(isPlaylistDeleted(deletedPlId), true, 'Tombstone must register deleted playlist');
+
+const cloudWithResurrected: SyncedPlaylist[] = [
+  {
+    id: deletedPlId,
+    name: 'Old Zombie Playlist',
+    kind: 'normal',
+    created_at: '2026-11-01T00:00:00Z',
+    updated_at: '2026-11-08T10:00:00Z',
+    items: [],
+  },
+  {
+    id: 'pl-valid-survivor',
+    name: 'Active Playlist',
+    kind: 'normal',
+    created_at: '2026-11-01T00:00:00Z',
+    updated_at: '2026-11-08T10:00:00Z',
+    items: [],
+  },
+];
+
+const mergedWithDeleted = mergePlaylists([], cloudWithResurrected);
+assert.strictEqual(mergedWithDeleted.length, 1, 'Deleted playlist must NOT be resurrected by cloud list');
+assert.strictEqual(mergedWithDeleted[0].id, 'pl-valid-survivor', 'Survivor playlist must be retained');
+console.log('   ✓ Deleted playlists permanently barred from cloud resurrection');
+
+// 6. Cover Artwork Preservation Test
+console.log('\n6. Testing Cover Photo Derivation & Thumbnail Preservation...');
+const playlistWithTrackThumb = [
+  {
+    id: 'custom-art-test',
+    title: 'Art Vibes',
+    tracks: [
+      { id: 'dQw4w9WgXcQ', title: 'Song With Art', artist: 'Artist', duration: '3:30', thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg' },
+    ],
+  },
+];
+const migratedArt = migrateLocalPlaylists(playlistWithTrackThumb);
+assert.strictEqual(migratedArt[0].cover_url, 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', 'Playlist cover must derive from first track thumbnail');
+assert.strictEqual(migratedArt[0].coverUrl, 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', 'coverUrl property must match cover_url');
+assert.strictEqual(migratedArt[0].items![0].track.thumbnail, 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', 'Track thumbnail must be preserved in items');
+console.log('   ✓ Cover photos and track thumbnails correctly preserved across sync models');
+
 console.log('\n=== ALL PLAYLIST SYNC TESTS PASSED ===\n');
