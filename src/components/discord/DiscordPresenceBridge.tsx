@@ -172,7 +172,7 @@ export default function DiscordPresenceBridge() {
       })();
 
       const coverUrl = ytId
-        ? `https://myujiku.vercel.app/api/cover?id=${ytId}`
+        ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
         : currentTrack.artworkUrl?.startsWith('https://')
         ? currentTrack.artworkUrl
         : undefined;

@@ -239,8 +239,22 @@ impl DiscordIpc {
             "MyuJiku",
         );
 
-        // Determine large image: URL if valid https & <= 256 chars, else fallback to "logo"
+        // Determine large image: direct https URL or fallback to "logo"
         let preferred_large_image = match &payload.cover_url {
+            Some(url) if url.contains("/api/cover") => {
+                // If an un-deployed /api/cover URL is received, extract YouTube ID and use direct YouTube CDN
+                if let Some(pos) = url.find("id=") {
+                    let id = &url[pos + 3..];
+                    let clean_id: String = id.chars().take(11).collect();
+                    if clean_id.len() == 11 {
+                        format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", clean_id)
+                    } else {
+                        "logo".to_string()
+                    }
+                } else {
+                    "logo".to_string()
+                }
+            }
             Some(url) if url.starts_with("https://") && url.len() <= 256 => url.clone(),
             _ => "logo".to_string(),
         };

@@ -298,10 +298,17 @@ pub fn run() {
       var startTs = !isPaused ? (nowSec - Math.floor(position)) : null;
       var endTs = (!isPaused && duration > 0 && startTs) ? (startTs + Math.floor(duration)) : null;
 
-      var ytMatch = coverUrl ? coverUrl.match(/\/vi\/([A-Za-z0-9_-]{11})\//) : null;
+      if (!coverUrl || !coverUrl.trim()) {
+        var imgElem = document.querySelector('div.relative.w-14.h-14 img') || document.querySelector('img[alt="' + (title || '').replace(/"/g, '\\"') + '"]');
+        if (imgElem && imgElem.src) {
+          coverUrl = imgElem.src;
+        }
+      }
+
+      var ytMatch = coverUrl ? coverUrl.match(/(?:v=|youtu\.be\/|\/vi\/|[?&]id=)([A-Za-z0-9_-]{11})/) : null;
       var finalCover = ytMatch
-        ? ('https://myujiku.vercel.app/api/cover?id=' + ytMatch[1])
-        : (coverUrl && coverUrl.startsWith('https://') ? coverUrl : null);
+        ? ('https://i.ytimg.com/vi/' + ytMatch[1] + '/hqdefault.jpg')
+        : (coverUrl && coverUrl.startsWith('https://') && !coverUrl.includes('/api/cover') ? coverUrl : null);
       var roomUrl = roomCode ? ('https://myujiku.vercel.app/together/' + roomCode) : null;
 
       var payload = {
