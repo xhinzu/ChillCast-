@@ -12,6 +12,7 @@ import {
   PlayIcon,
   PauseIcon,
 } from '@/components/common/MinimalIcons';
+import { volumeToGain } from '@/lib/audio/dsp-engine';
 
 interface DualVinylMixerProps {
   savedPlaylists: SavedPlaylistItem[];
@@ -170,23 +171,25 @@ export default function DualVinylMixer({
 
     // Deck A
     const effectiveVolA = Math.max(0, Math.min(1, volumeA * gainA));
+    const perceptualA = volumeToGain(effectiveVolA);
     if (localAudioRefA.current) {
-      localAudioRefA.current.volume = effectiveVolA;
+      localAudioRefA.current.volume = perceptualA;
     }
     if (ytPlayerA.current && typeof ytPlayerA.current.setVolume === 'function') {
       try {
-        ytPlayerA.current.setVolume(Math.round(effectiveVolA * 100));
+        ytPlayerA.current.setVolume(Math.round(perceptualA * 100));
       } catch {}
     }
 
     // Deck B
     const effectiveVolB = Math.max(0, Math.min(1, volumeB * gainB));
+    const perceptualB = volumeToGain(effectiveVolB);
     if (localAudioRefB.current) {
-      localAudioRefB.current.volume = effectiveVolB;
+      localAudioRefB.current.volume = perceptualB;
     }
     if (ytPlayerB.current && typeof ytPlayerB.current.setVolume === 'function') {
       try {
-        ytPlayerB.current.setVolume(Math.round(effectiveVolB * 100));
+        ytPlayerB.current.setVolume(Math.round(perceptualB * 100));
       } catch {}
     }
   }, [volumeA, volumeB, crossfader, getGains]);

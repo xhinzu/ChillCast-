@@ -3,7 +3,7 @@ import { AdapterType, TrackInfo } from '@/types/playback';
 import { parseYouTubeInput } from '@/lib/youtube-utils';
 import { YTPlayer, YTPlayerOptions } from '@/types/youtube';
 import { formatCleanDisplayTrack } from '@/lib/lyrics/normalize';
-import { getDspEngine } from '@/lib/audio/dsp-engine';
+import { getDspEngine, volumeToGain } from '@/lib/audio/dsp-engine';
 
 // Default curated chill playlist (Lofi Girl chill beats)
 export const DEFAULT_CHILL_PLAYLIST_ID = 'PL6NdkXsTSxKMU_F2LTuicHw6N67Fm1sWp';
@@ -62,7 +62,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       if (this.player) {
         try {
           if (typeof this.player.unMute === 'function') this.player.unMute();
-          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
         } catch {}
       }
     }
@@ -90,7 +90,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       if (this.player) {
         try {
           if (typeof this.player.unMute === 'function') this.player.unMute();
-          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
         } catch {}
       }
     }
@@ -146,7 +146,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         if (this.player) {
           try {
             if (typeof this.player.unMute === 'function') this.player.unMute();
-            if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
+            if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
           } catch {}
         }
       }
@@ -158,7 +158,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       if (this.player) {
         try {
           if (typeof this.player.unMute === 'function') this.player.unMute();
-          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
         } catch {
           // ignore
         }
@@ -201,7 +201,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     if (this.player && !this.isStreamingActive) {
       try {
         if (typeof this.player.unMute === 'function') this.player.unMute();
-        if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(this.volume * 100));
+        if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
       } catch {}
     }
 
@@ -305,7 +305,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
               if (!this.isStreamingActive) {
                 if (typeof this.player.unMute === 'function') this.player.unMute();
                 if (typeof this.player.setVolume === 'function') {
-                  this.player.setVolume(Math.round(this.volume * 100));
+                  this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
                 }
               } else {
                 if (typeof this.player.mute === 'function') this.player.mute();
@@ -660,7 +660,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       if (!this.isStreamingActive) {
         if (typeof this.player?.unMute === 'function') this.player.unMute();
         if (typeof this.player?.setVolume === 'function') {
-          this.player.setVolume(Math.round(this.volume * 100));
+          this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
         }
       }
       if (typeof this.player?.playVideo === 'function') {
@@ -790,7 +790,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         } else {
           if (typeof this.player?.unMute === 'function') this.player.unMute();
           if (typeof this.player?.setVolume === 'function') {
-            this.player.setVolume(Math.round(this.volume * 100));
+            this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
           }
         }
         if (typeof this.player?.playVideo === 'function') {
@@ -886,19 +886,21 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   public setVolume(volume: number): void {
     this.volume = Math.max(0, Math.min(1, volume));
     getDspEngine().setVolume(this.volume);
+    const perceptualGain = volumeToGain(this.volume);
+
     if (this.streamAudio) {
       // If connected to Web Audio, let masterGain control volume to avoid double attenuation
       const dsp = getDspEngine();
       if (dsp.isConnected(this.streamAudio)) {
         this.streamAudio.volume = 1.0;
       } else {
-        this.streamAudio.volume = this.volume;
+        this.streamAudio.volume = perceptualGain;
       }
     }
     if (this.player && typeof this.player.setVolume === 'function') {
       try {
         if (!this.isStreamingActive) {
-          this.player.setVolume(Math.round(this.volume * 100));
+          this.player.setVolume(Math.round(perceptualGain * 100));
         }
       } catch {
         // ignore

@@ -1,4 +1,5 @@
 import { AmbientSoundId } from '@/types/audio';
+import { volumeToGain } from '@/lib/audio/dsp-engine';
 
 export class AmbientSoundEngine {
   private ctx: AudioContext | null = null;
@@ -41,14 +42,14 @@ export class AmbientSoundEngine {
   public setMasterVolume(volume: number) {
     if (!this.masterGain || !this.ctx) return;
     const clamped = Math.max(0, Math.min(1, volume));
-    this.masterGain.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.05);
+    this.masterGain.gain.setTargetAtTime(volumeToGain(clamped), this.ctx.currentTime, 0.05);
   }
 
   public setChannelVolume(id: AmbientSoundId, volume: number) {
     const gain = this.getChannelGain(id);
     if (!this.ctx) return;
     const clamped = Math.max(0, Math.min(1, volume));
-    gain.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.05);
+    gain.gain.setTargetAtTime(volumeToGain(clamped), this.ctx.currentTime, 0.05);
   }
 
   public startSound(id: AmbientSoundId) {

@@ -35,6 +35,29 @@ const safeCancelAnimationFrame = (id: number): void => {
   }
 };
 
+/**
+ * Converts a normalized linear slider value [0, 1] into a smooth,
+ * psychoacoustically uniform logarithmic gain value [0, 1].
+ *
+ * Solves the human ear perception issue where:
+ * - low volume (20%) previously sounded like average volume
+ * - middle volume (50%) previously sounded almost maxed out
+ * - full volume (100%) sounded overly piercing / loud
+ *
+ * Implements an optimized power-law audio taper (exponent 2.35):
+ * 0%   -> 0.00 (-inf dB, total silence)
+ * 20%  -> 0.02 (-33 dB, soft background whisper)
+ * 35%  -> 0.09 (-21 dB, relaxed ambient listening)
+ * 50%  -> 0.19 (-14 dB, true psychoacoustic half loudness)
+ * 75%  -> 0.51 (-5.8 dB, standard rich active listening)
+ * 100% -> 1.00 (0 dB, clean maximum volume)
+ */
+export function volumeToGain(sliderValue: number): number {
+  if (typeof sliderValue !== 'number' || isNaN(sliderValue) || sliderValue <= 0) return 0;
+  if (sliderValue >= 1) return 1;
+  return Math.pow(sliderValue, 2.35);
+}
+
 export class DspEngine {
   private static instance: DspEngine | null = null;
 
@@ -285,13 +308,14 @@ export class DspEngine {
   }
 
   /**
-   * Sets master playback volume (0 to 1)
+   * Sets master playback volume (0 to 1) mapped through psychoacoustic curve
    */
   public setVolume(vol: number): void {
     if (!this.ctx) return;
     if (this.masterGain) {
       const clamped = Math.max(0, Math.min(1, vol));
-      this.masterGain.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.03);
+      const gain = volumeToGain(clamped);
+      this.masterGain.gain.setTargetAtTime(gain, this.ctx.currentTime, 0.03);
     }
   }
 

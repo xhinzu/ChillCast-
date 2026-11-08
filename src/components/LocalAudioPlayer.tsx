@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { LocalTrack } from '@/types/audio';
+import { volumeToGain } from '@/lib/audio/dsp-engine';
 
 const DEFAULT_TRACK: LocalTrack = {
   id: 'sample-chill-1',
@@ -94,7 +95,7 @@ export default function LocalAudioPlayer() {
     const audio = audioRef.current;
     setVolume(newVol);
     if (audio) {
-      audio.volume = isMuted ? 0 : newVol;
+      audio.volume = isMuted ? 0 : volumeToGain(newVol);
     }
   };
 
@@ -103,7 +104,7 @@ export default function LocalAudioPlayer() {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
     if (audio) {
-      audio.volume = nextMuted ? 0 : volume;
+      audio.volume = nextMuted ? 0 : volumeToGain(volume);
     }
   };
 

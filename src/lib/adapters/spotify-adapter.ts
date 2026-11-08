@@ -2,6 +2,7 @@ import { BasePlaybackAdapter } from './base-adapter';
 import { AdapterType, TrackInfo } from '@/types/playback';
 import { SpotifyPlaybackState, SpotifyWebPlayer } from '@/types/spotify';
 import { YouTubeAdapter } from './youtube-adapter';
+import { volumeToGain } from '@/lib/audio/dsp-engine';
 
 export type SpotifyMode = 'metadata' | 'pkce';
 
@@ -300,7 +301,7 @@ export class SpotifyAdapter extends BasePlaybackAdapter {
   public setVolume(volume: number): void {
     this.volume = volume;
     if (this.spotifyPlayer) {
-      this.spotifyPlayer.setVolume(volume);
+      this.spotifyPlayer.setVolume(volumeToGain(volume));
     }
     if (this.youtubeResolver) {
       this.youtubeResolver.setVolume(volume);

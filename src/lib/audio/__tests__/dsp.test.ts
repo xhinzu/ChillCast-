@@ -142,6 +142,27 @@ dsp.playTestSweep();
 // Should execute without throwing
 console.log('   ✓ Diagnostic test sweep executed smoothly');
 
+// 7. Test Perceptual Logarithmic Volume Taper
+console.log('\n6. Testing Perceptual Logarithmic Volume Taper (Stevens 10-dB Rule)...');
+import { volumeToGain } from '../dsp-engine';
+
+assert.strictEqual(volumeToGain(0), 0, 'Slider at 0% must be completely silent (gain = 0)');
+assert.strictEqual(volumeToGain(1), 1, 'Slider at 100% must provide full unity gain (gain = 1)');
+
+// At 20% slider (low): gain must be soft background (< 0.05 / -26dB), not "average"
+const lowGain = volumeToGain(0.2);
+assert.ok(lowGain > 0 && lowGain < 0.05, `Low volume (20%) should be quiet background, got gain: ${lowGain.toFixed(4)}`);
+
+// At 50% slider (middle): gain must be psychoacoustic half volume (~0.15 - 0.25 / -12dB), not "full"
+const midGain = volumeToGain(0.5);
+assert.ok(midGain >= 0.15 && midGain <= 0.25, `Middle volume (50%) should be true perceived half loudness, got gain: ${midGain.toFixed(4)}`);
+
+// At 75% slider: gain should scale smoothly around -6dB
+const highGain = volumeToGain(0.75);
+assert.ok(highGain > midGain && highGain < 0.6, `High volume (75%) should scale smoothly, got gain: ${highGain.toFixed(4)}`);
+
+console.log('   ✓ Logarithmic audio taper verified: silent at 0, quiet at 20%, half-perceived at 50%, full at 100%');
+
 console.log('\n========================================================');
 console.log('🎉 ALL WEB AUDIO DSP ENGINE TESTS PASSED SUCCESSFULLY!');
 console.log('========================================================');

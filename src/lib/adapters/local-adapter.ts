@@ -1,6 +1,6 @@
 import { BasePlaybackAdapter } from './base-adapter';
 import { AdapterType, TrackInfo } from '@/types/playback';
-import { getDspEngine } from '@/lib/audio/dsp-engine';
+import { getDspEngine, volumeToGain } from '@/lib/audio/dsp-engine';
 
 export const DEFAULT_LOCAL_TRACK: TrackInfo = {
   id: 'local-chill-1',
@@ -217,11 +217,14 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
 
   public setVolume(volume: number): void {
     this.volume = Math.max(0, Math.min(1, volume));
+    const perceptualGain = volumeToGain(this.volume);
     if (this.gainNode && this.audioCtx) {
-      this.gainNode.gain.setTargetAtTime(this.volume, this.audioCtx.currentTime, 0.02);
-    }
-    if (this.audio) {
-      this.audio.volume = this.volume;
+      this.gainNode.gain.setTargetAtTime(perceptualGain, this.audioCtx.currentTime, 0.02);
+      if (this.audio) {
+        this.audio.volume = 1.0;
+      }
+    } else if (this.audio) {
+      this.audio.volume = perceptualGain;
     }
   }
 
