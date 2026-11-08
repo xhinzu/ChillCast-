@@ -227,6 +227,24 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
     });
 
+    this.streamAudio.addEventListener('waiting', () => {
+      if (this.state === 'playing' && this.player) {
+        try {
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
+        } catch {}
+      }
+    });
+
+    this.streamAudio.addEventListener('stalled', () => {
+      if (this.state === 'playing' && this.player) {
+        try {
+          if (typeof this.player.unMute === 'function') this.player.unMute();
+          if (typeof this.player.setVolume === 'function') this.player.setVolume(Math.round(volumeToGain(this.volume) * 100));
+        } catch {}
+      }
+    });
+
     this.streamAudio.addEventListener('error', (e) => {
       console.warn('[YouTubeAdapter] streamAudio error fired:', this.streamAudio?.error, e);
       this.isStreamingActive = false;

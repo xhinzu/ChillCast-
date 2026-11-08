@@ -185,6 +185,9 @@ export class DspEngine {
     );
     this.muffledFilter.Q.setValueAtTime(this.isMuffledActive ? 1.6 : 0.0001, this.ctx.currentTime);
 
+    // Route inputGain directly into muffledFilter
+    this.inputGain.connect(this.muffledFilter);
+
     // 3. Effects Stage (Dry + Reverb + Chorus)
     const effectsSum = this.ctx.createGain();
     effectsSum.gain.setValueAtTime(1.0, this.ctx.currentTime);
@@ -263,7 +266,7 @@ export class DspEngine {
     if (typeof this.ctx.createDynamicsCompressor === 'function') {
       try {
         this.noiseGateNode = this.ctx.createDynamicsCompressor();
-        this.noiseGateNode.threshold.setValueAtTime(this.isNoiseGateActive ? -45 : -100, this.ctx.currentTime);
+        this.noiseGateNode.threshold.setValueAtTime(this.isNoiseGateActive ? -45 : 0, this.ctx.currentTime);
         this.noiseGateNode.knee.setValueAtTime(30, this.ctx.currentTime);
         this.noiseGateNode.ratio.setValueAtTime(this.isNoiseGateActive ? 12 : 1, this.ctx.currentTime);
         this.noiseGateNode.attack.setValueAtTime(0.003, this.ctx.currentTime);
@@ -439,7 +442,7 @@ export class DspEngine {
     this.isNoiseGateActive = enabled;
     if (!this.ctx) this.getContext();
     if (!this.noiseGateNode || !this.ctx) return;
-    const threshold = enabled ? -45 : -100;
+    const threshold = enabled ? -45 : 0;
     const ratio = enabled ? 12 : 1;
     this.noiseGateNode.threshold.setTargetAtTime(threshold, this.ctx.currentTime, 0.05);
     this.noiseGateNode.ratio.setTargetAtTime(ratio, this.ctx.currentTime, 0.05);
