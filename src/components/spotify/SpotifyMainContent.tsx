@@ -282,7 +282,7 @@ export default function SpotifyMainContent({
     };
 
     const newPlaylist: SavedPlaylistItem = {
-      id: `custom-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `custom-${Date.now()}`,
       title,
       subtitle: '1 song • Custom Playlist',
       type: 'custom',

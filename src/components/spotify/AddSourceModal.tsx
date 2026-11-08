@@ -171,7 +171,7 @@ export default function AddSourceModal({
       );
 
       const newItem: SavedPlaylistItem = {
-        id: `custom-spotify-${Date.now()}`,
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `spotify-${Date.now()}`,
         title: data.playlistName || 'Imported Spotify Playlist',
         subtitle: `${importedTracks.length} song${importedTracks.length === 1 ? '' : 's'} • Spotify Import`,
         type: 'custom',
@@ -205,7 +205,7 @@ export default function AddSourceModal({
       const finalCover = coverPhoto.trim() || undefined;
 
       const newItem: SavedPlaylistItem = {
-        id: `custom-pl-${Date.now()}`,
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `custom-${Date.now()}`,
         title,
         subtitle: '0 songs • Custom Playlist',
         type: 'custom',
@@ -227,7 +227,7 @@ export default function AddSourceModal({
     const title = playlistTitle.trim() || 'YouTube Playlist';
 
     const newItem: SavedPlaylistItem = {
-      id: `saved-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `saved-${Date.now()}`,
       title,
       subtitle: 'Playlist • YouTube',
       type: 'youtube',

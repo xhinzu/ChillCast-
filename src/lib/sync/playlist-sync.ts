@@ -33,6 +33,14 @@ export interface SyncedPlaylist {
   updated_at: string;
   deleted_at?: string | null;
   items?: SyncedPlaylistItem[];
+  // Backwards compatibility with SavedPlaylistItem
+  title?: string;
+  subtitle?: string;
+  type?: string;
+  targetUrl?: string;
+  icon?: string;
+  coverUrl?: string;
+  tracks?: any[];
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
@@ -63,21 +71,55 @@ export function generateUUID(): string {
 }
 
 /**
+ * Deterministically hash any arbitrary string to a standard UUID v4 format.
+ * Guarantees that legacy non-UUID playlist IDs stay completely stable across restarts.
+ */
+export function stringToUUID(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  const hex2 = Math.abs((hash * 31) | 0).toString(16).padStart(8, '0');
+  const hex3 = Math.abs((hash * 59) | 0).toString(16).padStart(8, '0');
+  const hex4 = Math.abs((hash * 97) | 0).toString(16).padStart(8, '0');
+  return `${hex}-${hex2.slice(0, 4)}-4${hex2.slice(4, 7)}-8${hex3.slice(0, 3)}-${hex4.slice(0, 12)}`.toLowerCase();
+}
+
+/**
  * Migrate legacy playlist objects to guarantee stable UUIDs and proper timestamps
  */
 export function migrateLocalPlaylists(rawPlaylists: any[]): SyncedPlaylist[] {
   if (!Array.isArray(rawPlaylists)) return [];
 
   return rawPlaylists.map((p) => {
-    const isLiked = p.id === 'liked-songs' || p.kind === 'liked' || p.title === 'Liked Songs';
-    // If not a valid UUID format, generate one and preserve legacy ID in metadata
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id);
-    const stableId = isValidUUID ? p.id : (isLiked ? '00000000-0000-4000-8000-000000000001' : generateUUID());
+    const isLiked = p.id === 'liked-songs' || p.kind === 'liked' || p.title === 'Liked Songs' || p.name === 'Liked Songs';
+    // If not a valid UUID format, compute deterministic stable UUID or preserve
+    const isValidUUID = typeof p.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id);
+    const stableId = isValidUUID
+      ? p.id
+      : (isLiked ? '00000000-0000-4000-8000-000000000001' : (p.syncId || stringToUUID(String(p.id || 'playlist'))));
 
-    const items: SyncedPlaylistItem[] = (p.tracks || []).map((t: any, index: number) => {
+    const title = p.title || p.name || (isLiked ? 'Liked Songs' : 'My Playlist');
+
+    // Retain or reconstitute tracks array
+    const tracks: any[] = (Array.isArray(p.tracks) && p.tracks.length > 0)
+      ? p.tracks
+      : (p.items || []).map((it: any) => ({
+          id: it.track?.sourceId || it.id || '',
+          title: it.track?.title || 'Unknown',
+          artist: it.track?.artist || 'Unknown',
+          duration: typeof it.track?.durationSec === 'number'
+            ? `${Math.floor(it.track.durationSec / 60)}:${String(Math.floor(it.track.durationSec % 60)).padStart(2, '0')}`
+            : '0:00',
+          thumbnail: it.track?.thumbnail,
+          addedAt: it.added_at ? new Date(it.added_at).getTime() : Date.now(),
+        }));
+
+    const items: SyncedPlaylistItem[] = tracks.map((t: any, index: number) => {
       const itemValidUUID = t.itemUuid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.itemUuid);
       return {
-        id: itemValidUUID ? t.itemUuid : generateUUID(),
+        id: itemValidUUID ? t.itemUuid : stringToUUID(`${stableId}-${t.id || t.sourceId || index}`),
         playlist_id: stableId,
         position: (index + 1) * 1000,
         track: {
@@ -95,14 +137,21 @@ export function migrateLocalPlaylists(rawPlaylists: any[]): SyncedPlaylist[] {
 
     return {
       id: stableId,
-      name: p.title || p.name || (isLiked ? 'Liked Songs' : 'My Playlist'),
+      name: title,
+      title: title,
+      subtitle: p.subtitle || `${tracks.length} song${tracks.length === 1 ? '' : 's'} • ${isLiked ? 'Liked Songs' : 'Custom Playlist'}`,
+      type: p.type || 'custom',
+      icon: p.icon || (isLiked ? 'heart' : 'music'),
+      targetUrl: p.targetUrl || '',
       description: p.description,
-      cover_url: p.coverUrl,
+      cover_url: p.coverUrl || p.cover_url,
+      coverUrl: p.coverUrl || p.cover_url,
       kind: isLiked ? 'liked' : 'normal',
-      created_at: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
-      updated_at: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
+      created_at: p.createdAt ? new Date(p.createdAt).toISOString() : (p.created_at || new Date().toISOString()),
+      updated_at: p.updatedAt ? new Date(p.updatedAt).toISOString() : (p.updated_at || new Date().toISOString()),
       deleted_at: null,
       items,
+      tracks,
     };
   });
 }
@@ -233,8 +282,54 @@ class PlaylistSyncEngine {
   public saveLocalPlaylists(playlists: SyncedPlaylist[]): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(STORAGE_PLAYLISTS_KEY, JSON.stringify(playlists));
+      const normalized = playlists.map((pl) => {
+        const isLiked =
+          pl.id === '00000000-0000-4000-8000-000000000001' ||
+          pl.kind === 'liked' ||
+          pl.name === 'Liked Songs' ||
+          pl.id === 'liked-songs';
+        const title = pl.title || pl.name || (isLiked ? 'Liked Songs' : 'My Playlist');
+        const tracks =
+          pl.tracks && pl.tracks.length > 0
+            ? pl.tracks
+            : (pl.items || []).map((it) => ({
+                id: it.track?.sourceId || it.id,
+                title: it.track?.title || 'Unknown',
+                artist: it.track?.artist || 'Unknown',
+                duration:
+                  typeof it.track?.durationSec === 'number'
+                    ? `${Math.floor(it.track.durationSec / 60)}:${String(
+                        Math.floor(it.track.durationSec % 60)
+                      ).padStart(2, '0')}`
+                    : '0:00',
+                thumbnail: it.track?.thumbnail,
+                addedAt: it.added_at ? new Date(it.added_at).getTime() : Date.now(),
+              }));
+        return {
+          ...pl,
+          id: isLiked ? 'liked-songs' : pl.id,
+          syncId: pl.id,
+          title,
+          name: title,
+          subtitle:
+            pl.subtitle ||
+            `${tracks.length} song${tracks.length === 1 ? '' : 's'} • ${
+              isLiked ? 'Liked Songs' : 'Custom Playlist'
+            }`,
+          type: pl.type || 'custom',
+          icon: pl.icon || (isLiked ? 'heart' : 'music'),
+          targetUrl: pl.targetUrl || '',
+          coverUrl: pl.coverUrl || pl.cover_url,
+          cover_url: pl.coverUrl || pl.cover_url,
+          tracks,
+        };
+      });
+      localStorage.setItem(STORAGE_PLAYLISTS_KEY, JSON.stringify(normalized));
       window.dispatchEvent(new CustomEvent('myujiku_playlists_updated'));
+      window.dispatchEvent(
+        new CustomEvent('chillify_playlists_updated', { detail: { playlists: normalized } })
+      );
+      window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.warn('[Sync] Failed to save local playlists:', e);
     }

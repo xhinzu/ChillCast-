@@ -63,9 +63,11 @@ export default function DiscordSection() {
       return null;
     })();
 
-    const targetUrl = ytId
-      ? `https://myujiku.vercel.app/api/cover?id=${ytId}`
-      : currentTrack?.artworkUrl || 'https://myujiku.vercel.app/api/cover?id=HyHNu342610';
+    const targetUrl = currentTrack?.artworkUrl?.startsWith('https://')
+      ? currentTrack.artworkUrl
+      : ytId
+      ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`
+      : 'https://i.ytimg.com/vi/HyHNu342610/hqdefault.jpg';
 
     try {
       const res = await fetch(targetUrl, { method: 'GET' });

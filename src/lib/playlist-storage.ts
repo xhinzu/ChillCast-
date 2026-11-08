@@ -8,13 +8,75 @@ export const PLAYLISTS_UPDATED_EVENT = 'chillify_playlists_updated';
 
 function isValidPlaylist(p: unknown): p is SavedPlaylistItem {
   if (!p || typeof p !== 'object') return false;
-  const pl = p as Partial<SavedPlaylistItem>;
-  return (
-    typeof pl.id === 'string' &&
-    pl.id.trim().length > 0 &&
-    typeof pl.title === 'string' &&
-    pl.title.trim().length > 0
-  );
+  const pl = p as Record<string, unknown>;
+  const hasId = typeof pl.id === 'string' && pl.id.trim().length > 0;
+  const hasTitle =
+    (typeof pl.title === 'string' && pl.title.trim().length > 0) ||
+    (typeof pl.name === 'string' && pl.name.trim().length > 0);
+  return Boolean(hasId && hasTitle);
+}
+
+/**
+ * Normalizes any playlist object (legacy or synced) into a guaranteed valid SavedPlaylistItem
+ */
+export function normalizePlaylist(p: any): SavedPlaylistItem {
+  const isLiked =
+    p.id === 'liked-songs' ||
+    p.id === '00000000-0000-4000-8000-000000000001' ||
+    p.kind === 'liked' ||
+    p.title === 'Liked Songs' ||
+    p.name === 'Liked Songs';
+
+  const id = isLiked ? 'liked-songs' : String(p.id);
+  const title =
+    (typeof p.title === 'string' && p.title.trim()) ||
+    (typeof p.name === 'string' && p.name.trim()) ||
+    (isLiked ? 'Liked Songs' : 'Custom Playlist');
+
+  let tracks: CustomPlaylistTrack[] = [];
+  if (Array.isArray(p.tracks) && p.tracks.length > 0) {
+    tracks = p.tracks;
+  } else if (Array.isArray(p.items)) {
+    tracks = p.items.map((it: any) => ({
+      id: it.track?.sourceId || it.id || '',
+      title: it.track?.title || 'Unknown',
+      artist: it.track?.artist || 'Unknown',
+      duration:
+        typeof it.track?.durationSec === 'number'
+          ? `${Math.floor(it.track.durationSec / 60)}:${String(
+              Math.floor(it.track.durationSec % 60)
+            ).padStart(2, '0')}`
+          : (it.duration || '0:00'),
+      thumbnail: it.track?.thumbnail || it.thumbnail,
+      addedAt: it.added_at ? new Date(it.added_at).getTime() : (it.addedAt || Date.now()),
+    }));
+  }
+
+  const trackCount = tracks.length;
+  const subtitle =
+    p.subtitle ||
+    `${trackCount} song${trackCount === 1 ? '' : 's'} • ${
+      isLiked ? 'Liked Songs' : 'Custom Playlist'
+    }`;
+  const coverUrl =
+    p.coverUrl || p.cover_url || (tracks.length > 0 ? tracks[0].thumbnail : undefined);
+
+  return {
+    ...p,
+    id,
+    title,
+    subtitle,
+    type: p.type || 'custom',
+    targetUrl: p.targetUrl || '',
+    icon: p.icon || (isLiked ? 'heart' : 'music'),
+    coverUrl,
+    tracks,
+    description: p.description,
+    createdAt:
+      typeof p.createdAt === 'number'
+        ? p.createdAt
+        : (p.created_at ? new Date(p.created_at).getTime() : Date.now()),
+  };
 }
 
 /**
@@ -31,7 +93,7 @@ export function getSavedPlaylists(): SavedPlaylistItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_STARTER_PLAYLISTS;
 
-    const valid = parsed.filter(isValidPlaylist);
+    const valid = parsed.filter(isValidPlaylist).map(normalizePlaylist);
 
     // Ensure liked-songs is always present if not already
     const hasLiked = valid.some((p) => p.id === 'liked-songs');
@@ -50,7 +112,7 @@ export function getSavedPlaylists(): SavedPlaylistItem[] {
       return [liked, ...valid];
     }
 
-    return valid;
+    return valid.length > 0 ? valid : DEFAULT_STARTER_PLAYLISTS;
   } catch (err) {
     console.warn('[PlaylistStorage] Error reading saved playlists:', err);
     return DEFAULT_STARTER_PLAYLISTS;
@@ -63,13 +125,14 @@ export function getSavedPlaylists(): SavedPlaylistItem[] {
 export function saveSavedPlaylists(playlists: SavedPlaylistItem[]): void {
   if (typeof window === 'undefined') return;
 
-  const valid = playlists.filter(isValidPlaylist);
+  const valid = playlists.filter(isValidPlaylist).map(normalizePlaylist);
   try {
     localStorage.setItem(PLAYLISTS_STORAGE_KEY, JSON.stringify(valid));
     // Dispatch local custom event for same-window reactive updates
     window.dispatchEvent(
       new CustomEvent(PLAYLISTS_UPDATED_EVENT, { detail: { playlists: valid } })
     );
+    window.dispatchEvent(new CustomEvent('myujiku_playlists_updated'));
     // Dispatch storage event for cross-window / tab synchronization
     window.dispatchEvent(new Event('storage'));
   } catch (err) {
@@ -78,20 +141,27 @@ export function saveSavedPlaylists(playlists: SavedPlaylistItem[]): void {
 }
 
 /**
- * Adds or updates a playlist (deduplicating by ID).
+ * Adds or updates a playlist (deduplicating by ID, preserving all other playlists).
  */
 export function addOrUpdatePlaylist(item: SavedPlaylistItem): SavedPlaylistItem[] {
   if (!isValidPlaylist(item)) return getSavedPlaylists();
 
+  const normalizedItem = normalizePlaylist(item);
   const current = getSavedPlaylists();
-  const index = current.findIndex((p) => p.id === item.id);
+  const index = current.findIndex((p) => p.id === normalizedItem.id);
 
   let updated: SavedPlaylistItem[];
   if (index >= 0) {
     updated = [...current];
-    updated[index] = item;
+    updated[index] = { ...current[index], ...normalizedItem };
   } else {
-    updated = [item, ...current];
+    // Preserve liked-songs at index 0 if present, otherwise prepend
+    const likedIndex = current.findIndex((p) => p.id === 'liked-songs');
+    if (likedIndex === 0) {
+      updated = [current[0], normalizedItem, ...current.slice(1)];
+    } else {
+      updated = [normalizedItem, ...current];
+    }
   }
 
   saveSavedPlaylists(updated);
