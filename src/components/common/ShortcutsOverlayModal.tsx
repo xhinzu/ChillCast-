@@ -39,7 +39,8 @@ export default function ShortcutsOverlayModal({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 titlebar-no-drag"
+      data-no-drag="true"
       role="dialog"
       aria-modal="true"
       aria-label="Keyboard Shortcuts Cheatsheet"

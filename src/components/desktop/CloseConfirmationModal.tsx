@@ -58,7 +58,8 @@ export default function CloseConfirmationModal({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200 titlebar-no-drag"
+      data-no-drag="true"
       role="dialog"
       aria-modal="true"
       aria-labelledby="close-dialog-title"

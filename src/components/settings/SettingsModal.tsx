@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import AppearanceSection from './sections/AppearanceSection';
 import GlowSection from './sections/GlowSection';
 import AudioSection from './sections/AudioSection';
@@ -199,13 +200,17 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
     reader.readAsText(file);
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-200 titlebar-no-drag"
+      data-no-drag="true"
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-5xl h-[90vh] max-h-[820px] bg-[#121215] border border-[#26262e] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative text-white animate-in zoom-in-95 duration-150"
+        className="w-full max-w-5xl h-[90vh] max-h-[820px] bg-[#121215] border border-[#26262e] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative text-white animate-in zoom-in-95 duration-150 titlebar-no-drag"
+        data-no-drag="true"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ─────────────────── TOP HEADER ─────────────────── */}
@@ -285,7 +290,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
             </div>
 
             {/* Sections Nav List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-1 overscroll-contain">
               {matchingSections.length === 0 ? (
                 <div className="p-4 text-center text-xs text-zinc-500">
                   No matching settings found
@@ -345,7 +350,10 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
             </div>
 
             {/* Section Component Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div
+              className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6 overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {activeSection === 'appearance' && <AppearanceSection onOpenLyricsSettings={onClose} />}
               {activeSection === 'glow' && <GlowSection />}
               {activeSection === 'audio' && <AudioSection />}
@@ -461,4 +469,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 }

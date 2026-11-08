@@ -66,7 +66,7 @@ export default function SpotifyTopNav({
   }, [isCoffeeModalOpen]);
 
   return (
-    <header className="h-14 w-full bg-black flex items-center justify-between px-2.5 sm:px-6 shrink-0 z-40 select-none border-b border-[#1c1c1c] titlebar-drag">
+    <header className="h-14 w-full bg-black flex items-center justify-between px-2.5 sm:px-6 shrink-0 z-40 select-none border-b border-[#1c1c1c]">
       {/* Left: Brand & Navigation arrows */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0 titlebar-no-drag">
         <LogoInspector

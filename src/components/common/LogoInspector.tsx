@@ -215,8 +215,10 @@ export default function LogoInspector({ onHomeClick, onOpenInspectModal }: LogoI
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onPointerLeave={handlePointerCancel}
+        data-no-drag="true"
         onContextMenu={(e) => e.preventDefault()}
-        className="flex items-center gap-2 cursor-pointer group select-none touch-none"
+        className="flex items-center gap-2 cursor-pointer group select-none touch-none titlebar-no-drag"
         title="ChillCast Home (Press and hold to inspect logo)"
         style={{ WebkitTouchCallout: 'none' }}
       >

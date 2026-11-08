@@ -107,13 +107,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Electron Window Dragging */
+/* Electron & WebView2 Window Dragging Rules */
 .titlebar-drag {
   -webkit-app-region: drag;
 }
 
-.titlebar-no-drag {
-  -webkit-app-region: no-drag;
+.titlebar-no-drag,
+.titlebar-no-drag *,
+[data-no-drag],
+[data-no-drag] * {
+  -webkit-app-region: no-drag !important;
 }
 
 /* Chillify Spotify-Style Card */
