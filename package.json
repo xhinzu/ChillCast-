@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx src/lib/lyrics/visuals/__tests__/visuals.test.ts && npx tsx src/lib/lyrics/visuals/effects/__tests__/effects.test.ts && npx tsx src/lib/auth/__tests__/redirect.test.ts && npx tsx src/lib/auth/__tests__/validation.test.ts && npx tsx src/lib/rooms/__tests__/rooms.test.ts && npx tsx src/lib/discord/__tests__/discord-presence.test.ts && npx tsx src/lib/audio/__tests__/dsp.test.ts && npx tsx src/lib/playback/__tests__/autoplay.test.ts",
+    "test": "npx tsx src/lib/lyrics/visuals/__tests__/visuals.test.ts && npx tsx src/lib/lyrics/visuals/effects/__tests__/effects.test.ts && npx tsx src/lib/auth/__tests__/redirect.test.ts && npx tsx src/lib/auth/__tests__/validation.test.ts && npx tsx src/lib/rooms/__tests__/rooms.test.ts && npx tsx src/lib/discord/__tests__/discord-presence.test.ts && npx tsx src/lib/audio/__tests__/dsp.test.ts && npx tsx src/lib/playback/__tests__/autoplay.test.ts && npx tsx src/hooks/__tests__/shortcuts.test.ts && npx tsx src/lib/sync/__tests__/sync.test.ts",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "electron:dev": "electron .",

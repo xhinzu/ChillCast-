@@ -247,7 +247,10 @@ export default function SpotifySidebar({
               <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                 <path d="M14.5 2.134a1 1 0 0 1 1 0l6 3.464a1 1 0 0 1 .5.866V18a1 1 0 0 1-.5.866l-6 3.464a1 1 0 0 1-1 0l-6-3.464a1 1 0 0 1-.5-.866V6.464a1 1 0 0 1 .5-.866l6-3.464zM4.75 5a.75.75 0 0 0-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 0 0 .75-.75V5.75A.75.75 0 0 0 6.25 5h-1.5z" />
               </svg>
-              <span>Playlists</span>
+              <div className="flex items-center gap-1.5">
+                <span>Playlists</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/90" title="Local-first synced library" />
+              </div>
             </div>
 
             {/* "+" Button */}

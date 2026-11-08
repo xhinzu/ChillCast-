@@ -3,14 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/lib/settings/useSettings';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { playlistSyncEngine, type SyncStatus } from '@/lib/sync/playlist-sync';
 import type { User } from '@supabase/supabase-js';
 
 export default function AccountSection() {
   const { settings, updateSettings, resetSection } = useSettings();
   const [user, setUser] = useState<User | null>(null);
-  const [syncStatus, setSyncStatus] = useState<'Synced' | 'Syncing' | 'Offline' | 'Error'>('Synced');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [lastSyncedTime, setLastSyncedTime] = useState<string>('Just now');
   const [isSyncingNow, setIsSyncingNow] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -24,25 +27,33 @@ export default function AccountSection() {
       setUser(session?.user || null);
     });
 
+    const unsubscribe = playlistSyncEngine.subscribeStatus((st) => {
+      setSyncStatus(st);
+      if (st === 'synced') {
+        const meta = playlistSyncEngine.getMetadata();
+        if (meta.lastSyncedAt > 0) {
+          setLastSyncedTime(new Date(meta.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
+      }
+    });
+
     return () => {
       authListener.subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
   const handleSyncNow = async () => {
+    if (!user) return;
     setIsSyncingNow(true);
-    setSyncStatus('Syncing');
     try {
-      // Trigger sync event
-      window.dispatchEvent(new CustomEvent('myujiku_trigger_sync'));
-      setTimeout(() => {
-        setIsSyncingNow(false);
-        setSyncStatus('Synced');
-        setLastSyncedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      }, 1200);
+      await playlistSyncEngine.pullChanges();
+      await playlistSyncEngine.pushChanges();
+      setLastSyncedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch {
+      // handled inside engine
+    } finally {
       setIsSyncingNow(false);
-      setSyncStatus('Error');
     }
   };
 
@@ -51,6 +62,24 @@ export default function AccountSection() {
     if (supabase) {
       await supabase.auth.signOut();
       setUser(null);
+      setActionNotice('Signed out. Your playlists are preserved safely on this device.');
+      setTimeout(() => setActionNotice(null), 4000);
+    }
+  };
+
+  const handleDeleteCloudData = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !user) return;
+
+    try {
+      await supabase.from('playlist_items').delete().eq('user_id', user.id);
+      await supabase.from('playlists').delete().eq('user_id', user.id);
+      await supabase.from('user_settings').delete().eq('user_id', user.id);
+      setDeleteConfirm(false);
+      setActionNotice('All cloud data successfully deleted. Local copies remain safe.');
+      setTimeout(() => setActionNotice(null), 4000);
+    } catch (err) {
+      console.error('Delete error:', err);
     }
   };
 
@@ -148,14 +177,16 @@ export default function AccountSection() {
           <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
-                syncStatus === 'Synced'
+                syncStatus === 'synced'
                   ? 'bg-emerald-400'
-                  : syncStatus === 'Syncing'
+                  : syncStatus === 'syncing'
                   ? 'bg-amber-400 animate-ping'
+                  : syncStatus === 'error'
+                  ? 'bg-red-400'
                   : 'bg-zinc-500'
               }`}
             />
-            <span className="text-xs font-medium text-white">
+            <span className="text-xs font-medium text-white capitalize">
               Status: <span className="text-zinc-300">{syncStatus}</span>
             </span>
             <span className="text-[10px] text-zinc-500">• Last synced: {lastSyncedTime}</span>
@@ -231,13 +262,49 @@ export default function AccountSection() {
         </div>
       </div>
 
+      {/* Action feedback notice */}
+      {actionNotice && (
+        <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs flex items-center gap-2">
+          <span>✓</span>
+          <span>{actionNotice}</span>
+        </div>
+      )}
+
       {/* Data Management & Export */}
       <div className="bg-[#17171a] border border-[#282830] rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="text-xs font-semibold text-white">Your Data &amp; Privacy</h4>
-          <p className="text-[11px] text-zinc-400">Download a full JSON copy of your local playlists and settings anytime.</p>
+          <p className="text-[11px] text-zinc-400">Download a full JSON copy of your local playlists or delete your cloud backups.</p>
         </div>
         <div className="flex items-center gap-2">
+          {user && (
+            deleteConfirm ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleDeleteCloudData}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors cursor-pointer"
+                >
+                  Confirm Delete Cloud Data
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(false)}
+                  className="px-2 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(true)}
+                className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs font-semibold text-red-400 transition-colors cursor-pointer"
+              >
+                Delete Cloud Data
+              </button>
+            )
+          )}
           <button
             type="button"
             onClick={handleExportData}
