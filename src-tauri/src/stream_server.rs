@@ -46,29 +46,53 @@ impl StreamServerState {
 }
 
 pub fn find_ytdl_binary() -> PathBuf {
-    // 1. Check if next to current executable (packaged NSIS app)
+    // 1. Check relative to current executable (packaged NSIS / portable app)
     if let Ok(current_exe) = std::env::current_exe() {
         if let Some(parent) = current_exe.parent() {
-            let candidate = parent.join("yt-dlp.exe");
-            if candidate.exists() {
-                return candidate;
+            let exe_candidates = [
+                parent.join("yt-dlp.exe"),
+                parent.join("_up_").join("yt-dlp.exe"),
+                parent.join("resources").join("yt-dlp.exe"),
+                parent.join("resources").join("_up_").join("yt-dlp.exe"),
+                parent.join("..").join("yt-dlp.exe"),
+            ];
+            for candidate in exe_candidates {
+                if candidate.exists() {
+                    log::info!("[StreamServer] Using bundled yt-dlp at {:?}", candidate);
+                    return candidate;
+                }
             }
         }
     }
 
-    // 2. Check development workspace paths
+    // 2. Check development workspace and common local install paths
     let dev_candidates = [
         PathBuf::from("yt-dlp.exe"),
+        PathBuf::from("_up_\\yt-dlp.exe"),
         PathBuf::from("../yt-dlp.exe"),
         PathBuf::from("F:\\Vibecode\\chillcast\\yt-dlp.exe"),
-        PathBuf::from("C:\\Users\\Sreed\\AppData\\Local\\MyuJiku\\yt-dlp.exe"),
     ];
     for cand in dev_candidates {
         if cand.exists() {
+            log::info!("[StreamServer] Using dev yt-dlp at {:?}", cand);
             return cand;
         }
     }
 
+    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+        let local_candidates = [
+            PathBuf::from(&local_app_data).join("MyuJiku").join("_up_").join("yt-dlp.exe"),
+            PathBuf::from(&local_app_data).join("MyuJiku").join("yt-dlp.exe"),
+        ];
+        for cand in local_candidates {
+            if cand.exists() {
+                log::info!("[StreamServer] Using AppData yt-dlp at {:?}", cand);
+                return cand;
+            }
+        }
+    }
+
+    log::warn!("[StreamServer] yt-dlp.exe not found in app or _up_ folders; falling back to PATH");
     PathBuf::from("yt-dlp.exe")
 }
 
