@@ -3,6 +3,7 @@ import {
   mergePlaylists,
   migrateLocalPlaylists,
   generateUUID,
+  stringToUUID,
   type SyncedPlaylist,
 } from '../playlist-sync';
 
@@ -33,7 +34,13 @@ assert.strictEqual(migrated[0].kind, 'liked', 'Liked songs playlist must have ki
 assert.strictEqual(migrated[0].items?.length, 1, 'Should migrate tracks into items');
 assert.ok(migrated[0].items![0].position > 0, 'Should assign fractional position');
 assert.strictEqual(migrated[1].name, 'Study Beats', 'Should preserve playlist title');
-console.log('   ✓ Legacy playlists successfully converted to synced models with UUIDs');
+
+// Verify deterministic RFC 4122 v4 UUID compliance (36 chars with dashes)
+const testUuid = stringToUUID('custom-playlist-123-track-0');
+assert.strictEqual(testUuid.length, 36, 'stringToUUID must produce exact 36-char RFC 4122 string');
+assert.ok(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(testUuid), 'Must match RFC 4122 UUID v4 regex');
+assert.strictEqual(stringToUUID('custom-playlist-123-track-0'), testUuid, 'stringToUUID must be 100% deterministic');
+console.log('   ✓ Legacy playlists successfully converted to synced models with valid RFC 4122 UUIDs');
 
 // 2. Add on Both Sides Merge Test
 console.log('\n2. Testing Concurrent Additions (Local & Cloud)...');

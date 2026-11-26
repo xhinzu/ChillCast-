@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { useUser } from '@/hooks/useUser';
+import { useUserAvatar } from '@/hooks/useUserAvatar';
 import { profileUpdateSchema } from '@/lib/auth/validation';
 import {
   getDiscordPresenceEnabled,
@@ -19,6 +19,7 @@ interface ProfileModalProps {
 
 export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { user, profile, updateDisplayName, signOut, isLoading } = useUser();
+  const { avatarUrl, handleImageError, initials } = useUserAvatar();
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -123,12 +124,6 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     }
   };
 
-  // Compute initials avatar fallback
-  const initials = (profile?.display_name || user.email || 'U')
-    .trim()
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <div
       className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200"
@@ -153,14 +148,12 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         <div className="flex items-center gap-4 border-b border-[#24242a] pb-5">
           {/* Avatar */}
           <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-xl font-bold shadow-lg shrink-0 border-2 border-white/10">
-            {profile?.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.display_name || 'User Avatar'}
-                fill
-                sizes="64px"
-                className="object-cover"
-                unoptimized
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt=""
+                onError={handleImageError}
+                className="w-full h-full object-cover"
               />
             ) : (
               <span>{initials}</span>

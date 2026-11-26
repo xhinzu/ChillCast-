@@ -11,6 +11,10 @@ interface EdgeGlowProps {
   mode?: EdgeGlowMode;
   thickness?: number; // in px
   glowSize?: number;  // in px
+  colorSource?: 'artwork' | 'custom' | 'accent';
+  customColor?: string;
+  glowStyle?: EdgeGlowStyle;
+  intensity?: number;
   highlightColor?: string;
   secondaryColor?: string;
   chromaEnabled?: boolean;
@@ -23,6 +27,10 @@ export default function EdgeGlow({
   mode: propMode,
   thickness: propThickness,
   glowSize: propGlowSize,
+  colorSource: propColorSource,
+  customColor: propCustomColor,
+  glowStyle: propGlowStyle,
+  intensity: propIntensity,
   highlightColor: propHighlight = '#ef4444',
   secondaryColor: propSecondary = '#f59e0b',
   chromaEnabled: propChroma = false,
@@ -33,8 +41,8 @@ export default function EdgeGlow({
   const glow = settings.glow;
 
   const isEnabled = propEnabled ?? glow.lyricsEdgeGlowEnabled;
-  const activeStyle: EdgeGlowStyle = glow.lyricsEdgeGlowStyle || 'vignette';
-  const activeMode = glow.lyricsEdgeGlowMode || propMode || 'music_sync';
+  const activeStyle: EdgeGlowStyle = (propGlowStyle as EdgeGlowStyle) || glow.lyricsEdgeGlowStyle || 'vignette';
+  const activeMode = propMode || glow.lyricsEdgeGlowMode || 'music_sync';
   const isMusicSync = activeMode === 'music_sync';
 
   const beatEnergy = useBeatEnergy(isEnabled, isMusicSync);
@@ -50,19 +58,25 @@ export default function EdgeGlow({
   }, []);
 
   // Determine base colors
+  const effectiveColorSource = propColorSource || glow.lyricsEdgeGlowColorSource || 'artwork';
+  const effectiveCustomColor = propCustomColor || glow.lyricsEdgeGlowCustomColor;
+
   let primaryColor = propHighlight;
   let secondaryColor = propSecondary;
 
-  if (glow.lyricsEdgeGlowColorSource === 'custom' && glow.lyricsEdgeGlowCustomColor) {
-    primaryColor = glow.lyricsEdgeGlowCustomColor;
-    secondaryColor = glow.lyricsEdgeGlowCustomColor;
+  if (effectiveColorSource === 'custom' && effectiveCustomColor) {
+    primaryColor = effectiveCustomColor;
+    secondaryColor = effectiveCustomColor;
+  } else if (effectiveColorSource === 'accent') {
+    primaryColor = 'var(--accent, #8b5cf6)';
+    secondaryColor = 'var(--accent, #8b5cf6)';
   } else if (glow.lyricsEdgeGlowColorSource === 'gradient' && glow.lyricsEdgeGlowGradient?.stops?.length >= 2) {
     primaryColor = glow.lyricsEdgeGlowGradient.stops[0];
     secondaryColor = glow.lyricsEdgeGlowGradient.stops[1];
   }
 
   // Modulate intensity based on mode (static vs breathing vs music_sync)
-  const baseIntensity = glow.lyricsEdgeGlowIntensity || 0.65;
+  const baseIntensity = propIntensity ?? glow.lyricsEdgeGlowIntensity ?? 0.7;
   const currentIntensity = useMemo(() => {
     if (activeMode === 'music_sync') {
       return Math.max(0.2, Math.min(1.0, beatEnergy * baseIntensity * 1.3));

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/lib/settings/useSettings';
+import { useUserAvatar } from '@/hooks/useUserAvatar';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { playlistSyncEngine, type SyncStatus } from '@/lib/sync/playlist-sync';
 import type { User } from '@supabase/supabase-js';
@@ -9,6 +10,7 @@ import { SettingsCheckIcon } from '../SettingsIcons';
 
 export default function AccountSection() {
   const { settings, updateSettings, resetSection } = useSettings();
+  const { avatarUrl, displayName, initials, handleImageError } = useUserAvatar();
   const [user, setUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
   const [lastSyncedTime, setLastSyncedTime] = useState<string>('Just now');
@@ -99,9 +101,6 @@ export default function AccountSection() {
     URL.revokeObjectURL(url);
   };
 
-  const discordAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
-  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.custom_claims?.global_name || user?.email || 'Guest User';
-
   return (
     <div className="space-y-6 text-xs text-zinc-300">
       <div className="flex items-center justify-between">
@@ -129,12 +128,13 @@ export default function AccountSection() {
         {user ? (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              {discordAvatar ? (
+              {avatarUrl ? (
                 <img
-                  src={discordAvatar}
-                  alt={displayName}
+                  src={avatarUrl}
+                  alt=""
+                  onError={handleImageError}
                   style={{ borderColor: 'var(--accent)' }}
-                  className="w-10 h-10 rounded-full border-2"
+                  className="w-10 h-10 rounded-full border-2 object-cover"
                 />
               ) : (
                 <div

@@ -1,3 +1,5 @@
+import type { EdgeGlowStyle } from '@/lib/settings/settings-store';
+
 export type LyricsStyle =
   | 'classic'
   | 'visual'
@@ -18,7 +20,9 @@ export type LyricsFont =
   | 'jost'
   | 'playfair';
 
-export type EdgeGlowMode = 'music_sync' | 'static';
+export type EdgeGlowMode = 'music_sync' | 'static' | 'breathing';
+export type EdgeGlowColorSource = 'artwork' | 'custom' | 'accent';
+export type EdgeGlowStyleOption = EdgeGlowStyle;
 
 export type VisualStyle = 'illustrated' | 'line' | 'emoji' | 'off';
 export type ImageFrequency = 'low' | 'normal' | 'high';
@@ -43,6 +47,10 @@ export interface LyricsSettings {
   edgeGlowMode: EdgeGlowMode;
   edgeGlowThickness: number; // 2 to 14 px
   edgeGlowSize: number;      // 10 to 60 px
+  edgeGlowColorSource?: EdgeGlowColorSource;
+  edgeGlowCustomColor?: string;
+  edgeGlowStyle?: EdgeGlowStyleOption;
+  edgeGlowIntensity?: number; // 0 to 1
   iconsEnabled: boolean;     // legacy alias for wordImagesEnabled
   wordImagesEnabled: boolean;
   visualStyle: VisualStyle;
@@ -76,6 +84,10 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   edgeGlowMode: 'music_sync',
   edgeGlowThickness: 4,
   edgeGlowSize: 28,
+  edgeGlowColorSource: 'artwork',
+  edgeGlowCustomColor: '#06b6d4',
+  edgeGlowStyle: 'vignette',
+  edgeGlowIntensity: 0.7,
   iconsEnabled: true,
   wordImagesEnabled: true,
   visualStyle: 'illustrated',

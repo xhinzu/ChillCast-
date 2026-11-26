@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { useUser } from '@/hooks/useUser';
+import { useUserAvatar } from '@/hooks/useUserAvatar';
 import AuthModal from './AuthModal';
 import ProfileModal from './ProfileModal';
 
@@ -12,6 +12,7 @@ interface UserMenuProps {
 
 export default function UserMenu({ onOpenSettings }: UserMenuProps = {}) {
   const { user, profile, signOut } = useUser();
+  const { avatarUrl, displayName, initials, handleImageError } = useUserAvatar();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -46,10 +47,6 @@ export default function UserMenu({ onOpenSettings }: UserMenuProps = {}) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
-
-  // Compute initials fallback
-  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'Listener';
-  const initials = displayName.trim().slice(0, 2).toUpperCase();
 
   // If not signed in: Render "Sign in" button
   if (!user) {
@@ -124,14 +121,12 @@ export default function UserMenu({ onOpenSettings }: UserMenuProps = {}) {
       >
         {/* Avatar */}
         <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={displayName}
-              fill
-              sizes="28px"
-              className="object-cover"
-              unoptimized
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt=""
+              onError={handleImageError}
+              className="w-full h-full object-cover"
             />
           ) : (
             <span>{initials}</span>

@@ -1293,6 +1293,10 @@ export default function LyricsPage() {
         mode={settings.edgeGlowMode}
         thickness={settings.edgeGlowThickness}
         glowSize={settings.edgeGlowSize}
+        colorSource={settings.edgeGlowColorSource}
+        customColor={settings.edgeGlowCustomColor}
+        glowStyle={settings.edgeGlowStyle}
+        intensity={settings.edgeGlowIntensity}
         highlightColor={palette.highlight}
         secondaryColor={palette.secondary}
         chromaEnabled={settings.chromaEnabled}

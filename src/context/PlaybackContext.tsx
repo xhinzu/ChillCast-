@@ -170,6 +170,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       }
     });
     const unsubTrack = adapter.onTrackChange((track) => {
+      currentTimeRef.current = 0;
+      setCurrentTime(0);
       setCurrentTrack(track);
       if (track) {
         historyTrackIdsRef.current.add(track.id);
@@ -385,6 +387,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
       const track = tracks[index];
       setErrorMessage(null);
+      currentTimeRef.current = 0;
       setCurrentTime(0);
       setDuration(track.duration || 0);
 

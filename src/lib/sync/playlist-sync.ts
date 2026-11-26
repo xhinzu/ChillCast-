@@ -150,15 +150,23 @@ export function generateUUID(): string {
  * Guarantees that legacy non-UUID playlist IDs stay completely stable across restarts.
  */
 export function stringToUUID(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  if (typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+    return str.toLowerCase();
   }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  const hex2 = Math.abs((hash * 31) | 0).toString(16).padStart(8, '0');
-  const hex3 = Math.abs((hash * 59) | 0).toString(16).padStart(8, '0');
-  const hex4 = Math.abs((hash * 97) | 0).toString(16).padStart(8, '0');
-  return `${hex}-${hex2.slice(0, 4)}-4${hex2.slice(4, 7)}-8${hex3.slice(0, 3)}-${hex4.slice(0, 12)}`.toLowerCase();
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57, h3 = 0x67452301, h4 = 0xefcdab89;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+    h3 = Math.imul(h3 ^ ch, 2246822519);
+    h4 = Math.imul(h4 ^ ch, 3266489917);
+  }
+  const s1 = (h1 >>> 0).toString(16).padStart(8, '0');
+  const s2 = (h2 >>> 0).toString(16).padStart(8, '0');
+  const s3 = (h3 >>> 0).toString(16).padStart(8, '0');
+  const s4 = (h4 >>> 0).toString(16).padStart(8, '0');
+  const hex = s1 + s2 + s3 + s4;
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`.toLowerCase();
 }
 
 /**
@@ -275,6 +283,24 @@ export function migrateLocalPlaylists(rawPlaylists: any[]): SyncedPlaylist[] {
     });
 }
 
+function itemsToTracks(items: SyncedPlaylistItem[]): any[] {
+  return (items || []).map((it) => ({
+    id: it.track?.sourceId || it.id,
+    itemUuid: it.id,
+    title: it.track?.title || 'Unknown',
+    artist: it.track?.artist || 'Unknown Artist',
+    duration:
+      typeof it.track?.durationSec === 'number' && it.track.durationSec > 0
+        ? `${Math.floor(it.track.durationSec / 60)}:${String(Math.floor(it.track.durationSec % 60)).padStart(2, '0')}`
+        : '0:00',
+    durationSec: it.track?.durationSec || 0,
+    thumbnail: it.track?.thumbnail,
+    source: it.track?.source || 'youtube',
+    sourceUrl: it.track?.sourceId ? `https://www.youtube.com/watch?v=${it.track.sourceId}` : undefined,
+    addedAt: it.added_at ? new Date(it.added_at).getTime() : Date.now(),
+  }));
+}
+
 /**
  * Merge two sets of playlists using Last-Write-Wins (LWW) and item tombstones
  */
@@ -290,7 +316,14 @@ export function mergePlaylists(
 
   // Index cloud playlists
   for (const cloud of filteredCloud) {
-    mergedMap.set(cloud.id, { ...cloud, items: [...(cloud.items || [])] });
+    const sortedItems = [...(cloud.items || [])]
+      .filter((it) => !it.deleted_at)
+      .sort((a, b) => a.position - b.position);
+    mergedMap.set(cloud.id, {
+      ...cloud,
+      items: sortedItems,
+      tracks: itemsToTracks(sortedItems),
+    });
   }
 
   // Merge or insert local playlists
@@ -300,7 +333,11 @@ export function mergePlaylists(
       const sortedItems = [...(local.items || [])]
         .filter((it) => !it.deleted_at)
         .sort((a, b) => a.position - b.position);
-      mergedMap.set(local.id, { ...local, items: sortedItems });
+      mergedMap.set(local.id, {
+        ...local,
+        items: sortedItems,
+        tracks: itemsToTracks(sortedItems),
+      });
       continue;
     }
 
@@ -358,6 +395,7 @@ export function mergePlaylists(
       cover_url: mergedCover,
       coverUrl: mergedCover,
       items: mergedItems,
+      tracks: itemsToTracks(mergedItems),
     });
   }
 
@@ -573,7 +611,7 @@ class PlaylistSyncEngine {
         }
 
         // Upsert playlist
-        await supabase.from('playlists').upsert({
+        const { error: plError } = await supabase.from('playlists').upsert({
           id: pl.id,
           user_id: user.id,
           name: pl.name,
@@ -583,6 +621,9 @@ class PlaylistSyncEngine {
           updated_at: pl.updated_at,
           deleted_at: pl.deleted_at,
         });
+        if (plError) {
+          console.warn('[Sync] Failed to upsert playlist:', pl.id, plError);
+        }
 
         // Upsert items
         if (pl.items && pl.items.length > 0) {
@@ -596,7 +637,10 @@ class PlaylistSyncEngine {
             deleted_at: it.deleted_at,
           }));
 
-          await supabase.from('playlist_items').upsert(itemPayloads);
+          const { error: itemError } = await supabase.from('playlist_items').upsert(itemPayloads);
+          if (itemError) {
+            console.warn('[Sync] Failed to upsert playlist items:', pl.id, itemError);
+          }
         }
       }
 

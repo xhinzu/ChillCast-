@@ -167,6 +167,10 @@ export class LocalAudioAdapter extends BasePlaybackAdapter {
     }
     if (!this.audio) return;
 
+    this.position = 0;
+    this.emitPosition(0);
+    this.audio.currentTime = 0;
+
     this.emitState('loading');
     this.currentTrack = track;
     this.emitTrack(track);

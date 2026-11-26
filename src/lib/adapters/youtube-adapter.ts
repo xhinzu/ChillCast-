@@ -216,7 +216,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       this.streamAudio.src = `/api/youtube/stream?v=${videoId}`;
     }
 
-    this.streamAudio.currentTime = this.player?.getCurrentTime() || 0;
+    this.position = 0;
+    this.emitPosition(0);
+    this.streamAudio.currentTime = 0;
     this.streamAudio.load();
 
     // If streaming is already active or any DSP FX is active, keep player muted!
@@ -454,6 +456,14 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       const trackChanged = videoId !== this.currentVideoId;
       const durationChanged = dur > 0 && Math.abs(dur - this.duration) > 0.5;
 
+      if (trackChanged) {
+        this.position = 0;
+        this.emitPosition(0);
+        if (this.streamAudio) {
+          this.streamAudio.currentTime = 0;
+        }
+      }
+
       const currentHasRealTitle =
         this.currentTrack?.title &&
         !['YouTube Video', 'YouTube Track', 'YouTube Playlist', 'YouTube Stream'].includes(this.currentTrack.title);
@@ -660,6 +670,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   private applyTarget(target: { type: 'playlist' | 'video'; id: string }): Promise<void> {
     this.isDirectStreamFallback = false;
+    this.position = 0;
+    this.emitPosition(0);
+    if (this.streamAudio) {
+      this.streamAudio.currentTime = 0;
+    }
     if (!this.isPlayerFunctional()) {
       this.pendingTarget = target;
       return Promise.resolve();
@@ -728,6 +743,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     }
 
     this.duration = trackHint?.duration || 0;
+    this.position = 0;
+    this.emitPosition(0);
+    if (this.streamAudio) {
+      this.streamAudio.currentTime = 0;
+    }
     this.currentVideoId = null;
 
     // Format clean title and artist if trackHint is provided
@@ -894,6 +914,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public nextTrack(): void {
+    this.position = 0;
+    this.emitPosition(0);
+    if (this.streamAudio) {
+      this.streamAudio.currentTime = 0;
+    }
     if (this.player && typeof this.player.nextVideo === 'function') {
       try {
         this.player.nextVideo();
@@ -904,6 +929,11 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public previousTrack(): void {
+    this.position = 0;
+    this.emitPosition(0);
+    if (this.streamAudio) {
+      this.streamAudio.currentTime = 0;
+    }
     if (this.player && typeof this.player.previousVideo === 'function') {
       try {
         this.player.previousVideo();
