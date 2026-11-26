@@ -114,13 +114,19 @@ export class DspEngine {
         this.resumeContext();
       });
 
-      // User gesture listeners
+      // User gesture listeners (desktop + mobile touch)
       const resumeOnGesture = () => {
         this.resumeContext();
         window.removeEventListener('click', resumeOnGesture);
+        window.removeEventListener('touchstart', resumeOnGesture);
+        window.removeEventListener('touchend', resumeOnGesture);
+        window.removeEventListener('pointerdown', resumeOnGesture);
         window.removeEventListener('keydown', resumeOnGesture);
       };
       window.addEventListener('click', resumeOnGesture, { passive: true });
+      window.addEventListener('touchstart', resumeOnGesture, { passive: true });
+      window.addEventListener('touchend', resumeOnGesture, { passive: true });
+      window.addEventListener('pointerdown', resumeOnGesture, { passive: true });
       window.addEventListener('keydown', resumeOnGesture, { passive: true });
     }
   }

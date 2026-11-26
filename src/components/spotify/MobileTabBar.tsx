@@ -24,7 +24,7 @@ export default function MobileTabBar({
   const isPlaylists = activeView === 'playlists' || activeView.startsWith('playlist:');
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[54px] bg-[#0c0c0c] border-t border-[#1e1e1e] flex items-center justify-around z-50">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 min-h-[54px] pb-[env(safe-area-inset-bottom)] bg-[#0c0c0c]/95 backdrop-blur-xl border-t border-[#1e1e1e] flex items-center justify-around z-50">
       {/* 1. Home */}
       <button
         type="button"

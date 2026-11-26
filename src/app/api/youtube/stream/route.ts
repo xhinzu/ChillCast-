@@ -26,6 +26,58 @@ function findYtDlpBinary(): string {
   return 'yt-dlp';
 }
 
+async function resolveViaInnertube(videoId: string): Promise<string> {
+  const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent':
+        'com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip',
+    },
+    body: JSON.stringify({
+      videoId,
+      context: {
+        client: {
+          clientName: 'ANDROID_VR',
+          clientVersion: '1.56.21',
+          androidSdkVersion: 32,
+          hl: 'en',
+          gl: 'US',
+        },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Innertube player returned ${res.status}`);
+  }
+
+  const data = (await res.json()) as {
+    streamingData?: {
+      adaptiveFormats?: Array<{
+        mimeType?: string;
+        bitrate?: number;
+        url?: string;
+      }>;
+    };
+  };
+
+  const audioFormats = (data?.streamingData?.adaptiveFormats || [])
+    .filter((f) => f.mimeType?.startsWith('audio/') && f.url)
+    .sort((a, b) => {
+      const aM4a = a.mimeType?.includes('mp4') ? 1 : 0;
+      const bM4a = b.mimeType?.includes('mp4') ? 1 : 0;
+      if (aM4a !== bM4a) return bM4a - aM4a;
+      return (b.bitrate || 0) - (a.bitrate || 0);
+    });
+
+  if (audioFormats.length > 0 && audioFormats[0].url) {
+    return audioFormats[0].url;
+  }
+
+  throw new Error('No audio formats returned by Innertube');
+}
+
 function getDirectStreamUrl(videoId: string): Promise<string> {
   const cached = urlCache.get(videoId);
   if (cached && cached.expiresAt > Date.now()) {
@@ -38,6 +90,18 @@ function getDirectStreamUrl(videoId: string): Promise<string> {
 
   const promise = new Promise<string>((resolve, reject) => {
     const ytdlPath = findYtDlpBinary();
+    const resolveFallback = () => {
+      resolveViaInnertube(videoId)
+        .then((directUrl) => {
+          urlCache.set(videoId, {
+            url: directUrl,
+            expiresAt: Date.now() + 2 * 60 * 60 * 1000,
+          });
+          resolve(directUrl);
+        })
+        .catch(reject);
+    };
+
     execFile(
       ytdlPath,
       [
@@ -52,10 +116,11 @@ function getDirectStreamUrl(videoId: string): Promise<string> {
         '--no-warnings',
         `https://www.youtube.com/watch?v=${videoId}`,
       ],
-      { timeout: 20000 },
-      (err, stdout, stderr) => {
+      { timeout: 15000 },
+      (err, stdout) => {
         if (err) {
-          return reject(new Error(stderr || err.message));
+          resolveFallback();
+          return;
         }
         const lines = stdout.trim().split('\n').filter((l) => l.startsWith('http'));
         if (lines.length > 0) {
@@ -66,7 +131,7 @@ function getDirectStreamUrl(videoId: string): Promise<string> {
           });
           resolve(directUrl);
         } else {
-          reject(new Error('No stream URL found in yt-dlp output'));
+          resolveFallback();
         }
       }
     );

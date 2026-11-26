@@ -86,44 +86,45 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     }
   }
 
+  private activateFxRouting(dspMethod: () => void, enabled: boolean): void {
+    const dsp = getDspEngine();
+    dsp.getContext();
+    dspMethod();
+    dsp.resumeContext().catch(() => {});
+    if (enabled && this.currentVideoId) {
+      this.loadStreamForVideo(this.currentVideoId);
+    }
+    this.enforceAudioRouting();
+  }
+
   public setMuffled(enabled: boolean): void {
     this.isMuffledActive = enabled;
     const dsp = getDspEngine();
-    dsp.setMuffled(enabled);
-    dsp.resumeContext().catch(() => {});
-    this.enforceAudioRouting();
+    this.activateFxRouting(() => dsp.setMuffled(enabled), enabled);
   }
 
   public setSpatial8D(enabled: boolean): void {
     this.isSpatial8DActive = enabled;
     const dsp = getDspEngine();
-    dsp.set8D(enabled);
-    dsp.resumeContext().catch(() => {});
-    this.enforceAudioRouting();
+    this.activateFxRouting(() => dsp.set8D(enabled), enabled);
   }
 
   public setReverb(enabled: boolean): void {
     this.isReverbActive = enabled;
     const dsp = getDspEngine();
-    dsp.setReverb(enabled);
-    dsp.resumeContext().catch(() => {});
-    this.enforceAudioRouting();
+    this.activateFxRouting(() => dsp.setReverb(enabled), enabled);
   }
 
   public setChorus(enabled: boolean): void {
     this.isChorusActive = enabled;
     const dsp = getDspEngine();
-    dsp.setChorus(enabled);
-    dsp.resumeContext().catch(() => {});
-    this.enforceAudioRouting();
+    this.activateFxRouting(() => dsp.setChorus(enabled), enabled);
   }
 
   public setNoiseGate(enabled: boolean): void {
     this.isNoiseGateActive = enabled;
     const dsp = getDspEngine();
-    dsp.setNoiseGate(enabled);
-    dsp.resumeContext().catch(() => {});
-    this.enforceAudioRouting();
+    this.activateFxRouting(() => dsp.setNoiseGate(enabled), enabled);
   }
 
   public primeAudioStream(videoId: string): void {
@@ -140,6 +141,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.streamAudio.crossOrigin = 'anonymous';
     this.streamAudio.preload = 'auto';
     this.streamAudio.volume = 1.0;
+    this.streamAudio.setAttribute('playsinline', 'true');
+    this.streamAudio.setAttribute('webkit-playsinline', 'true');
     getDspEngine().connectMediaElement(this.streamAudio);
 
     this.streamAudio.addEventListener('playing', () => {

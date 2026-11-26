@@ -114,7 +114,9 @@ export default function SpotifyBottomPlayer({
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
   const [scrubTime, setScrubTime] = useState<number>(0);
   const [showFxMenu, setShowFxMenu] = useState<boolean>(false);
+  const [showMobileSheet, setShowMobileSheet] = useState<boolean>(false);
   const fxButtonRef = useRef<HTMLButtonElement | null>(null);
+  const hasActiveFx = isSpatial8D || isMuffled || isReverb || isChorus || isNoiseGate;
 
   // Playlists state for adding current track
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -177,7 +179,7 @@ export default function SpotifyBottomPlayer({
 
       {/* ─────────────────────────────── MOBILE MINI-PLAYER (Floating above tab bar when song played) ─────────────────────────────── */}
       <div
-        className={`md:hidden fixed bottom-[58px] inset-x-2 z-40 bg-[#161616]/95 backdrop-blur-xl border border-[#2c2c2c] rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
+        className={`md:hidden fixed bottom-[calc(58px+env(safe-area-inset-bottom))] inset-x-2 z-40 bg-[#161616]/95 backdrop-blur-xl border border-[#2c2c2c] rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-out ${
           currentTrack
             ? 'translate-y-0 opacity-100 pointer-events-auto'
             : 'translate-y-16 opacity-0 pointer-events-none'
@@ -191,41 +193,63 @@ export default function SpotifyBottomPlayer({
           />
         </div>
 
-        {/* Single compact row — exactly like Spotify mobile mini-player */}
-        <div className="flex items-center gap-3 px-3 h-[58px]">
-          {/* Album Art */}
-          <div className="relative w-[42px] h-[42px] rounded-lg overflow-hidden bg-[#242424] shrink-0 shadow-md">
-            {currentTrack?.artworkUrl ? (
-              <Image
-                src={currentTrack.artworkUrl}
-                alt={currentTrack.title}
-                fill
-                sizes="42px"
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-zinc-500">
-                <MusicNoteIcon className="w-5 h-5" />
-              </div>
-            )}
-          </div>
+        {/* Single compact row — tap track info to expand full mobile player & FX sheet */}
+        <div className="flex items-center gap-2 px-2.5 h-[58px]">
+          <button
+            type="button"
+            onClick={() => setShowMobileSheet(true)}
+            className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
+            aria-label="Open full player and FX controls"
+          >
+            {/* Album Art */}
+            <div className="relative w-[40px] h-[40px] rounded-lg overflow-hidden bg-[#242424] shrink-0 shadow-md">
+              {currentTrack?.artworkUrl ? (
+                <Image
+                  src={currentTrack.artworkUrl}
+                  alt={currentTrack.title}
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-900 flex items-center justify-center text-zinc-500">
+                  <MusicNoteIcon className="w-5 h-5" />
+                </div>
+              )}
+            </div>
 
-          {/* Title + Artist */}
-          <div className="flex flex-col justify-center min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-white truncate leading-tight">
-              {currentTrack?.title || 'Playing Track'}
-            </p>
-            <p className="text-[11px] text-[#888888] truncate leading-tight mt-0.5">
-              {currentTrack?.artist || 'Unknown Artist'}
-            </p>
-          </div>
+            {/* Title + Artist */}
+            <div className="flex flex-col justify-center min-w-0 flex-1">
+              <p className="text-[13px] font-bold text-white truncate leading-tight">
+                {currentTrack?.title || 'Playing Track'}
+              </p>
+              <p className="text-[11px] text-[#888888] truncate leading-tight mt-0.5">
+                {currentTrack?.artist || 'Unknown Artist'}
+              </p>
+            </div>
+          </button>
+
+          {/* Mobile FX Pill Button */}
+          <button
+            type="button"
+            onClick={() => setShowMobileSheet(true)}
+            className={`px-2 py-1 rounded-md border text-[10px] font-bold font-mono tracking-wider shrink-0 flex items-center gap-1 transition-colors cursor-pointer ${
+              hasActiveFx
+                ? 'bg-white/15 text-white border-white/30'
+                : 'bg-[#1f1f24] text-[#999999] border-[#2e2e36]'
+            }`}
+            title="Audio FX (8D, Muffled, Reverb...)"
+          >
+            <span>FX</span>
+            {hasActiveFx && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
+          </button>
 
           {/* Like */}
           <button
             type="button"
             onClick={handleToggleLike}
-            className={`p-2 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-white' : 'text-[#888888]'}`}
+            className={`p-1.5 shrink-0 transition-colors cursor-pointer ${isLiked ? 'text-white' : 'text-[#888888]'}`}
             title={isLiked ? 'Unlike' : 'Like'}
           >
             <HeartIcon filled={isLiked} className="w-5 h-5" />
@@ -235,13 +259,13 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={handleTogglePlay}
-            className="w-[36px] h-[36px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
+            className="w-[34px] h-[34px] shrink-0 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow cursor-pointer"
             title={effectiveIsPlaying ? 'Pause' : 'Play'}
           >
             {effectiveIsPlaying ? (
-              <svg className="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+              <svg className="w-[17px] h-[17px] fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
             ) : (
-              <svg className="w-[18px] h-[18px] fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+              <svg className="w-[17px] h-[17px] fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
             )}
           </button>
 
@@ -249,13 +273,246 @@ export default function SpotifyBottomPlayer({
           <button
             type="button"
             onClick={handleNextTrack}
-            className="p-2 shrink-0 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
+            className="p-1.5 shrink-0 text-[#b3b3b3] active:text-white transition-colors cursor-pointer"
             title="Next"
           >
-            <svg className="w-[20px] h-[20px] fill-current" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+            <svg className="w-[19px] h-[19px] fill-current" viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
           </button>
         </div>
       </div>
+
+      {/* ─────────────────────────────── MOBILE EXPANDED NOW PLAYING & FX SHEET ─────────────────────────────── */}
+      {showMobileSheet && currentTrack && (
+        <div className="md:hidden fixed inset-0 z-[90] bg-gradient-to-b from-[#1a1a20] via-[#101013] to-black flex flex-col px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+          {/* Header */}
+          <div className="flex items-center justify-between py-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowMobileSheet(false)}
+              className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center cursor-pointer"
+              aria-label="Minimize player"
+            >
+              <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
+              Now Playing
+            </span>
+            {activeAdapterType === 'youtube' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVideo(!showVideo);
+                  setShowMobileSheet(false);
+                }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border cursor-pointer ${
+                  showVideo ? 'bg-white text-black border-white' : 'bg-white/10 text-zinc-200 border-white/15'
+                }`}
+              >
+                {showVideo ? 'Hide Video' : 'Video'}
+              </button>
+            ) : (
+              <div className="w-9" />
+            )}
+          </div>
+
+          {/* Large Artwork */}
+          <div className="my-4 flex items-center justify-center shrink-0">
+            <div className="relative w-64 h-64 max-w-[72vw] max-h-[72vw] rounded-2xl overflow-hidden bg-[#1e1e24] shadow-2xl border border-white/10">
+              {currentTrack.artworkUrl ? (
+                <Image
+                  src={currentTrack.artworkUrl}
+                  alt={currentTrack.title}
+                  fill
+                  sizes="260px"
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                  <MusicNoteIcon className="w-16 h-16" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Title, Artist & Like */}
+          <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-white truncate">{currentTrack.title}</h2>
+              <p className="text-sm text-zinc-400 truncate">{currentTrack.artist}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleLike}
+              className={`p-2 shrink-0 cursor-pointer ${isLiked ? 'text-white' : 'text-zinc-400'}`}
+              aria-label={isLiked ? 'Unlike' : 'Like'}
+            >
+              <HeartIcon filled={isLiked} className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Touch-friendly Scrubber */}
+          <div className="mb-4 shrink-0">
+            <div className="relative w-full h-7 flex items-center">
+              <div className="w-full h-1.5 bg-[#33333a] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white rounded-full"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <input
+                type="range"
+                min="0"
+                max={duration > 0 ? duration : 100}
+                step="0.1"
+                value={displayTime}
+                onPointerDown={() => {
+                  setIsScrubbing(true);
+                  setScrubTime(currentTime);
+                }}
+                onChange={(e) => setScrubTime(parseFloat(e.target.value))}
+                onPointerUp={(e) => {
+                  const targetSec = parseFloat((e.target as HTMLInputElement).value);
+                  handleSeek(targetSec);
+                  setIsScrubbing(false);
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </div>
+            <div className="flex justify-between text-[11px] font-mono text-zinc-400 mt-0.5">
+              <span>{formatTime(displayTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          {/* Full Transport Controls */}
+          <div className="flex items-center justify-between px-2 mb-6 shrink-0">
+            <button
+              type="button"
+              onClick={toggleShuffle}
+              className={`p-2 cursor-pointer ${isShuffle ? 'text-[#1d90f5]' : 'text-zinc-400'}`}
+              aria-label="Shuffle"
+            >
+              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={previousTrack}
+              className="p-2 text-white cursor-pointer"
+              aria-label="Previous"
+            >
+              <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTogglePlay}
+              className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-95 transition-transform cursor-pointer"
+              aria-label={effectiveIsPlaying ? 'Pause' : 'Play'}
+            >
+              {effectiveIsPlaying ? (
+                <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                </svg>
+              ) : (
+                <svg className="w-7 h-7 fill-current ml-0.5" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNextTrack}
+              className="p-2 text-white cursor-pointer"
+              aria-label="Next"
+            >
+              <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                <path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleRepeat}
+              className={`p-2 cursor-pointer ${isRepeat ? 'text-[#1d90f5]' : 'text-zinc-400'}`}
+              aria-label="Repeat"
+            >
+              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Mobile Audio FX Section */}
+          <div className="bg-[#16161c] border border-[#282832] rounded-2xl p-3.5 space-y-2.5 mb-4 shrink-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                Audio FX (Web Audio DSP)
+              </span>
+              <span className="text-[10px] text-zinc-500">Tap to toggle</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: '8D Spatial', active: isSpatial8D, toggle: toggleSpatial8D },
+                { label: 'Muffled', active: isMuffled, toggle: toggleMuffled },
+                { label: 'Reverb', active: isReverb, toggle: toggleReverb },
+                { label: 'Chorus', active: isChorus, toggle: toggleChorus },
+                { label: 'Noise Gate', active: isNoiseGate, toggle: toggleNoiseGate },
+              ].map((fx) => (
+                <button
+                  key={fx.label}
+                  type="button"
+                  onClick={() => fx.toggle()}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                    fx.active
+                      ? 'bg-white/15 border-white/35 text-white shadow-sm'
+                      : 'bg-[#1c1c24] border-[#282834] text-zinc-400'
+                  }`}
+                >
+                  <span>{fx.label}</span>
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      fx.active ? 'bg-[var(--accent)]' : 'bg-zinc-600'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick View Shortcuts */}
+          <div className="grid grid-cols-2 gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveView('lyrics');
+                setShowMobileSheet(false);
+              }}
+              className="py-2.5 rounded-xl bg-white/10 text-white text-xs font-semibold border border-white/10 cursor-pointer"
+            >
+              Open Lyrics
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveView('ambience');
+                setShowMobileSheet(false);
+              }}
+              className="py-2.5 rounded-xl bg-white/10 text-white text-xs font-semibold border border-white/10 cursor-pointer"
+            >
+              Ambient Mixer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ─────────────────────────────── DESKTOP PLAYER (hidden below md, appears when song played) ─────────────────────────────── */}
       <div

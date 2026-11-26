@@ -1,5 +1,5 @@
 import React from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Geist,
   Geist_Mono,
@@ -61,11 +61,26 @@ const playfairFont = Playfair_Display({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
+};
+
 export const metadata: Metadata = {
-  title: "ChillCast — Ambient Lo-Fi & Music Player",
+  title: "MyuJiku — Ambient Lo-Fi & Music Player",
   description: "Personal music sanctuary blending ambient lo-fi soundscapes, live synced lyrics, YouTube, and Spotify.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "MyuJiku",
+  },
   icons: {
     icon: "/myujiku-logo.png",
+    apple: "/myujiku-logo.png",
   },
 };
 
