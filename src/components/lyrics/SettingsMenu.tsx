@@ -1663,6 +1663,29 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                   </div>
                 </div>
 
+                {/* Desktop Wallpaper */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Desktop Wallpaper</span>
+                  <div className="grid grid-cols-3 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'bliss', label: 'Bliss' },
+                      { id: 'teal_98', label: '98 Teal' },
+                      { id: 'midnight', label: 'Midnight' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateWin98({ desktopWallpaper: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          (w98.desktopWallpaper || 'bliss') === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Lyric Reveal Mode */}
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Lyric Reveal</span>
@@ -1758,11 +1781,44 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                       className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
                     />
                   </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">Player White Transparency</span>
+                      <span className="font-mono text-zinc-200">{w98.clientOpacityPct ?? 88}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={20}
+                      max={100}
+                      step={2}
+                      value={w98.clientOpacityPct ?? 88}
+                      onChange={(e) => updateWin98({ clientOpacityPct: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">CRT Scanlines Intensity</span>
+                      <span className="font-mono text-zinc-200">{w98.crtIntensity ?? 45}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={w98.crtIntensity ?? 45}
+                      onChange={(e) => updateWin98({ crtIntensity: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
                 </div>
 
                 {/* Visibility Toggles */}
                 <div className="space-y-1.5">
                   {([
+                    { key: 'crtEnabled', label: 'CRT Monitor Effect' },
+                    { key: 'showDesktopIcons', label: 'Show Desktop Icons' },
+                    { key: 'showTaskbar', label: 'Show Start Menu & Taskbar' },
                     { key: 'showSticker', label: 'Show Corner Sticker' },
                     { key: 'showMyujikuLogo', label: 'Show MyuJiku Logo' },
                     { key: 'showNowPlayingCard', label: 'Show Now Playing Card' },

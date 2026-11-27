@@ -107,6 +107,7 @@ export const DEFAULT_INTENSE_EFFECTS = false;
 
 export interface Windows98StyleSettings {
   titlebarTheme: 'xp_blue' | 'classic_navy' | 'teal' | 'silver';
+  desktopWallpaper: 'bliss' | 'teal_98' | 'midnight';
   revealMode: 'word' | 'line';
   stickerMode: 'per_line' | 'per_song' | 'pinned';
   pinnedStickerIndex: number;
@@ -116,10 +117,16 @@ export interface Windows98StyleSettings {
   showMyujikuLogo: boolean;
   showTransportBar: boolean;
   windowWidthPct: number;
+  clientOpacityPct: number;
+  crtEnabled: boolean;
+  crtIntensity: number;
+  showDesktopIcons: boolean;
+  showTaskbar: boolean;
 }
 
 export const DEFAULT_WINDOWS98_SETTINGS: Windows98StyleSettings = {
   titlebarTheme: 'xp_blue',
+  desktopWallpaper: 'bliss',
   revealMode: 'word',
   stickerMode: 'per_line',
   pinnedStickerIndex: 2,
@@ -128,7 +135,12 @@ export const DEFAULT_WINDOWS98_SETTINGS: Windows98StyleSettings = {
   showNowPlayingCard: true,
   showMyujikuLogo: true,
   showTransportBar: true,
-  windowWidthPct: 88,
+  windowWidthPct: 78,
+  clientOpacityPct: 88,
+  crtEnabled: true,
+  crtIntensity: 45,
+  showDesktopIcons: true,
+  showTaskbar: true,
 };
 
 export interface LyricsSettings {
