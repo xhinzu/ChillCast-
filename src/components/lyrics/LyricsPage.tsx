@@ -34,6 +34,7 @@ import {
 import ClassicStage from './styles/ClassicStage';
 import VisualStage from './styles/VisualStage';
 import Windows98Stage from './styles/Windows98Stage';
+import PlayerStage from './styles/PlayerStage';
 import ConstellationStage from './styles/ConstellationStage';
 import ShipStage from './styles/ShipStage';
 import CameraStage from './styles/CameraStage';
@@ -1244,6 +1245,22 @@ export default function LyricsPage() {
             isInstrumental={Boolean(lyricsResult?.instrumental)}
           />
         );
+      case 'player':
+        return (
+          <PlayerStage
+            lines={displayLines}
+            activeLineIndex={lineIndex}
+            activeWordIndex={wordIndex}
+            effectiveTimeRef={effectiveTimeRef}
+            playerSettings={settings.player}
+            font={settings.font}
+            textSize={settings.textSize}
+            trackTitle={cleanDisplayInfo?.cleanTitle || currentTrack?.title}
+            trackArtist={cleanDisplayInfo?.cleanArtist || currentTrack?.artist}
+            artworkUrl={currentTrack?.artworkUrl}
+            isInstrumental={Boolean(lyricsResult?.instrumental)}
+          />
+        );
       case 'fisheye':
         return <FisheyeStage {...commonProps} />;
       case 'codestyle':
@@ -1784,7 +1801,18 @@ export default function LyricsPage() {
             textSize={settings.textSize}
           />
         )}
-        {!currentTrack && settings.style !== 'disc' && settings.style !== 'windows98' && (
+        {!currentTrack && settings.style === 'player' && (
+          <PlayerStage
+            lines={[]}
+            activeLineIndex={-1}
+            activeWordIndex={-1}
+            effectiveTimeRef={effectiveTimeRef}
+            playerSettings={settings.player}
+            font={settings.font}
+            textSize={settings.textSize}
+          />
+        )}
+        {!currentTrack && settings.style !== 'disc' && settings.style !== 'windows98' && settings.style !== 'player' && (
           <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-full bg-[#181818] border border-[#2a2a2a] flex items-center justify-center text-3xl">
               🎵

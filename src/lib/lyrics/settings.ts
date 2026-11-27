@@ -8,6 +8,7 @@ export type LyricsStyle =
   | 'camera'
   | 'disc'
   | 'windows98'
+  | 'player'
   | 'fisheye'
   | 'codestyle'
   | 'branches'
@@ -153,6 +154,30 @@ export const DEFAULT_WINDOWS98_SETTINGS: Windows98StyleSettings = {
   motionTarget: 'desktop',
 };
 
+export interface PlayerStyleSettings {
+  bgIndex: number; // 0..6
+  useArtworkBg: boolean;
+  bgDimPct: number; // 0..80
+  bgBlurPx: number; // 0..16
+  showParticles: boolean;
+  cameraMotion: boolean;
+  glowIntensity: number; // 0..100
+  showTrackInfo: boolean;
+  visibleLines: number; // 3..6
+}
+
+export const DEFAULT_PLAYER_SETTINGS: PlayerStyleSettings = {
+  bgIndex: 0,
+  useArtworkBg: false,
+  bgDimPct: 28,
+  bgBlurPx: 0,
+  showParticles: true,
+  cameraMotion: true,
+  glowIntensity: 75,
+  showTrackInfo: true,
+  visibleLines: 5,
+};
+
 export interface LyricsSettings {
   version: number;
   style: LyricsStyle;
@@ -191,6 +216,7 @@ export interface LyricsSettings {
   devOverlayEnabled: boolean;
   disc: DiscStyleSettings;
   windows98: Windows98StyleSettings;
+  player: PlayerStyleSettings;
   offsets: Record<string, number>; // trackId -> offset seconds (-3.0 to +3.0)
 }
 
@@ -232,6 +258,7 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   devOverlayEnabled: false,
   disc: { ...DEFAULT_DISC_SETTINGS, tuning: { ...DEFAULT_DISC_TUNING } },
   windows98: { ...DEFAULT_WINDOWS98_SETTINGS },
+  player: { ...DEFAULT_PLAYER_SETTINGS },
   offsets: {},
 };
 
@@ -260,6 +287,7 @@ export function loadLyricsSettings(): LyricsSettings {
       'camera',
       'disc',
       'windows98',
+      'player',
       'fisheye',
       'codestyle',
       'branches',
@@ -388,6 +416,10 @@ export function loadLyricsSettings(): LyricsSettings {
       windows98: {
         ...DEFAULT_WINDOWS98_SETTINGS,
         ...(parsed.windows98 && typeof parsed.windows98 === 'object' ? parsed.windows98 : {}),
+      },
+      player: {
+        ...DEFAULT_PLAYER_SETTINGS,
+        ...(parsed.player && typeof parsed.player === 'object' ? parsed.player : {}),
       },
       offsets: { ...parsed.offsets },
     };

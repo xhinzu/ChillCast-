@@ -10,6 +10,7 @@ import {
   DiscStyleSettings,
   DiscTuningSettings,
   Windows98StyleSettings,
+  PlayerStyleSettings,
   EdgeGlowMode,
   EdgeGlowColorSource,
   EdgeGlowStyleOption,
@@ -18,9 +19,11 @@ import {
   DEFAULT_DISC_SETTINGS,
   DEFAULT_DISC_TUNING,
   DEFAULT_WINDOWS98_SETTINGS,
+  DEFAULT_PLAYER_SETTINGS,
   DEFAULT_INTENSE_EFFECTS,
 } from '@/lib/lyrics/settings';
 import { WINDOWS98_STICKERS } from './styles/Windows98Stage';
+import { PLAYER_BACKGROUNDS } from './styles/PlayerStage';
 import { loadLyricTransform, saveLyricTransform } from '@/lib/lyrics/transform';
 import { Z_INDEX } from '@/constants/zIndex';
 
@@ -35,6 +38,7 @@ type MenuPage =
   | 'style'
   | 'disc'
   | 'windows98'
+  | 'player'
   | 'font'
   | 'edge-glow'
   | 'colors'
@@ -50,6 +54,7 @@ const STYLE_LABELS: { id: LyricsStyle; label: string; badge?: string }[] = [
   { id: 'camera', label: 'Camera', badge: 'Dynamic' },
   { id: 'disc', label: 'Disc', badge: 'Spinning CD' },
   { id: 'windows98', label: 'Windows 98', badge: 'Media Player' },
+  { id: 'player', label: 'Player', badge: 'Scenic' },
   { id: 'fisheye', label: 'Fisheye', badge: '3D Cylinder' },
   { id: 'codestyle', label: 'Codestyle', badge: 'Editor' },
   { id: 'branches', label: 'Branches', badge: 'Tree' },
@@ -425,6 +430,37 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                       </p>
                       <p className="text-[11px] text-zinc-400">
                         {settings.windows98?.stickerMode === 'pinned' ? 'Pinned sticker' : settings.windows98?.stickerMode === 'per_song' ? 'Per song' : 'Changes per line'} • {settings.windows98?.revealMode === 'line' ? 'Full line' : 'Word by word'}
+                      </p>
+                    </div>
+                  </div>
+                  <svg className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Player Style Settings (visible only when Player style is active) */}
+              {settings.style === 'player' && (
+                <button
+                  type="button"
+                  onClick={() => setActivePage('player')}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#18181c] hover:bg-[#222228] border border-white/15 hover:border-white/30 transition-all cursor-pointer group text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-400/40 text-purple-300 flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">
+                        Player Style Settings
+                      </p>
+                      <p className="text-[11px] text-zinc-400">
+                        {settings.player?.useArtworkBg
+                          ? 'Song Cover Art'
+                          : PLAYER_BACKGROUNDS[settings.player?.bgIndex ?? 0]?.label || 'Flower Garden'}{' '}
+                        • {settings.player?.visibleLines ?? 5} lines
                       </p>
                     </div>
                   </div>
@@ -1929,6 +1965,146 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                         type="checkbox"
                         checked={Boolean(w98[item.key])}
                         onChange={(e) => updateWin98({ [item.key]: e.target.checked })}
+                        className="w-4 h-4 rounded bg-[#202020] border-zinc-600 cursor-pointer accent-white"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ============================================================== */}
+          {/* PLAYER STYLE CUSTOMIZATION SUBMENU                              */}
+          {/* ============================================================== */}
+          {activePage === 'player' && (() => {
+            const pl = settings.player || DEFAULT_PLAYER_SETTINGS;
+            const updatePlayer = (partial: Partial<PlayerStyleSettings>) =>
+              updateSettings({ player: { ...pl, ...partial } });
+
+            return (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                {renderSubmenuHeader('Player Settings', () =>
+                  updateSettings({ player: { ...DEFAULT_PLAYER_SETTINGS } })
+                )}
+
+                {/* Background Image Picker */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    Background Image
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5 bg-[#18181c] p-2 rounded-xl border border-[#26262e]">
+                    {PLAYER_BACKGROUNDS.map((bg, idx) => (
+                      <button
+                        key={bg.id}
+                        type="button"
+                        onClick={() => updatePlayer({ bgIndex: idx, useArtworkBg: false })}
+                        className={`relative h-16 rounded-lg overflow-hidden border-2 cursor-pointer group ${
+                          !pl.useArtworkBg && (pl.bgIndex ?? 0) === idx
+                            ? 'border-white ring-1 ring-white/40'
+                            : 'border-transparent opacity-75 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={bg.src}
+                          alt={bg.label}
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute inset-x-0 bottom-0 bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white truncate">
+                          {bg.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Visible Lines */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    Visible Lyric Lines
+                  </span>
+                  <div className="grid grid-cols-4 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([3, 4, 5, 6] as const).map((cnt) => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => updatePlayer({ visibleLines: cnt })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          (pl.visibleLines ?? 5) === cnt ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {cnt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sliders: Dim, Blur, Glow */}
+                <div className="p-3 rounded-xl bg-[#18181c] border border-[#26262e] space-y-2.5 text-xs">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">Background Dim</span>
+                      <span className="font-mono text-zinc-200">{pl.bgDimPct ?? 28}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={80}
+                      step={2}
+                      value={pl.bgDimPct ?? 28}
+                      onChange={(e) => updatePlayer({ bgDimPct: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">Background Blur</span>
+                      <span className="font-mono text-zinc-200">{pl.bgBlurPx ?? 0}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={16}
+                      step={1}
+                      value={pl.bgBlurPx ?? 0}
+                      onChange={(e) => updatePlayer({ bgBlurPx: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">Text &amp; Control Glow</span>
+                      <span className="font-mono text-zinc-200">{pl.glowIntensity ?? 75}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={pl.glowIntensity ?? 75}
+                      onChange={(e) => updatePlayer({ glowIntensity: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Toggles */}
+                <div className="space-y-1.5">
+                  {([
+                    { key: 'useArtworkBg', label: 'Use Song Cover Art as Background' },
+                    { key: 'showParticles', label: 'Floating Glow Particles' },
+                    { key: 'cameraMotion', label: 'Subtle Camera Motion' },
+                    { key: 'showTrackInfo', label: 'Show Song Title & Artist' },
+                  ] as const).map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#18181c] border border-[#26262e] text-xs cursor-pointer select-none"
+                    >
+                      <span className="text-white font-semibold">{item.label}</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(pl[item.key])}
+                        onChange={(e) => updatePlayer({ [item.key]: e.target.checked })}
                         className="w-4 h-4 rounded bg-[#202020] border-zinc-600 cursor-pointer accent-white"
                       />
                     </label>

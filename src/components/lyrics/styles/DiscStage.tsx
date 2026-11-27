@@ -71,6 +71,13 @@ function mixRgbColor(
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+function formatDiscTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
 export default function DiscStage({
   lines,
   activeLineIndex,
@@ -92,7 +99,17 @@ export default function DiscStage({
   highlightColor = '#ef4444',
   lyricColor = '#ffffff',
 }: DiscStageProps) {
-  const { isPlaying, getCurrentTime, getAudioAnalyser } = usePlayback();
+  const {
+    isPlaying,
+    togglePlay,
+    nextTrack,
+    previousTrack,
+    seek,
+    currentTime,
+    duration,
+    getCurrentTime,
+    getAudioAnalyser,
+  } = usePlayback();
 
   const [isNarrow, setIsNarrow] = useState<boolean>(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
@@ -404,6 +421,91 @@ export default function DiscStage({
   const isSilver = discSettings.discFinish === 'silver';
   const showJewelCase = discSettings.showCase && discSettings.caseStyle === 'jewel';
   const isVinyl = discSettings.caseStyle === 'vinyl';
+  const progressPct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
+  const renderUnderDiscControls = () => (
+    <div
+      className={`${
+        layout === 'center'
+          ? 'w-[min(88vw,300px)] mt-1 order-2'
+          : 'absolute top-[104%] left-1/2 -translate-x-1/2 w-[min(270px,135%)]'
+      } z-30 flex flex-col items-center gap-2 text-center select-none`}
+    >
+      {/* Song Name & Artist Name */}
+      <div className="w-full px-1">
+        <p className="text-sm sm:text-base font-bold text-white tracking-tight truncate drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
+          {trackTitle || 'MyuJiku'}
+        </p>
+        <p className="text-[11px] sm:text-xs text-zinc-400 font-medium truncate">
+          {trackArtist || (isInstrumental ? 'Instrumental' : 'Unknown Artist')}
+        </p>
+      </div>
+
+      {/* Timeline Scrubber */}
+      <div className="w-full flex items-center gap-2 text-[10px] font-mono text-zinc-400">
+        <span className="w-8 text-right tabular-nums">{formatDiscTime(currentTime)}</span>
+        <div className="relative flex-1 h-1.5 rounded-full bg-white/15 overflow-hidden group">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full pointer-events-none"
+            style={{ width: `${progressPct}%`, backgroundColor: highlightColor || '#ffffff' }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={duration > 0 ? duration : 100}
+            step={0.5}
+            value={Math.min(currentTime, duration > 0 ? duration : 100)}
+            onChange={(e) => seek(parseFloat(e.target.value))}
+            aria-label="CD Player Timeline"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </div>
+        <span className="w-8 text-left tabular-nums">{formatDiscTime(duration)}</span>
+      </div>
+
+      {/* Play / Pause & Skip Controls */}
+      <div className="flex items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => void previousTrack()}
+          aria-label="Previous Track"
+          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-colors cursor-pointer"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void togglePlay()}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          className="w-10 h-10 rounded-full bg-white text-black hover:scale-105 active:scale-95 flex items-center justify-center shadow-lg transition-transform cursor-pointer"
+        >
+          {isPlaying ? (
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void nextTrack()}
+          aria-label="Next Track"
+          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-colors cursor-pointer"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -534,7 +636,13 @@ export default function DiscStage({
             </div>
           )}
         </div>
+
+        {/* Under-disc Song, Artist, Timeline & Play/Skip Controls (Side layouts) */}
+        {layout !== 'center' && renderUnderDiscControls()}
       </div>
+
+      {/* Under-disc Song, Artist, Timeline & Play/Skip Controls (Center/Mobile layout) */}
+      {layout === 'center' && renderUnderDiscControls()}
 
       {/* LEFT / RIGHT / BOTTOM: Lyric Phrases */}
       <div className={textPositionClass} style={{ overflow: 'visible' }}>
