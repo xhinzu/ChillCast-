@@ -33,6 +33,13 @@ const APP_THEMES: ThemeCardDef[] = [
     description:
       'Classic translucent green console aesthetic with frosted emerald glass panels, cyber-grid backdrop, glowing lime highlights, and luminous transport controls.',
   },
+  {
+    id: 'psp',
+    name: 'PSP',
+    subtitle: 'PlayStation Cobalt Blue & Translucent Glass',
+    description:
+      'Inspired by classic 2000s Sony PlayStation ads and PSP XMB waves: deep cobalt blue gradients, frosted translucent ice-blue glass panels, and steel-silver accents.',
+  },
 ];
 
 export default function ThemesSection() {
@@ -118,7 +125,7 @@ export default function ThemesSection() {
                     <span className="text-[9px] text-white font-mono">XP</span>
                   </div>
                 </div>
-              ) : (
+              ) : t.id === 'xbox' ? (
                 <div
                   className="w-full h-28 rounded-xl border border-[#84cc16]/60 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(132,204,22,0.28)]"
                   style={{
@@ -140,6 +147,30 @@ export default function ThemesSection() {
                   </div>
                   <div className="h-4 rounded bg-[#0c2909]/85 border border-[#84cc16]/50 flex items-center justify-center">
                     <span className="w-3 h-3 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="w-full h-28 rounded-xl border border-sky-300/45 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_28px_rgba(96,165,250,0.28)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #003791 0%, #0a58ca 48%, #041d4e 100%)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-white">
+                      PSP · XMB
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-white/15 border border-white/30 text-[9px] text-sky-100">
+                      △ ○ × □
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-1 my-1.5">
+                    <div className="w-12 rounded bg-white/12 border border-white/25 backdrop-blur-sm" />
+                    <div className="flex-1 rounded bg-white/10 border border-white/25 backdrop-blur-sm" />
+                  </div>
+                  <div className="h-4 rounded bg-[#03153a]/75 border border-sky-300/35 flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-sky-300 shadow-[0_0_8px_#7dd3fc]" />
                   </div>
                 </div>
               )}
