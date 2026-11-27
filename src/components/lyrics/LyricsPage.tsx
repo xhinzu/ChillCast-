@@ -36,6 +36,7 @@ import VisualStage from './styles/VisualStage';
 import ConstellationStage from './styles/ConstellationStage';
 import ShipStage from './styles/ShipStage';
 import CameraStage from './styles/CameraStage';
+import DiscStage from './styles/DiscStage';
 import FisheyeStage from './styles/FisheyeStage';
 import CodestyleStage from './styles/CodestyleStage';
 import BranchesStage from './styles/BranchesStage';
@@ -1056,7 +1057,7 @@ export default function LyricsPage() {
   ]);
 
   // Sync Engine Hook (runs on requestAnimationFrame, updates CSS vars on stage)
-  const { lineIndex, wordIndex } = useLyricsSync({
+  const { lineIndex, wordIndex, effectiveTimeRef } = useLyricsSync({
     lines: displayLines,
     offsetSeconds: transform.offset,
     speed: transform.speed,
@@ -1199,6 +1200,32 @@ export default function LyricsPage() {
         return <ShipStage {...commonProps} />;
       case 'camera':
         return <CameraStage {...commonProps} />;
+      case 'disc':
+        return (
+          <DiscStage
+            lines={displayLines}
+            activeLineIndex={lineIndex}
+            activeWordIndex={wordIndex}
+            effectiveTimeRef={effectiveTimeRef}
+            discSettings={settings.disc}
+            quality={settings.quality}
+            font={settings.font}
+            textSize={settings.textSize}
+            chromaEnabled={settings.chromaEnabled}
+            chromaVividness={settings.chromaVividness}
+            cameraMovementEnabled={settings.cameraMovementEnabled}
+            wordImagesEnabled={settings.wordImagesEnabled}
+            visualStyle={settings.visualStyle}
+            visualTimeline={visualTimeline}
+            trackId={currentTrack?.id}
+            trackTitle={cleanDisplayInfo?.cleanTitle || currentTrack?.title}
+            trackArtist={cleanDisplayInfo?.cleanArtist || currentTrack?.artist}
+            artworkUrl={currentTrack?.artworkUrl}
+            isInstrumental={Boolean(lyricsResult?.instrumental)}
+            highlightColor={palette.highlight}
+            lyricColor={palette.lyric}
+          />
+        );
       case 'fisheye':
         return <FisheyeStage {...commonProps} />;
       case 'codestyle':
@@ -1708,8 +1735,27 @@ export default function LyricsPage() {
 
       {/* Main Lyrics Stage Area */}
       <div className="flex-1 w-full min-h-[380px] overflow-hidden relative flex flex-col items-center justify-center">
-        {/* Empty State: No song playing */}
-        {!currentTrack && (
+        {/* Empty State: No song playing (Disc style keeps case & disc moving) */}
+        {!currentTrack && settings.style === 'disc' && (
+          <DiscStage
+            lines={[]}
+            activeLineIndex={-1}
+            activeWordIndex={-1}
+            effectiveTimeRef={effectiveTimeRef}
+            discSettings={settings.disc}
+            quality={settings.quality}
+            font={settings.font}
+            textSize={settings.textSize}
+            chromaEnabled={settings.chromaEnabled}
+            chromaVividness={settings.chromaVividness}
+            cameraMovementEnabled={settings.cameraMovementEnabled}
+            wordImagesEnabled={settings.wordImagesEnabled}
+            visualStyle={settings.visualStyle}
+            highlightColor={palette.highlight}
+            lyricColor={palette.lyric}
+          />
+        )}
+        {!currentTrack && settings.style !== 'disc' && (
           <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-full bg-[#181818] border border-[#2a2a2a] flex items-center justify-center text-3xl">
               🎵
@@ -1729,8 +1775,37 @@ export default function LyricsPage() {
           </div>
         )}
 
+        {/* Instrumental / Empty Lyrics in Disc style: keep case & disc moving with title/artist */}
+        {currentTrack &&
+          !isLoading &&
+          settings.style === 'disc' &&
+          (lyricsResult?.instrumental || displayLines.length === 0) && (
+            <DiscStage
+              lines={[]}
+              activeLineIndex={-1}
+              activeWordIndex={-1}
+              effectiveTimeRef={effectiveTimeRef}
+              discSettings={settings.disc}
+              quality={settings.quality}
+              font={settings.font}
+              textSize={settings.textSize}
+              chromaEnabled={settings.chromaEnabled}
+              chromaVividness={settings.chromaVividness}
+              cameraMovementEnabled={settings.cameraMovementEnabled}
+              wordImagesEnabled={settings.wordImagesEnabled}
+              visualStyle={settings.visualStyle}
+              trackId={currentTrack.id}
+              trackTitle={cleanDisplayInfo?.cleanTitle || currentTrack.title}
+              trackArtist={cleanDisplayInfo?.cleanArtist || currentTrack.artist}
+              artworkUrl={currentTrack.artworkUrl}
+              isInstrumental={Boolean(lyricsResult?.instrumental)}
+              highlightColor={palette.highlight}
+              lyricColor={palette.lyric}
+            />
+          )}
+
         {/* Instrumental Track */}
-        {currentTrack && !isLoading && lyricsResult?.instrumental && (
+        {currentTrack && !isLoading && lyricsResult?.instrumental && settings.style !== 'disc' && (
           <div className="p-8 text-center flex flex-col items-center justify-center gap-3 max-w-md">
             <div className="w-16 h-16 rounded-3xl bg-[#161616] border border-[#282828] flex items-center justify-center text-3xl animate-pulse">
               ☕
@@ -1787,6 +1862,7 @@ export default function LyricsPage() {
         {currentTrack &&
           !isLoading &&
           !lyricsResult?.instrumental &&
+          settings.style !== 'disc' &&
           displayLines.length === 0 && (
             <div className="p-8 text-center flex flex-col items-center justify-center gap-4 max-w-md w-full">
               <div className="w-12 h-12 rounded-2xl bg-[#161616] border border-[#2a2a2a] flex items-center justify-center text-xl">

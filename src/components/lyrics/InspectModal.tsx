@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
-import { LyricsSettings, loadLyricsSettings } from '@/lib/lyrics/settings';
+import { LyricsSettings, loadLyricsSettings, saveLyricsSettings } from '@/lib/lyrics/settings';
 import { WORD_EFFECTS, EFFECT_BY_ID } from '@/lib/lyrics/visuals/effects/catalog';
 import { EffectTriggerParams } from '@/lib/lyrics/visuals/effects/types';
 import { isTauri, getDiscordDebugInfo, type DiscordDebugInfo } from '@/lib/desktop';
@@ -21,6 +21,7 @@ export default function InspectModal({
   onTriggerEffect,
 }: InspectModalProps) {
   const settings = propSettings || loadLyricsSettings();
+  const [devOverlay, setDevOverlay] = useState<boolean>(Boolean(settings.devOverlayEnabled));
   const { currentTrack } = usePlayback();
   const [selectedEffectId, setSelectedEffectId] = useState<string>('bomb');
   const [discordDebug, setDiscordDebug] = useState<DiscordDebugInfo | null>(null);
@@ -264,6 +265,29 @@ export default function InspectModal({
               })}
             </div>
           </div>
+
+          {/* Developer Overlay Toggle (Unlocks Disc Tuning Panel) */}
+          <label className="bg-[#181818] p-3.5 rounded-xl border border-[#262626] flex items-center justify-between cursor-pointer select-none">
+            <div>
+              <span className="font-bold text-amber-400 uppercase tracking-wider text-[11px] block">
+                Developer Overlay (Disc Tuning)
+              </span>
+              <span className="text-[11px] text-zinc-400">
+                Exposes live motion &amp; lifecycle tuning sliders inside Disc settings
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={devOverlay}
+              onChange={(e) => {
+                const nextVal = e.target.checked;
+                setDevOverlay(nextVal);
+                const latest = loadLyricsSettings();
+                saveLyricsSettings({ ...latest, devOverlayEnabled: nextVal });
+              }}
+              className="w-4 h-4 rounded bg-[#202020] border-zinc-600 accent-amber-400 cursor-pointer"
+            />
+          </label>
 
           {/* Settings Dump Section */}
           <div className="bg-[#181818] p-3.5 rounded-xl border border-[#262626] space-y-2">

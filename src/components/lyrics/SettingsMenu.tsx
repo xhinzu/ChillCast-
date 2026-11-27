@@ -6,11 +6,16 @@ import {
   LyricsSettings,
   LyricsStyle,
   LyricsFont,
+  LyricsQuality,
+  DiscStyleSettings,
+  DiscTuningSettings,
   EdgeGlowMode,
   EdgeGlowColorSource,
   EdgeGlowStyleOption,
   saveLyricsSettings,
   DEFAULT_LYRICS_SETTINGS,
+  DEFAULT_DISC_SETTINGS,
+  DEFAULT_DISC_TUNING,
   DEFAULT_INTENSE_EFFECTS,
 } from '@/lib/lyrics/settings';
 import { loadLyricTransform, saveLyricTransform } from '@/lib/lyrics/transform';
@@ -25,6 +30,7 @@ interface SettingsMenuProps {
 type MenuPage =
   | 'main'
   | 'style'
+  | 'disc'
   | 'font'
   | 'edge-glow'
   | 'colors'
@@ -38,6 +44,7 @@ const STYLE_LABELS: { id: LyricsStyle; label: string; badge?: string }[] = [
   { id: 'constellation', label: 'Constellation', badge: 'Graph' },
   { id: 'ship', label: 'Ship', badge: '3D Wall' },
   { id: 'camera', label: 'Camera', badge: 'Dynamic' },
+  { id: 'disc', label: 'Disc', badge: 'Spinning CD' },
   { id: 'fisheye', label: 'Fisheye', badge: '3D Cylinder' },
   { id: 'codestyle', label: 'Codestyle', badge: 'Editor' },
   { id: 'branches', label: 'Branches', badge: 'Tree' },
@@ -366,6 +373,35 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
+
+              {/* Disc Style Settings (visible only when Disc style is active) */}
+              {settings.style === 'disc' && (
+                <button
+                  type="button"
+                  onClick={() => setActivePage('disc')}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#18181c] hover:bg-[#222228] border border-white/15 hover:border-white/30 transition-all cursor-pointer group text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 text-white flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle cx="12" cy="12" r="2.5" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">
+                        Disc (Spinning CD)
+                      </p>
+                      <p className="text-[11px] text-zinc-400">
+                        {settings.disc?.discFinish === 'cover' ? 'Cover colors' : 'Silver'} • {settings.disc?.wordsPerPhrase || 3} words/phrase
+                      </p>
+                    </div>
+                  </div>
+                  <svg className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
 
               {/* 2. Edge Glow */}
               <button
@@ -1229,8 +1265,334 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                   className="w-4 h-4 rounded bg-[#202020] border-zinc-600 text-zinc-200 focus:ring-0 cursor-pointer accent-zinc-300"
                 />
               </label>
+
+              {/* Render Quality */}
+              <div className="p-3 rounded-xl bg-[#18181c] border border-[#26262e] space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white font-semibold">Visual Quality</span>
+                  <span className="text-[10px] text-zinc-400">Low disables blur &amp; sheen</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 bg-[#121214] p-1 rounded-lg border border-[#26262e]">
+                  {(['auto', 'low', 'high'] as LyricsQuality[]).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => updateSettings({ quality: q })}
+                      className={`py-1 rounded text-[11px] font-semibold capitalize cursor-pointer transition-colors ${
+                        (settings.quality || 'auto') === q
+                          ? 'bg-white text-black'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
+
+          {/* ============================================================== */}
+          {/* PAGE: 8. DISC (SPINNING CD) SETTINGS & TUNING                  */}
+          {/* ============================================================== */}
+          {activePage === 'disc' && (() => {
+            const disc = settings.disc || DEFAULT_DISC_SETTINGS;
+            const tuning = disc.tuning || DEFAULT_DISC_TUNING;
+            const updateDisc = (partial: Partial<DiscStyleSettings>) =>
+              updateSettings({ disc: { ...disc, ...partial } });
+            const updateTuning = (partial: Partial<DiscTuningSettings>) =>
+              updateDisc({ tuning: { ...tuning, ...partial } });
+
+            return (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                {renderSubmenuHeader('Disc Settings', () =>
+                  updateSettings({
+                    disc: { ...DEFAULT_DISC_SETTINGS, tuning: { ...DEFAULT_DISC_TUNING } },
+                  })
+                )}
+
+                {/* Reveal Mode */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Reveal</span>
+                  <div className="grid grid-cols-2 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'phrase', label: 'Whole phrase' },
+                      { id: 'word', label: 'Word by word' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateDisc({ revealMode: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          disc.revealMode === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Words per phrase */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    Words per phrase
+                  </span>
+                  <div className="grid grid-cols-4 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([1, 2, 3, 4] as const).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => updateDisc({ wordsPerPhrase: n })}
+                        className={`py-1 rounded-lg text-xs font-semibold cursor-pointer ${
+                          disc.wordsPerPhrase === n ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Build-up strength */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-300">Build-up strength</span>
+                    <span className="font-mono text-zinc-400">{disc.buildupStrength.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={disc.buildupStrength}
+                    onChange={(e) => updateDisc({ buildupStrength: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                  />
+                </div>
+
+                {/* Layout */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Layout</span>
+                  <div className="grid grid-cols-3 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'right', label: 'Disc right' },
+                      { id: 'left', label: 'Disc left' },
+                      { id: 'center', label: 'Centered' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateDisc({ layout: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          disc.layout === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Case style */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Case style</span>
+                  <div className="grid grid-cols-3 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'jewel', label: 'Jewel case' },
+                      { id: 'disc_only', label: 'Round disc' },
+                      { id: 'vinyl', label: 'Vinyl' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateDisc({ caseStyle: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          disc.caseStyle === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Disc finish */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Disc finish</span>
+                  <div className="grid grid-cols-2 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'silver', label: 'Silver' },
+                      { id: 'cover', label: 'Cover colors' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateDisc({ discFinish: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          disc.discFinish === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Motion sliders */}
+                <div className="space-y-2.5 p-3 rounded-xl bg-[#18181c] border border-[#26262e]">
+                  <div>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-zinc-300">Spin period</span>
+                      <span className="font-mono text-zinc-400">{disc.spinPeriodSec}s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="4"
+                      max="30"
+                      step="1"
+                      value={disc.spinPeriodSec}
+                      onChange={(e) => updateDisc({ spinPeriodSec: parseInt(e.target.value, 10) })}
+                      className="w-full h-1.5 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-zinc-300">Float amount</span>
+                      <span className="font-mono text-zinc-400">{disc.floatAmount.toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={disc.floatAmount}
+                      onChange={(e) => updateDisc({ floatAmount: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-zinc-300">Tilt amount</span>
+                      <span className="font-mono text-zinc-400">{disc.tiltAmount.toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={disc.tiltAmount}
+                      onChange={(e) => updateDisc({ tiltAmount: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="text-zinc-300">Tilt period</span>
+                      <span className="font-mono text-zinc-400">{disc.tiltPeriodSec.toFixed(1)}s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="2"
+                      max="6"
+                      step="0.2"
+                      value={disc.tiltPeriodSec}
+                      onChange={(e) => updateDisc({ tiltPeriodSec: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Toggles */}
+                <div className="space-y-2 p-3 rounded-xl bg-[#18181c] border border-[#26262e] text-xs">
+                  <label className="flex items-center justify-between cursor-pointer select-none">
+                    <span className="text-zinc-300">Sync tilt to beat</span>
+                    <input
+                      type="checkbox"
+                      checked={disc.syncTiltToBeat}
+                      onChange={(e) => updateDisc({ syncTiltToBeat: e.target.checked })}
+                      className="w-4 h-4 accent-white cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer select-none">
+                    <span className="text-zinc-300">Beat pulse</span>
+                    <input
+                      type="checkbox"
+                      checked={disc.beatPulse}
+                      onChange={(e) => updateDisc({ beatPulse: e.target.checked })}
+                      className="w-4 h-4 accent-white cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between cursor-pointer select-none">
+                    <span className="text-zinc-300">Show case</span>
+                    <input
+                      type="checkbox"
+                      checked={disc.showCase}
+                      onChange={(e) => updateDisc({ showCase: e.target.checked })}
+                      className="w-4 h-4 accent-white cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {/* Developer-only Tuning Panel */}
+                {settings.devOverlayEnabled && (
+                  <div className="space-y-2 p-3 rounded-xl bg-[#15130f] border border-amber-500/30 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold uppercase tracking-wider text-amber-400">
+                        Developer Tuning
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateDisc({ tuning: { ...DEFAULT_DISC_TUNING } })}
+                        className="text-[10px] text-amber-300 underline cursor-pointer"
+                      >
+                        Reset Tuning
+                      </button>
+                    </div>
+                    {[
+                      { key: 'blurMaxPx', label: 'Max blur (px)', min: 0, max: 8, step: 0.5 },
+                      { key: 'gapMs', label: 'Phrase gap (ms)', min: 0, max: 300, step: 10 },
+                      { key: 'longPhraseThresholdSec', label: 'Long phrase (s)', min: 0.6, max: 3, step: 0.1 },
+                      { key: 'longPhraseHoldAtSec', label: 'Hold full at (s)', min: 0.3, max: 2, step: 0.1 },
+                      { key: 'tiltDeg', label: 'Tilt base (deg)', min: 0, max: 15, step: 0.5 },
+                      { key: 'driftXPct', label: 'Drift X (%)', min: 0, max: 15, step: 0.5 },
+                      { key: 'driftYPct', label: 'Drift Y (%)', min: 0, max: 15, step: 0.5 },
+                      { key: 'driftXPeriodSec', label: 'Drift X period (s)', min: 1.5, max: 10, step: 0.1 },
+                      { key: 'driftYPeriodSec', label: 'Drift Y period (s)', min: 1.5, max: 10, step: 0.1 },
+                      { key: 'scalePulsePct', label: 'Scale pulse', min: 0, max: 0.15, step: 0.01 },
+                      { key: 'scalePulsePeriodSec', label: 'Scale period (s)', min: 1.5, max: 8, step: 0.1 },
+                      { key: 'spinModPct', label: 'Spin mod (%)', min: 0, max: 0.6, step: 0.05 },
+                      { key: 'spinModPeriodSec', label: 'Spin mod period (s)', min: 0.5, max: 5, step: 0.1 },
+                    ].map((item) => {
+                      const val = tuning[item.key as keyof DiscTuningSettings];
+                      return (
+                        <div key={item.key}>
+                          <div className="flex justify-between">
+                            <span className="text-zinc-300">{item.label}</span>
+                            <span className="font-mono text-amber-300">{val}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={item.min}
+                            max={item.max}
+                            step={item.step}
+                            value={val}
+                            onChange={(e) =>
+                              updateTuning({ [item.key]: parseFloat(e.target.value) })
+                            }
+                            className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-amber-400"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>,
         (typeof document !== 'undefined' ? (document.fullscreenElement as HTMLElement) || document.body : null)!
       )}

@@ -6,10 +6,83 @@ export type LyricsStyle =
   | 'constellation'
   | 'ship'
   | 'camera'
+  | 'disc'
   | 'fisheye'
   | 'codestyle'
   | 'branches'
   | 'web';
+
+export type LyricsQuality = 'auto' | 'low' | 'high';
+export type DiscRevealMode = 'phrase' | 'word';
+export type DiscLayout = 'right' | 'left' | 'center';
+export type DiscCaseStyle = 'jewel' | 'disc_only' | 'vinyl';
+export type DiscFinish = 'silver' | 'cover';
+
+export interface DiscTuningSettings {
+  blurMaxPx: number;              // 0 to 8 (default 3)
+  gapMs: number;                  // 0 to 300 (default 100)
+  longPhraseThresholdSec: number; // 0.6 to 3.0 (default 1.2)
+  longPhraseHoldAtSec: number;    // 0.3 to 2.0 (default 0.8)
+  tiltDeg: number;                // 0 to 15 (default 5)
+  driftXPct: number;              // 0 to 15 (default 5)
+  driftYPct: number;              // 0 to 15 (default 6)
+  driftXPeriodSec: number;        // 1.5 to 10 (default 4.3)
+  driftYPeriodSec: number;        // 1.5 to 10 (default 3.6)
+  scalePulsePct: number;          // 0 to 0.15 (default 0.04)
+  scalePulsePeriodSec: number;    // 1.5 to 8 (default 3.0)
+  spinModPct: number;             // 0 to 0.6 (default 0.3)
+  spinModPeriodSec: number;       // 0.5 to 5 (default 1.7)
+}
+
+export interface DiscStyleSettings {
+  revealMode: DiscRevealMode;
+  wordsPerPhrase: 1 | 2 | 3 | 4;
+  buildupStrength: number; // 0 to 1
+  layout: DiscLayout;
+  caseStyle: DiscCaseStyle;
+  discFinish: DiscFinish;
+  spinPeriodSec: number;   // 4 to 30
+  floatAmount: number;     // 0 to 2
+  tiltAmount: number;      // 0 to 2
+  tiltPeriodSec: number;   // 2 to 6
+  syncTiltToBeat: boolean;
+  beatPulse: boolean;
+  showCase: boolean;
+  tuning: DiscTuningSettings;
+}
+
+export const DEFAULT_DISC_TUNING: DiscTuningSettings = {
+  blurMaxPx: 3,
+  gapMs: 100,
+  longPhraseThresholdSec: 1.2,
+  longPhraseHoldAtSec: 0.8,
+  tiltDeg: 5,
+  driftXPct: 5,
+  driftYPct: 6,
+  driftXPeriodSec: 4.3,
+  driftYPeriodSec: 3.6,
+  scalePulsePct: 0.04,
+  scalePulsePeriodSec: 3.0,
+  spinModPct: 0.3,
+  spinModPeriodSec: 1.7,
+};
+
+export const DEFAULT_DISC_SETTINGS: DiscStyleSettings = {
+  revealMode: 'phrase',
+  wordsPerPhrase: 3,
+  buildupStrength: 1,
+  layout: 'right',
+  caseStyle: 'jewel',
+  discFinish: 'silver',
+  spinPeriodSec: 9,
+  floatAmount: 1,
+  tiltAmount: 1,
+  tiltPeriodSec: 3.0,
+  syncTiltToBeat: false,
+  beatPulse: true,
+  showCase: true,
+  tuning: { ...DEFAULT_DISC_TUNING },
+};
 
 export type LyricsFont =
   | 'inter'
@@ -65,6 +138,9 @@ export interface LyricsSettings {
   keepAwake: boolean;
   showOutsideLyricsPage: boolean;
   fixAllCaps: boolean;
+  quality: LyricsQuality;
+  devOverlayEnabled: boolean;
+  disc: DiscStyleSettings;
   offsets: Record<string, number>; // trackId -> offset seconds (-3.0 to +3.0)
 }
 
@@ -102,6 +178,9 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   keepAwake: true,
   showOutsideLyricsPage: false,
   fixAllCaps: false,
+  quality: 'auto',
+  devOverlayEnabled: false,
+  disc: { ...DEFAULT_DISC_SETTINGS, tuning: { ...DEFAULT_DISC_TUNING } },
   offsets: {},
 };
 
@@ -128,6 +207,7 @@ export function loadLyricsSettings(): LyricsSettings {
       'constellation',
       'ship',
       'camera',
+      'disc',
       'fisheye',
       'codestyle',
       'branches',
@@ -207,6 +287,31 @@ export function loadLyricsSettings(): LyricsSettings {
         ? parsed.naturalColors
         : true;
 
+    const parsedDisc = parsed.disc && typeof parsed.disc === 'object' ? parsed.disc : {};
+    const parsedTuning =
+      parsedDisc.tuning && typeof parsedDisc.tuning === 'object' ? parsedDisc.tuning : {};
+
+    const disc: DiscStyleSettings = {
+      ...DEFAULT_DISC_SETTINGS,
+      ...parsedDisc,
+      wordsPerPhrase:
+        parsedDisc.wordsPerPhrase === 1 ||
+        parsedDisc.wordsPerPhrase === 2 ||
+        parsedDisc.wordsPerPhrase === 3 ||
+        parsedDisc.wordsPerPhrase === 4
+          ? parsedDisc.wordsPerPhrase
+          : 3,
+      tuning: {
+        ...DEFAULT_DISC_TUNING,
+        ...parsedTuning,
+      },
+    };
+
+    const quality: LyricsQuality =
+      parsed.quality === 'low' || parsed.quality === 'high' || parsed.quality === 'auto'
+        ? parsed.quality
+        : 'auto';
+
     return {
       ...DEFAULT_LYRICS_SETTINGS,
       ...parsed,
@@ -225,6 +330,9 @@ export function loadLyricsSettings(): LyricsSettings {
       screenShakeEnabled,
       intenseEffectsEnabled,
       naturalColors,
+      quality,
+      devOverlayEnabled: Boolean(parsed.devOverlayEnabled),
+      disc,
       offsets: { ...parsed.offsets },
     };
   } catch {
