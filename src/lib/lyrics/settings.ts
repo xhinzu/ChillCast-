@@ -122,6 +122,11 @@ export interface Windows98StyleSettings {
   crtIntensity: number;
   showDesktopIcons: boolean;
   showTaskbar: boolean;
+  motionEnabled: boolean;
+  motionStyle: 'handheld' | 'float' | 'beat_shake' | 'crt_wobble';
+  motionIntensity: number;
+  motionSpeed: number;
+  motionTarget: 'desktop' | 'window';
 }
 
 export const DEFAULT_WINDOWS98_SETTINGS: Windows98StyleSettings = {
@@ -141,6 +146,11 @@ export const DEFAULT_WINDOWS98_SETTINGS: Windows98StyleSettings = {
   crtIntensity: 45,
   showDesktopIcons: true,
   showTaskbar: true,
+  motionEnabled: true,
+  motionStyle: 'handheld',
+  motionIntensity: 50,
+  motionSpeed: 100,
+  motionTarget: 'desktop',
 };
 
 export interface LyricsSettings {

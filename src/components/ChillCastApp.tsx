@@ -451,6 +451,168 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
           />
         </div>
       )}
+
+      {/* 11. PlayStation / PSP Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'psp' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/psp/kratos.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(56,189,248,0.55)]"
+          />
+          <img
+            src="/themes/psp/tlou.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(37,99,235,0.55)]"
+          />
+          <img
+            src="/themes/psp/crash.png"
+            alt=""
+            className="hidden lg:block absolute top-14 right-8 h-48 w-auto object-contain opacity-85 drop-shadow-[0_0_18px_rgba(249,115,22,0.45)]"
+          />
+        </div>
+      )}
+
+      {/* 12. Xbox Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'xbox' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/xbox/master-chief.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(132,204,22,0.55)]"
+          />
+          <img
+            src="/themes/xbox/ghost.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(163,230,53,0.45)]"
+          />
+          <img
+            src="/themes/xbox/orb.png"
+            alt=""
+            className="hidden lg:block absolute top-14 right-8 h-40 w-auto object-contain opacity-85 drop-shadow-[0_0_24px_rgba(132,204,22,0.6)]"
+          />
+        </div>
+      )}
+
+      {/* 13. Windows XP Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'windows_xp' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/windows_xp/win-tan-1.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_20px_rgba(37,99,235,0.45)]"
+          />
+          <img
+            src="/themes/windows_xp/win-tan-2.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-64 w-auto object-contain drop-shadow-[0_0_20px_rgba(20,184,166,0.45)]"
+          />
+          <img
+            src="/themes/windows_xp/win98-logo.png"
+            alt=""
+            className="hidden lg:block absolute top-14 right-8 h-28 w-auto object-contain opacity-85 drop-shadow-[0_0_16px_rgba(59,130,246,0.35)]"
+          />
+        </div>
+      )}
+
+      {/* 14. Marvel Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'marvel' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/marvel/deadpool.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(239,68,68,0.55)]"
+          />
+          <img
+            src="/themes/marvel/ironman.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-64 w-auto object-contain drop-shadow-[0_0_24px_rgba(255,255,255,0.4)]"
+          />
+          <img
+            src="/themes/marvel/spiderman.png"
+            alt=""
+            className="hidden lg:block absolute top-0 right-8 h-56 w-auto object-contain opacity-85 drop-shadow-[0_0_20px_rgba(239,68,68,0.5)]"
+          />
+        </div>
+      )}
+
+      {/* 15. Yamaha Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'yamaha' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/yamaha/miku.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(6,182,212,0.6)]"
+          />
+          <img
+            src="/themes/yamaha/teto.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-64 w-auto object-contain drop-shadow-[0_0_24px_rgba(244,63,94,0.45)]"
+          />
+          <img
+            src="/themes/yamaha/r1.png"
+            alt=""
+            className="hidden lg:block absolute bottom-20 left-1/2 -translate-x-1/2 h-40 w-auto object-contain opacity-30 drop-shadow-[0_0_22px_rgba(6,182,212,0.5)]"
+          />
+          <img
+            src="/themes/yamaha/logo.png"
+            alt=""
+            className="hidden lg:block absolute top-14 right-8 h-12 w-auto object-contain opacity-85 drop-shadow-[0_0_16px_rgba(34,211,238,0.55)]"
+          />
+        </div>
+      )}
+
+      {/* 15. Yamaha Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'yamaha' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/yamaha/miku.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(6,182,212,0.6)]"
+          />
+          <img
+            src="/themes/yamaha/teto.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-64 w-auto object-contain drop-shadow-[0_0_24px_rgba(244,63,94,0.45)]"
+          />
+          <img
+            src="/themes/yamaha/r1.png"
+            alt=""
+            className="hidden lg:block absolute bottom-20 left-1/2 -translate-x-1/2 h-40 w-auto object-contain opacity-30 drop-shadow-[0_0_22px_rgba(6,182,212,0.5)]"
+          />
+          <img
+            src="/themes/yamaha/logo.png"
+            alt=""
+            className="hidden lg:block absolute top-14 right-8 h-12 w-auto object-contain opacity-85 drop-shadow-[0_0_16px_rgba(34,211,238,0.55)]"
+          />
+        </div>
+      )}
+
+      {/* 16. DC Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'dc' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/dc/batman.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(37,99,235,0.55)]"
+          />
+          <img
+            src="/themes/dc/wonderwoman.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(220,38,38,0.55)]"
+          />
+          <img
+            src="/themes/dc/superman.png"
+            alt=""
+            className="hidden lg:block absolute top-12 right-8 h-48 w-auto object-contain opacity-85 drop-shadow-[0_0_22px_rgba(37,99,235,0.6)]"
+          />
+          <img
+            src="/themes/dc/hero.png"
+            alt=""
+            className="hidden xl:block absolute bottom-16 left-52 h-40 w-auto object-contain opacity-75 drop-shadow-[0_0_18px_rgba(220,38,38,0.45)]"
+          />
+        </div>
+      )}
     </div>
   );
 }

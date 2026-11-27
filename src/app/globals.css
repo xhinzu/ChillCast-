@@ -98,15 +98,15 @@
   --spotify-subtext: var(--text-muted);
 }
 
-/* Accent Color Mode: tints the entire app with the chosen --accent color */
+/* Accent Color Mode: uses the picked --accent color as the primary app background & surfaces */
 [data-theme="accent"] {
-  --bg-base: color-mix(in srgb, var(--accent) 24%, #09090c);
-  --surface: color-mix(in srgb, var(--accent) 32%, #111116);
-  --surface-2: color-mix(in srgb, var(--accent) 44%, #18181f);
-  --surface-3: color-mix(in srgb, var(--accent) 55%, #202028);
-  --border: color-mix(in srgb, var(--accent) 50%, rgba(255, 255, 255, 0.15));
-  --text: #ffffff;
-  --text-muted: color-mix(in srgb, var(--accent) 35%, #d4d4d8);
+  --bg-base: var(--accent);
+  --surface: color-mix(in srgb, var(--accent) 84%, #000000);
+  --surface-2: color-mix(in srgb, var(--accent) 74%, #000000);
+  --surface-3: color-mix(in srgb, var(--accent) 64%, #000000);
+  --border: color-mix(in srgb, var(--accent-contrast) 24%, transparent);
+  --text: var(--accent-contrast);
+  --text-muted: color-mix(in srgb, var(--accent-contrast) 75%, var(--accent));
   --background: var(--bg-base);
   --foreground: var(--text);
   --chillify-grey-bg: var(--bg-base);
@@ -121,31 +121,50 @@
 }
 
 [data-theme="accent"] body {
-  background: radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 38%, #09090c) 0%, color-mix(in srgb, var(--accent) 18%, #070709) 70%) !important;
+  background: var(--accent) !important;
+  color: var(--accent-contrast) !important;
 }
 
 [data-theme="accent"] aside,
 [data-theme="accent"] main,
-[data-theme="accent"] .bg-\[\#121212\],
-[data-theme="accent"] .bg-\[\#121215\],
-[data-theme="accent"] .bg-\[\#141414\],
-[data-theme="accent"] .bg-\[\#151519\],
-[data-theme="accent"] .bg-\[\#16161a\],
-[data-theme="accent"] .bg-\[\#17171a\],
-[data-theme="accent"] .bg-\[\#181818\],
-[data-theme="accent"] .bg-\[\#18181b\],
-[data-theme="accent"] .bg-\[\#18181c\],
-[data-theme="accent"] .bg-\[\#1b1b22\],
-[data-theme="accent"] .bg-\[\#1c1c24\],
-[data-theme="accent"] .bg-\[\#222222\] {
-  background-color: color-mix(in srgb, var(--accent) 26%, #111116) !important;
-  border-color: color-mix(in srgb, var(--accent) 42%, rgba(255, 255, 255, 0.12)) !important;
+[data-theme="accent"] header,
+[data-theme="accent"] footer,
+[data-theme="accent"] .bg-black,
+[data-theme="accent"] .bg-black\/95,
+[data-theme="accent"] .bg-black\/90,
+[data-theme="accent"] .bg-black\/80,
+[data-theme="accent"] .bg-zinc-950,
+[data-theme="accent"] .bg-zinc-900,
+[data-theme="accent"] .bg-neutral-950,
+[data-theme="accent"] .bg-neutral-900 {
+  background-color: color-mix(in srgb, var(--accent) 88%, #000000) !important;
+  border-color: var(--border) !important;
 }
 
-[data-theme="accent"] header,
-[data-theme="accent"] .bg-black\/95 {
-  background-color: color-mix(in srgb, var(--accent) 34%, #09090c) !important;
-  border-color: color-mix(in srgb, var(--accent) 48%, rgba(255, 255, 255, 0.14)) !important;
+[data-theme="accent"] [class*="bg-[#0"],
+[data-theme="accent"] [class*="bg-[#1"] {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="accent"] [class*="bg-[#2"] {
+  background-color: var(--surface-2) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="accent"]:not([data-accent-font="true"]) .text-white,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-100,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-200,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-300,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-slate-100,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-slate-200 {
+  color: var(--accent-contrast) !important;
+}
+
+[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-400,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-500,
+[data-theme="accent"]:not([data-accent-font="true"]) .text-slate-400 {
+  color: var(--text-muted) !important;
 }
 
 /* Theme color changes font color mode */
@@ -992,6 +1011,330 @@ body {
 }
 [data-ui-skin="starboy"] ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #dc2626, #facc15);
+  border-radius: 9999px;
+}
+
+/* ============================================================================
+ * FULL APP THEME: MARVEL (BLACK, WHITE & SCARLET RED)
+ * ============================================================================ */
+[data-ui-skin="marvel"] {
+  --bg-base: #070709;
+  --surface: rgba(12, 12, 15, 0.86);
+  --surface-2: rgba(24, 24, 29, 0.9);
+  --surface-3: rgba(220, 38, 38, 0.35);
+  --border: rgba(255, 255, 255, 0.22);
+  --text: #ffffff;
+  --text-muted: #e4e4e7;
+  --accent: #ef4444;
+  --accent-contrast: #ffffff;
+  --background: #070709;
+  --foreground: #ffffff;
+}
+
+[data-ui-skin="marvel"] body {
+  background-color: #070709 !important;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(239, 68, 68, 0.28) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 45%),
+    linear-gradient(160deg, #09090b 0%, #140608 55%, #050507 100%) !important;
+  color: #ffffff !important;
+}
+
+[data-ui-skin="marvel"] aside,
+[data-ui-skin="marvel"] main,
+[data-ui-skin="marvel"] .bg-\[\#121212\],
+[data-ui-skin="marvel"] .bg-\[\#121215\],
+[data-ui-skin="marvel"] .bg-\[\#141414\],
+[data-ui-skin="marvel"] .bg-\[\#151519\],
+[data-ui-skin="marvel"] .bg-\[\#16161a\],
+[data-ui-skin="marvel"] .bg-\[\#17171a\],
+[data-ui-skin="marvel"] .bg-\[\#181818\],
+[data-ui-skin="marvel"] .bg-\[\#18181b\],
+[data-ui-skin="marvel"] .bg-\[\#18181c\],
+[data-ui-skin="marvel"] .bg-\[\#1b1b22\],
+[data-ui-skin="marvel"] .bg-\[\#1c1c24\],
+[data-ui-skin="marvel"] .bg-\[\#222222\] {
+  background-color: rgba(12, 12, 15, 0.84) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 28px rgba(0, 0, 0, 0.65) !important;
+}
+
+[data-ui-skin="marvel"] [aria-label="Interactive Radio"],
+[data-ui-skin="marvel"] [aria-label="Interactive Radio"] .bg-black {
+  background-color: #000000 !important;
+  backdrop-filter: none;
+}
+
+[data-ui-skin="marvel"] header,
+[data-ui-skin="marvel"] .bg-black\/95 {
+  background: linear-gradient(90deg, rgba(153, 27, 27, 0.88) 0%, rgba(10, 10, 12, 0.96) 55%, rgba(15, 15, 18, 0.96) 100%) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(239, 68, 68, 0.45) !important;
+}
+
+[data-ui-skin="marvel"] .text-white {
+  color: #ffffff !important;
+}
+
+[data-ui-skin="marvel"] .text-zinc-400,
+[data-ui-skin="marvel"] .text-\[\#888888\],
+[data-ui-skin="marvel"] .text-\[\#b3b3b3\] {
+  color: #d4d4d8 !important;
+}
+
+[data-ui-skin="marvel"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-ui-skin="marvel"] ::-webkit-scrollbar-track {
+  background: #09090b;
+}
+[data-ui-skin="marvel"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ef4444, #ffffff);
+  border-radius: 9999px;
+}
+
+/* ============================================================================
+ * FULL APP THEME: YAMAHA (CYAN, BLACK & CRISP WHITE)
+ * ============================================================================ */
+[data-ui-skin="yamaha"] {
+  --bg-base: #04090d;
+  --surface: rgba(7, 15, 22, 0.84);
+  --surface-2: rgba(12, 26, 36, 0.88);
+  --surface-3: rgba(6, 182, 212, 0.3);
+  --border: rgba(34, 211, 238, 0.3);
+  --text: #ffffff;
+  --text-muted: #a5f3fc;
+  --accent: #06b6d4;
+  --accent-contrast: #04090d;
+  --background: #04090d;
+  --foreground: #ffffff;
+}
+
+[data-ui-skin="yamaha"] body {
+  background-color: #04090d !important;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(6, 182, 212, 0.34) 0%, transparent 48%),
+    radial-gradient(circle at 82% 78%, rgba(255, 255, 255, 0.08) 0%, transparent 46%),
+    linear-gradient(155deg, #061824 0%, #050b10 55%, #020406 100%) !important;
+  color: #ffffff !important;
+}
+
+[data-ui-skin="yamaha"] aside,
+[data-ui-skin="yamaha"] main,
+[data-ui-skin="yamaha"] .bg-\[\#121212\],
+[data-ui-skin="yamaha"] .bg-\[\#121215\],
+[data-ui-skin="yamaha"] .bg-\[\#141414\],
+[data-ui-skin="yamaha"] .bg-\[\#151519\],
+[data-ui-skin="yamaha"] .bg-\[\#16161a\],
+[data-ui-skin="yamaha"] .bg-\[\#17171a\],
+[data-ui-skin="yamaha"] .bg-\[\#181818\],
+[data-ui-skin="yamaha"] .bg-\[\#18181b\],
+[data-ui-skin="yamaha"] .bg-\[\#18181c\],
+[data-ui-skin="yamaha"] .bg-\[\#1b1b22\],
+[data-ui-skin="yamaha"] .bg-\[\#1c1c24\],
+[data-ui-skin="yamaha"] .bg-\[\#222222\] {
+  background-color: rgba(6, 13, 19, 0.84) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 28px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-ui-skin="yamaha"] [aria-label="Interactive Radio"],
+[data-ui-skin="yamaha"] [aria-label="Interactive Radio"] .bg-black {
+  background-color: #000000 !important;
+  backdrop-filter: none;
+}
+
+[data-ui-skin="yamaha"] header,
+[data-ui-skin="yamaha"] .bg-black\/95 {
+  background: linear-gradient(90deg, rgba(8, 51, 68, 0.9) 0%, rgba(4, 9, 13, 0.95) 55%, rgba(10, 22, 32, 0.94) 100%) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+[data-ui-skin="yamaha"] .text-white {
+  color: #ffffff !important;
+}
+
+[data-ui-skin="yamaha"] .text-zinc-400,
+[data-ui-skin="yamaha"] .text-\[\#888888\],
+[data-ui-skin="yamaha"] .text-\[\#b3b3b3\] {
+  color: #a5f3fc !important;
+}
+
+[data-ui-skin="yamaha"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-ui-skin="yamaha"] ::-webkit-scrollbar-track {
+  background: #04090d;
+}
+[data-ui-skin="yamaha"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #06b6d4, #ffffff);
+  border-radius: 9999px;
+}
+
+/* ============================================================================
+ * FULL APP THEME: YAMAHA (CYAN, BLACK & CRISP WHITE)
+ * ============================================================================ */
+[data-ui-skin="yamaha"] {
+  --bg-base: #04090d;
+  --surface: rgba(7, 15, 22, 0.84);
+  --surface-2: rgba(12, 26, 36, 0.88);
+  --surface-3: rgba(6, 182, 212, 0.3);
+  --border: rgba(34, 211, 238, 0.3);
+  --text: #ffffff;
+  --text-muted: #a5f3fc;
+  --accent: #06b6d4;
+  --accent-contrast: #04090d;
+  --background: #04090d;
+  --foreground: #ffffff;
+}
+
+[data-ui-skin="yamaha"] body {
+  background-color: #04090d !important;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(6, 182, 212, 0.34) 0%, transparent 48%),
+    radial-gradient(circle at 82% 78%, rgba(255, 255, 255, 0.08) 0%, transparent 46%),
+    linear-gradient(155deg, #061824 0%, #050b10 55%, #020406 100%) !important;
+  color: #ffffff !important;
+}
+
+[data-ui-skin="yamaha"] aside,
+[data-ui-skin="yamaha"] main,
+[data-ui-skin="yamaha"] .bg-\[\#121212\],
+[data-ui-skin="yamaha"] .bg-\[\#121215\],
+[data-ui-skin="yamaha"] .bg-\[\#141414\],
+[data-ui-skin="yamaha"] .bg-\[\#151519\],
+[data-ui-skin="yamaha"] .bg-\[\#16161a\],
+[data-ui-skin="yamaha"] .bg-\[\#17171a\],
+[data-ui-skin="yamaha"] .bg-\[\#181818\],
+[data-ui-skin="yamaha"] .bg-\[\#18181b\],
+[data-ui-skin="yamaha"] .bg-\[\#18181c\],
+[data-ui-skin="yamaha"] .bg-\[\#1b1b22\],
+[data-ui-skin="yamaha"] .bg-\[\#1c1c24\],
+[data-ui-skin="yamaha"] .bg-\[\#222222\] {
+  background-color: rgba(6, 13, 19, 0.84) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 28px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-ui-skin="yamaha"] [aria-label="Interactive Radio"],
+[data-ui-skin="yamaha"] [aria-label="Interactive Radio"] .bg-black {
+  background-color: #000000 !important;
+  backdrop-filter: none;
+}
+
+[data-ui-skin="yamaha"] header,
+[data-ui-skin="yamaha"] .bg-black\/95 {
+  background: linear-gradient(90deg, rgba(8, 51, 68, 0.9) 0%, rgba(4, 9, 13, 0.95) 55%, rgba(10, 22, 32, 0.94) 100%) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+[data-ui-skin="yamaha"] .text-white {
+  color: #ffffff !important;
+}
+
+[data-ui-skin="yamaha"] .text-zinc-400,
+[data-ui-skin="yamaha"] .text-\[\#888888\],
+[data-ui-skin="yamaha"] .text-\[\#b3b3b3\] {
+  color: #a5f3fc !important;
+}
+
+[data-ui-skin="yamaha"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-ui-skin="yamaha"] ::-webkit-scrollbar-track {
+  background: #04090d;
+}
+[data-ui-skin="yamaha"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #06b6d4, #ffffff);
+  border-radius: 9999px;
+}
+
+/* ============================================================================
+ * FULL APP THEME: DC (BLACK, RED & BLUE)
+ * ============================================================================ */
+[data-ui-skin="dc"] {
+  --bg-base: #06070c;
+  --surface: rgba(10, 13, 22, 0.85);
+  --surface-2: rgba(18, 24, 42, 0.88);
+  --surface-3: rgba(37, 99, 235, 0.35);
+  --border: rgba(59, 130, 246, 0.35);
+  --text: #f8fafc;
+  --text-muted: #93c5fd;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --background: #06070c;
+  --foreground: #f8fafc;
+}
+
+[data-ui-skin="dc"] body {
+  background-color: #06070c !important;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(37, 99, 235, 0.36) 0%, transparent 48%),
+    radial-gradient(circle at 82% 78%, rgba(220, 38, 38, 0.32) 0%, transparent 48%),
+    linear-gradient(155deg, #080d1d 0%, #090910 52%, #180609 100%) !important;
+  color: #f8fafc !important;
+}
+
+[data-ui-skin="dc"] aside,
+[data-ui-skin="dc"] main,
+[data-ui-skin="dc"] .bg-\[\#121212\],
+[data-ui-skin="dc"] .bg-\[\#121215\],
+[data-ui-skin="dc"] .bg-\[\#141414\],
+[data-ui-skin="dc"] .bg-\[\#151519\],
+[data-ui-skin="dc"] .bg-\[\#16161a\],
+[data-ui-skin="dc"] .bg-\[\#17171a\],
+[data-ui-skin="dc"] .bg-\[\#181818\],
+[data-ui-skin="dc"] .bg-\[\#18181b\],
+[data-ui-skin="dc"] .bg-\[\#18181c\],
+[data-ui-skin="dc"] .bg-\[\#1b1b22\],
+[data-ui-skin="dc"] .bg-\[\#1c1c24\],
+[data-ui-skin="dc"] .bg-\[\#222222\] {
+  background-color: rgba(9, 12, 20, 0.84) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  box-shadow: inset 0 1px 0 rgba(220, 38, 38, 0.18), 0 8px 28px rgba(0, 0, 0, 0.65) !important;
+}
+
+[data-ui-skin="dc"] [aria-label="Interactive Radio"],
+[data-ui-skin="dc"] [aria-label="Interactive Radio"] .bg-black {
+  background-color: #000000 !important;
+  backdrop-filter: none;
+}
+
+[data-ui-skin="dc"] header,
+[data-ui-skin="dc"] .bg-black\/95 {
+  background: linear-gradient(90deg, rgba(29, 78, 216, 0.85) 0%, rgba(7, 9, 16, 0.95) 55%, rgba(153, 27, 27, 0.85) 100%) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+[data-ui-skin="dc"] .text-white {
+  color: #f8fafc !important;
+}
+
+[data-ui-skin="dc"] .text-zinc-400,
+[data-ui-skin="dc"] .text-\[\#888888\],
+[data-ui-skin="dc"] .text-\[\#b3b3b3\] {
+  color: #93c5fd !important;
+}
+
+[data-ui-skin="dc"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-ui-skin="dc"] ::-webkit-scrollbar-track {
+  background: #06070c;
+}
+[data-ui-skin="dc"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #2563eb, #dc2626);
   border-radius: 9999px;
 }
 

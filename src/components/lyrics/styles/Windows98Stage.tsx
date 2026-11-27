@@ -162,6 +162,97 @@ export default function Windows98Stage({
     origX: 0,
     origY: 0,
   });
+  const desktopCameraRef = useRef<HTMLDivElement | null>(null);
+  const windowMotionRef = useRef<HTMLDivElement | null>(null);
+  const impulseRef = useRef<number>(0);
+
+  const motionEnabled = win98Settings.motionEnabled ?? true;
+  const motionStyle = win98Settings.motionStyle || 'handheld';
+  const motionIntensity = Math.max(10, Math.min(100, win98Settings.motionIntensity ?? 50));
+  const motionSpeed = Math.max(25, Math.min(200, win98Settings.motionSpeed ?? 100));
+  const motionTarget = win98Settings.motionTarget || 'desktop';
+
+  // Trigger a subtle punch/shake impulse on lyric line or word transitions
+  useEffect(() => {
+    if (!motionEnabled) return;
+    impulseRef.current = Math.min(1.5, impulseRef.current + 0.85);
+  }, [activeLineIndex, motionEnabled]);
+
+  useEffect(() => {
+    if (!motionEnabled || motionStyle !== 'beat_shake') return;
+    impulseRef.current = Math.min(1.3, impulseRef.current + 0.45);
+  }, [activeWordIndex, motionEnabled, motionStyle]);
+
+  useEffect(() => {
+    const desktopEl = desktopCameraRef.current;
+    const windowEl = windowMotionRef.current;
+
+    if (!motionEnabled) {
+      if (desktopEl) desktopEl.style.transform = '';
+      if (windowEl) windowEl.style.transform = '';
+      return;
+    }
+
+    let raf = 0;
+    const startMs = performance.now();
+    const intensity = motionIntensity / 100; // 0.1 .. 1.0
+    const speed = motionSpeed / 100; // 0.25 .. 2.0
+
+    const tick = (now: number) => {
+      const t = ((now - startMs) / 1000) * speed;
+      impulseRef.current *= 0.9;
+      const imp = impulseRef.current;
+      const playBoost = isPlaying ? 1 : 0.45;
+
+      let x = 0;
+      let y = 0;
+      let rot = 0;
+      let scale = motionTarget === 'desktop' ? 1 + 0.045 * intensity : 1;
+
+      if (motionStyle === 'handheld') {
+        x = (Math.sin(t * 1.35) * 6.5 + Math.sin(t * 3.1) * 2.5 + Math.cos(t * 7.3) * (0.9 + imp * 3.2)) * intensity * playBoost;
+        y = (Math.cos(t * 1.1) * 5.0 + Math.sin(t * 2.7) * 2.2 + Math.sin(t * 6.4) * (0.8 + imp * 2.8)) * intensity * playBoost;
+        rot = (Math.sin(t * 0.95) * 0.9 + Math.cos(t * 2.3) * 0.35 + Math.sin(t * 8.1) * imp * 0.6) * intensity * playBoost;
+        scale += (Math.sin(t * 0.7) * 0.012 + imp * 0.014) * intensity;
+      } else if (motionStyle === 'float') {
+        x = (Math.sin(t * 0.75) * 10 + Math.sin(t * 1.45) * 3.5) * intensity * playBoost;
+        y = (Math.cos(t * 0.6) * 7.5 + Math.cos(t * 1.2) * 2.5) * intensity * playBoost;
+        rot = (Math.sin(t * 0.5) * 1.1) * intensity * playBoost;
+        scale += (Math.sin(t * 0.85) * 0.016) * intensity;
+      } else if (motionStyle === 'beat_shake') {
+        const beat = isPlaying ? Math.pow(Math.max(0, Math.sin(t * 4.2)), 4) * 0.55 : 0;
+        const energy = Math.min(1.6, imp + beat);
+        x = (Math.sin(t * 17.5) * (2.0 + energy * 8.5) + Math.cos(t * 1.8) * 3.0) * intensity;
+        y = (Math.cos(t * 14.3) * (1.8 + energy * 7.5) + Math.sin(t * 1.4) * 2.5) * intensity;
+        rot = (Math.sin(t * 11.7) * (0.35 + energy * 1.35)) * intensity;
+        scale += (energy * 0.028) * intensity;
+      } else if (motionStyle === 'crt_wobble') {
+        x = (Math.sin(t * 9.5) * 2.2 + Math.sin(t * 2.1) * 4.5 + Math.cos(t * 21.0) * imp * 3.5) * intensity * playBoost;
+        y = (Math.cos(t * 3.4) * 2.8 + Math.sin(t * 13.0) * (0.7 + imp * 2.0)) * intensity * playBoost;
+        rot = (Math.sin(t * 1.7) * 0.75 + Math.sin(t * 15.0) * imp * 0.5) * intensity * playBoost;
+        scale += (Math.sin(t * 3.2) * 0.008 + imp * 0.012) * intensity;
+      }
+
+      const transformStr = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${rot.toFixed(3)}deg) scale(${scale.toFixed(4)})`;
+
+      if (motionTarget === 'window') {
+        if (desktopEl) desktopEl.style.transform = '';
+        if (windowEl) windowEl.style.transform = transformStr;
+      } else {
+        if (windowEl) windowEl.style.transform = '';
+        if (desktopEl) desktopEl.style.transform = transformStr;
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (desktopEl) desktopEl.style.transform = '';
+      if (windowEl) windowEl.style.transform = '';
+    };
+  }, [motionEnabled, motionStyle, motionIntensity, motionSpeed, motionTarget, isPlaying]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -271,6 +362,8 @@ export default function Windows98Stage({
         setSelectedIcon(null);
       }}
     >
+      {/* Camera Motion Layer */}
+      <div ref={desktopCameraRef} className="relative w-full h-full flex-1 flex flex-col justify-between will-change-transform">
       {/* Classic Bliss Desktop Background */}
       <BlissWallpaper variant={win98Settings.desktopWallpaper || 'bliss'} />
 
@@ -344,9 +437,10 @@ export default function Windows98Stage({
 
         {/* Main myujiku.exe Window */}
         {windowState !== 'minimized' && (
+          <div ref={windowMotionRef} className="relative z-20 w-full h-full flex items-center justify-center will-change-transform pointer-events-none">
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative z-20 flex flex-col shadow-[0_24px_60px_rgba(0,0,0,0.65)] border-2 border-t-[#ffffff] border-l-[#ffffff] border-r-[#404040] border-b-[#404040] bg-[#d4d0c8] overflow-hidden transition-[width,height] duration-150"
+            className="pointer-events-auto relative flex flex-col shadow-[0_24px_60px_rgba(0,0,0,0.65)] border-2 border-t-[#ffffff] border-l-[#ffffff] border-r-[#404040] border-b-[#404040] bg-[#d4d0c8] overflow-hidden transition-[width,height] duration-150"
             style={{
               width: windowState === 'maximized' ? '100%' : `${Math.max(55, Math.min(100, win98Settings.windowWidthPct))}%`,
               maxWidth: windowState === 'maximized' ? '100%' : '820px',
@@ -554,6 +648,7 @@ export default function Windows98Stage({
               </div>
             )}
           </div>
+          </div>
         )}
       </div>
 
@@ -697,6 +792,7 @@ export default function Windows98Stage({
           </div>
         </div>
       )}
+      </div>
 
       {/* CRT Scanline & Vignette Overlay */}
       {win98Settings.crtEnabled && (

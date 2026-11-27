@@ -1813,6 +1813,102 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                   </div>
                 </div>
 
+                {/* Camera & Shake */}
+                <div className="p-3 rounded-xl bg-[#18181c] border border-[#26262e] space-y-3 text-xs">
+                  <label className="flex items-center justify-between cursor-pointer select-none">
+                    <div>
+                      <span className="text-white font-semibold block">Camera &amp; Shake</span>
+                      <span className="text-[10px] text-zinc-400">Add handheld motion or beat shake</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={w98.motionEnabled ?? true}
+                      onChange={(e) => updateWin98({ motionEnabled: e.target.checked })}
+                      className="w-4 h-4 rounded bg-[#202020] border-zinc-600 cursor-pointer accent-white"
+                    />
+                  </label>
+
+                  {(w98.motionEnabled ?? true) && (
+                    <>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Movement Style</span>
+                        <div className="grid grid-cols-2 gap-1 bg-[#111114] p-1 rounded-xl border border-[#26262e]">
+                          {([
+                            { id: 'handheld', label: 'Handheld' },
+                            { id: 'float', label: 'Smooth Float' },
+                            { id: 'beat_shake', label: 'Lyric Shake' },
+                            { id: 'crt_wobble', label: 'CRT Wobble' },
+                          ] as const).map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => updateWin98({ motionStyle: opt.id })}
+                              className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                                (w98.motionStyle || 'handheld') === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Move Target</span>
+                        <div className="grid grid-cols-2 gap-1 bg-[#111114] p-1 rounded-xl border border-[#26262e]">
+                          {([
+                            { id: 'desktop', label: 'Whole Screen' },
+                            { id: 'window', label: 'Player Window' },
+                          ] as const).map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => updateWin98({ motionTarget: opt.id })}
+                              className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                                (w98.motionTarget || 'desktop') === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-zinc-300">Shake Intensity</span>
+                          <span className="font-mono text-zinc-200">{w98.motionIntensity ?? 50}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={100}
+                          step={5}
+                          value={w98.motionIntensity ?? 50}
+                          onChange={(e) => updateWin98({ motionIntensity: parseInt(e.target.value, 10) })}
+                          className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-zinc-300">Movement Speed</span>
+                          <span className="font-mono text-zinc-200">{((w98.motionSpeed ?? 100) / 100).toFixed(2)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={25}
+                          max={200}
+                          step={5}
+                          value={w98.motionSpeed ?? 100}
+                          onChange={(e) => updateWin98({ motionSpeed: parseInt(e.target.value, 10) })}
+                          className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 {/* Visibility Toggles */}
                 <div className="space-y-1.5">
                   {([

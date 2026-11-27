@@ -110,6 +110,18 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const lastRjSpokeAtRef = useRef<number>(0);
   const recentRjTemplatesRef = useRef<string[]>([]);
   const hasCustomClipsRef = useRef<boolean>(false);
+  const advancingTrackIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __MYUJIKU_RADIO_ACTIVE__?: boolean }).__MYUJIKU_RADIO_ACTIVE__ =
+        isRadioActive && powerOn && !isInRoom;
+    }
+  }, [isRadioActive, powerOn, isInRoom]);
+
+  useEffect(() => {
+    advancingTrackIdRef.current = null;
+  }, [playback.currentTrack?.id]);
 
   useEffect(() => {
     listCustomRjClips().then((list) => {
@@ -237,11 +249,9 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         await playback.playCustomTrackList([broadcast.track], 0);
         if (tuneRequestIdRef.current !== reqId) return;
         const offset = broadcast.offsetSec || computeFallbackJoinOffset(station.jingleSeed, broadcast.track.duration);
-        setTimeout(() => {
-          if (tuneRequestIdRef.current === reqId) {
-            playback.seek(offset);
-          }
-        }, 350);
+        if (offset > 0) {
+          playback.seek(offset);
+        }
       } else if (!playback.isPlaying) {
         await playback.play();
       }
@@ -341,17 +351,29 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    if (playback.duration > 0 && playback.currentTime >= playback.duration - 1.5 && playback.isPlaying) {
+    const currentTrackId = playback.currentTrack?.id || null;
+    const isNearEnd =
+      playback.duration > 0 &&
+      playback.currentTime >= playback.duration - 1.5 &&
+      playback.isPlaying;
+    const hasEnded = playback.playbackState === 'ended' && Boolean(currentTrackId);
+
+    if ((isNearEnd || hasEnded) && advancingTrackIdRef.current !== currentTrackId) {
       const pool = getCachedStationPool(activeStation.id);
       if (!pool || pool.length === 0) return;
       const nextB = computeLiveBroadcast(activeStation.jingleSeed, Date.now() + 3000, pool);
-      if (nextB && nextB.track.id !== playback.currentTrack?.id) {
-        getRadioAudio().playStationIdentChime(activeStation.jingleSeed);
-        void playback.playCustomTrackList([nextB.track], 0);
-        setUpcomingSchedule({
-          nextTrack: nextB.nextTrack,
-          nextNextTrack: nextB.nextNextTrack,
-        });
+      if (nextB) {
+        const targetTrack =
+          nextB.track.id !== currentTrackId ? nextB.track : nextB.nextTrack;
+        if (targetTrack && targetTrack.id !== currentTrackId) {
+          advancingTrackIdRef.current = currentTrackId || '__advancing__';
+          getRadioAudio().playStationIdentChime(activeStation.jingleSeed);
+          void playback.playCustomTrackList([targetTrack], 0);
+          setUpcomingSchedule({
+            nextTrack: nextB.track.id !== currentTrackId ? nextB.nextTrack : nextB.nextNextTrack,
+            nextNextTrack: nextB.nextNextTrack,
+          });
+        }
       }
     }
   }, [

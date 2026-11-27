@@ -39,6 +39,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private streamAudioVideoId: string | null = null;
   private isStreamingActive = false;
   private isDirectStreamFallback = false;
+  private pendingSeekSec: number | null = null;
+  private explicitPaused = false;
 
   private isSpatial8DActive = false;
   private isMuffledActive = false;
@@ -170,7 +172,22 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       }
     });
 
+    this.streamAudio.addEventListener('loadedmetadata', () => {
+      if (this.pendingSeekSec !== null && this.streamAudio) {
+        try {
+          this.streamAudio.currentTime = this.pendingSeekSec;
+        } catch {}
+        this.pendingSeekSec = null;
+      }
+    });
+
     this.streamAudio.addEventListener('canplay', () => {
+      if (this.pendingSeekSec !== null && this.streamAudio) {
+        try {
+          this.streamAudio.currentTime = this.pendingSeekSec;
+        } catch {}
+        this.pendingSeekSec = null;
+      }
       if (this.state === 'playing' && this.streamAudio && this.streamAudio.paused) {
         getDspEngine().resumeContext().catch(() => {});
         this.streamAudio.play().catch(() => {});
@@ -178,6 +195,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     });
 
     this.streamAudio.addEventListener('pause', () => {
+      if (!this.isDirectStreamFallback) {
+        this.isStreamingActive = false;
+      }
       if (this.state === 'playing' && !this.isDirectStreamFallback) {
         if (!this.isAnyFxActive() && !this.isStreamingActive) {
           if (this.player) {
@@ -218,6 +238,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     if (this.streamAudioVideoId === videoId && this.streamAudio && this.streamAudio.src) return;
 
     console.log('[YouTubeAdapter] loadStreamForVideo starting for videoId:', videoId);
+    this.isStreamingActive = false;
     this.streamError = false;
     this.streamAudioVideoId = videoId;
     this.ensureStreamAudioInitialized();
@@ -425,6 +446,10 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         }
         break;
       case 2: // PAUSED
+        if (this.isStreamingActive && this.streamAudio && !this.streamAudio.paused && !this.explicitPaused) {
+          // Hidden YouTube iframe can be throttled/paused by the browser while streamAudio is playing smoothly
+          break;
+        }
         this.emitState('paused');
         this.stopPositionTimer();
         if (this.streamAudio && !this.streamAudio.paused) {
@@ -436,6 +461,17 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
         this.updateCurrentTrackData();
         break;
       case 0: // ENDED
+        if (
+          this.isStreamingActive &&
+          this.streamAudio &&
+          !this.streamAudio.paused &&
+          this.streamAudio.duration > 0 &&
+          this.streamAudio.currentTime < this.streamAudio.duration - 4
+        ) {
+          // Iframe ended early (e.g., streamAudio had not seeked in time); let streamAudio finish cleanly
+          this.isDirectStreamFallback = true;
+          break;
+        }
         this.emitState('ended');
         this.stopPositionTimer();
         if (this.streamAudio) {
@@ -688,6 +724,9 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
 
   private applyTarget(target: { type: 'playlist' | 'video'; id: string }): Promise<void> {
     this.isDirectStreamFallback = false;
+    this.isStreamingActive = false;
+    this.pendingSeekSec = null;
+    this.explicitPaused = false;
     this.position = 0;
     this.emitPosition(0);
     if (this.streamAudio) {
@@ -836,6 +875,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public async play(): Promise<void> {
+    this.explicitPaused = false;
     this.ensureStreamAudioInitialized();
     getDspEngine().resumeContext().catch(() => {});
 
@@ -878,6 +918,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   }
 
   public pause(): void {
+    this.explicitPaused = true;
     this.shouldPlayOnReady = false;
     if (this.isDirectStreamFallback && this.streamAudio) {
       this.streamAudio.pause();
@@ -908,10 +949,16 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     }
 
     if (this.streamAudio) {
-      try {
-        this.streamAudio.currentTime = seconds;
-      } catch (err) {
-        console.warn('[YouTubeAdapter] streamAudio seek error:', err);
+      if (this.streamAudio.readyState >= 1) {
+        try {
+          this.streamAudio.currentTime = seconds;
+          this.pendingSeekSec = null;
+        } catch (err) {
+          console.warn('[YouTubeAdapter] streamAudio seek error:', err);
+          this.pendingSeekSec = seconds;
+        }
+      } else {
+        this.pendingSeekSec = seconds;
       }
     }
 

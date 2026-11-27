@@ -460,6 +460,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
           }
         } else if (
           !isInListenTogetherRoom() &&
+          !(typeof window !== 'undefined' && (window as unknown as { __MYUJIKU_RADIO_ACTIVE__?: boolean }).__MYUJIKU_RADIO_ACTIVE__) &&
           upcomingAutoplayQueueRef.current.length > 0 &&
           getSettings().playback.autoplay &&
           playCustomTrackListRef.current
@@ -630,6 +631,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const playCustomTrackList = useCallback(
     async (tracks: TrackInfo[], startIndex = 0) => {
       if (!tracks || tracks.length === 0) return;
+      manuallyPausedRef.current = false;
       const index = Math.max(0, Math.min(tracks.length - 1, startIndex));
       playlistQueueRef.current = { tracks, currentIndex: index };
       setNextTrackInQueue(index + 1 < tracks.length ? tracks[index + 1] : (tracks.length > 1 && isRepeatRef.current ? tracks[0] : null));
@@ -664,6 +666,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const playInjectedTrack = useCallback(
     async (track: TrackInfo) => {
+      manuallyPausedRef.current = false;
       setErrorMessage(null);
       currentTimeRef.current = 0;
       setCurrentTime(0);

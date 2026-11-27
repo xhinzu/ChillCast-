@@ -47,6 +47,27 @@ const APP_THEMES: ThemeCardDef[] = [
     description:
       'Bold scarlet-red and obsidian backdrop with Starboy gold accents, electric-blue highlights, and transparent character cutouts around the stage.',
   },
+  {
+    id: 'marvel',
+    name: 'Marvel',
+    subtitle: 'Black, White & Scarlet Red',
+    description:
+      'High-contrast Marvel comic aesthetic in pitch black, crisp white, and bold red with Deadpool, Iron Man, and Spider-Man cutouts.',
+  },
+  {
+    id: 'yamaha',
+    name: 'Yamaha',
+    subtitle: 'Cyan, Black & Crisp White',
+    description:
+      'Sleek Yamaha synth & superbike aesthetic in electric cyan, deep black, and crisp white with Miku, Teto, and R1 cutouts.',
+  },
+  {
+    id: 'dc',
+    name: 'DC',
+    subtitle: 'Black, Crimson Red & Justice Blue',
+    description:
+      'Dark Gotham & Metropolis comic aesthetic in obsidian black, scarlet red, and heroic blue with Superman, Batman, and Wonder Woman cutouts.',
+  },
 ];
 
 const THEME_DEFAULT_ACCENTS: Record<AppSkinTheme, { accentPreset: string; customAccent: string | null }> = {
@@ -55,6 +76,9 @@ const THEME_DEFAULT_ACCENTS: Record<AppSkinTheme, { accentPreset: string; custom
   xbox: { accentPreset: 'lime', customAccent: '#84CC16' },
   psp: { accentPreset: 'cyan', customAccent: '#38BDF8' },
   starboy: { accentPreset: 'rose', customAccent: '#DC2626' },
+  marvel: { accentPreset: 'rose', customAccent: '#EF4444' },
+  yamaha: { accentPreset: 'cyan', customAccent: '#06B6D4' },
+  dc: { accentPreset: 'blue', customAccent: '#2563EB' },
 };
 
 export default function ThemesSection() {
@@ -193,7 +217,7 @@ export default function ThemesSection() {
                     <span className="w-3 h-3 rounded-full bg-sky-300 shadow-[0_0_8px_#7dd3fc]" />
                   </div>
                 </div>
-              ) : (
+              ) : t.id === 'starboy' ? (
                 <div
                   className="w-full h-28 rounded-xl border border-yellow-400/60 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(220,38,38,0.45)]"
                   style={{
@@ -215,6 +239,78 @@ export default function ThemesSection() {
                   </div>
                   <div className="h-4 rounded bg-black/80 border border-yellow-400/45 flex items-center justify-center">
                     <span className="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]" />
+                  </div>
+                </div>
+              ) : t.id === 'marvel' ? (
+                <div
+                  className="w-full h-28 rounded-xl border-2 border-white/80 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(239,68,68,0.35)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #09090b 0%, #18181b 52%, #7f1d1d 100%)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="px-1.5 py-0.5 bg-[#ef4444] text-[10px] font-black tracking-widest uppercase text-white">
+                      MARVEL
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-white text-[9px] font-bold text-black">
+                      B/W/R
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-1 my-1.5">
+                    <div className="w-12 rounded bg-black/80 border border-white/35" />
+                    <div className="flex-1 rounded bg-black/80 border border-red-500/55" />
+                  </div>
+                  <div className="h-4 rounded bg-black border border-white/40 flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-[#ef4444] shadow-[0_0_8px_#ef4444]" />
+                  </div>
+                </div>
+              ) : t.id === 'yamaha' ? (
+                <div
+                  className="w-full h-28 rounded-xl border border-cyan-400/60 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(6,182,212,0.35)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #04090d 0%, #08202c 55%, #0e7490 100%)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black tracking-widest uppercase text-white">
+                      YAMAHA
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-cyan-400/25 border border-cyan-300/60 text-[9px] text-cyan-200">
+                      01
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-1 my-1.5">
+                    <div className="w-12 rounded bg-black/75 border border-cyan-400/40" />
+                    <div className="flex-1 rounded bg-black/75 border border-white/30" />
+                  </div>
+                  <div className="h-4 rounded bg-black/85 border border-cyan-400/50 flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="w-full h-28 rounded-xl border border-blue-500/60 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(37,99,235,0.35)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #05070c 0%, #0f172a 50%, #7f1d1d 100%)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="px-1.5 py-0.5 rounded bg-blue-600 text-[10px] font-black tracking-widest uppercase text-white">
+                      DC
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-red-600/80 text-[9px] font-bold text-white">
+                      JUSTICE
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-1 my-1.5">
+                    <div className="w-12 rounded bg-black/75 border border-blue-500/45" />
+                    <div className="flex-1 rounded bg-black/75 border border-red-500/45" />
+                  </div>
+                  <div className="h-4 rounded bg-black/85 border border-blue-500/50 flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" />
                   </div>
                 </div>
               )}

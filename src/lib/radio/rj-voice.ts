@@ -149,14 +149,18 @@ export async function speakRjLine(opts: RjSpeakOptions): Promise<'tauri-tts' | '
 
       isSpeakingNow = true;
       opts.onStart?.();
-      utter.onend = () => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(safetyTimer);
         isSpeakingNow = false;
         opts.onEnd?.();
       };
-      utter.onerror = () => {
-        isSpeakingNow = false;
-        opts.onEnd?.();
-      };
+      // Safety timeout in case browser speechSynthesis drops onend
+      const safetyTimer = setTimeout(finish, 18000);
+      utter.onend = finish;
+      utter.onerror = finish;
       window.speechSynthesis.speak(utter);
       return 'browser-tts';
     } catch {
