@@ -98,9 +98,17 @@ export interface AudioSettings {
   profiles: AudioProfilesState;
 }
 
+export type ShuffleMode = 'smart' | 'normal';
+export type AutoplaySourceMode = 'familiar' | 'mixed' | 'discover';
+
 export interface PlaybackSettings {
   autoplay: boolean;
   defaultVolume: number; // 0 to 1
+  shuffleMode: ShuffleMode;
+  smartPicksInterval: 1 | 2 | 3;
+  smartIncludeNewPct: number; // 0 to 50
+  learnListeningHistory: boolean;
+  autoplaySource: AutoplaySourceMode;
 }
 
 export interface DesktopSettings {
@@ -220,6 +228,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   playback: {
     autoplay: true,
     defaultVolume: 0.8,
+    shuffleMode: 'smart',
+    smartPicksInterval: 2,
+    smartIncludeNewPct: 20,
+    learnListeningHistory: true,
+    autoplaySource: 'familiar',
   },
   desktop: {
     closeAction: 'ask',
@@ -267,6 +280,7 @@ function loadAndMigrateSettings(): AppSettings {
         settings = {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          version: DEFAULT_SETTINGS.version,
           appearance: { ...DEFAULT_SETTINGS.appearance, ...(parsed.appearance || {}) },
           glow: { ...DEFAULT_SETTINGS.glow, ...(parsed.glow || {}) },
           audio: (() => {

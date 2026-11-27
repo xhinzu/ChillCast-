@@ -65,6 +65,8 @@ export default function SpotifyBottomPlayer({
     toggleChorus,
     toggleNoiseGate,
     isShuffle,
+    shuffleMode,
+    setShuffleMode,
     isRepeat,
     toggleShuffle,
     toggleRepeat,
@@ -118,8 +120,10 @@ export default function SpotifyBottomPlayer({
   const [scrubTime, setScrubTime] = useState<number>(0);
   const [showFxMenu, setShowFxMenu] = useState<boolean>(false);
   const [showLargeMixer, setShowLargeMixer] = useState<boolean>(false);
+  const [showShuffleMenu, setShowShuffleMenu] = useState<boolean>(false);
   const [showMobileSheet, setShowMobileSheet] = useState<boolean>(false);
   const fxButtonRef = useRef<HTMLButtonElement | null>(null);
+  const shuffleButtonRef = useRef<HTMLButtonElement | null>(null);
   const hasActiveFx = isSpatial8D || isMuffled || isReverb || isChorus || isNoiseGate || settings.audio.eq.enabled;
 
   // Playlists state for adding current track
@@ -630,19 +634,107 @@ export default function SpotifyBottomPlayer({
       <div className="flex flex-col items-center justify-center max-w-xl w-2/4 px-2">
         {/* Top Controls Row */}
         <div className="flex items-center gap-3 sm:gap-5 mb-1.5">
-          {/* Shuffle */}
-          <button
-            type="button"
-            onClick={toggleShuffle}
-            className={`transition-colors cursor-pointer hidden sm:block ${
-              isShuffle ? 'text-[#1d90f5] font-bold' : 'text-[#888888] hover:text-white'
-            }`}
-            title={isShuffle ? 'Shuffle is ON (Click to turn OFF)' : 'Enable Shuffle'}
-          >
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
-            </svg>
-          </button>
+          {/* Shuffle + Mode Selector */}
+          <div className="relative hidden sm:flex items-center gap-0.5">
+            <button
+              ref={shuffleButtonRef}
+              type="button"
+              onClick={toggleShuffle}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setShowShuffleMenu((v) => !v);
+              }}
+              className={`flex items-center gap-1 transition-colors cursor-pointer px-1 py-0.5 rounded ${
+                isShuffle
+                  ? shuffleMode === 'smart'
+                    ? 'text-[var(--accent)] font-bold'
+                    : 'text-[#1d90f5] font-bold'
+                  : 'text-[#888888] hover:text-white'
+              }`}
+              title={
+                isShuffle
+                  ? `${shuffleMode === 'smart' ? 'Smart Shuffle' : 'Normal Shuffle'} is ON (Click to turn OFF)`
+                  : `Enable ${shuffleMode === 'smart' ? 'Smart' : 'Normal'} Shuffle`
+              }
+            >
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+              </svg>
+              {isShuffle && shuffleMode === 'smart' && (
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1 rounded bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                  Smart
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowShuffleMenu((v) => !v)}
+              className="text-[#777777] hover:text-white p-0.5 rounded cursor-pointer"
+              title="Choose Shuffle Mode"
+              aria-label="Choose Shuffle Mode"
+            >
+              <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                <path d="M5.5 7.5 10 12l4.5-4.5H5.5z" />
+              </svg>
+            </button>
+
+            <Popover
+              triggerRef={shuffleButtonRef}
+              isOpen={showShuffleMenu}
+              onClose={() => setShowShuffleMenu(false)}
+              placement="top"
+              align="center"
+              ariaLabel="Shuffle Mode"
+            >
+              <div className="w-56 p-2 bg-[#16161a] border border-[#2c2c36] rounded-xl shadow-2xl text-xs space-y-1">
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Shuffle Mode
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShuffleMode('smart');
+                    if (!isShuffle) toggleShuffle();
+                    setShowShuffleMenu(false);
+                  }}
+                  className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors cursor-pointer ${
+                    shuffleMode === 'smart'
+                      ? 'bg-[var(--accent)]/15 text-white border border-[var(--accent)]/40'
+                      : 'text-zinc-300 hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <div className="font-semibold flex items-center justify-between">
+                    <span>Smart Shuffle</span>
+                    {shuffleMode === 'smart' && <span className="text-[10px] text-[var(--accent)]">Active</span>}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                    Mixes in familiar favorites and related picks
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShuffleMode('normal');
+                    if (!isShuffle) toggleShuffle();
+                    setShowShuffleMenu(false);
+                  }}
+                  className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors cursor-pointer ${
+                    shuffleMode === 'normal'
+                      ? 'bg-white/10 text-white border border-white/25'
+                      : 'text-zinc-300 hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <div className="font-semibold flex items-center justify-between">
+                    <span>Normal Shuffle</span>
+                    {shuffleMode === 'normal' && <span className="text-[10px] text-zinc-200">Active</span>}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">
+                    Pure random order within current playlist
+                  </div>
+                </button>
+              </div>
+            </Popover>
+          </div>
 
           {/* Previous Track */}
           <button

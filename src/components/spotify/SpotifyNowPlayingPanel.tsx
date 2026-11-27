@@ -44,6 +44,10 @@ export default function SpotifyNowPlayingPanel({
     skipUpcomingAutoplay,
     isAutoplayTrack,
     autoplayReason,
+    upcomingSmartPick,
+    removeUpcomingSmartPick,
+    isSmartPickTrack,
+    smartPickReason,
   } = usePlayback();
   const { room, queue: roomQueue, canAdd, addToQueue } = useRoom();
 
@@ -334,6 +338,24 @@ export default function SpotifyNowPlayingPanel({
                   Muffled
                 </span>
               )}
+
+              {isSmartPickTrack && (
+                <span
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30"
+                  title={smartPickReason || 'Selected by Smart Shuffle'}
+                >
+                  Smart pick{smartPickReason ? `: ${smartPickReason}` : ''}
+                </span>
+              )}
+
+              {isAutoplayTrack && (
+                <span
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                  title={autoplayReason || 'Autoplay continuation'}
+                >
+                  Autoplay{autoplayReason ? `: ${autoplayReason}` : ''}
+                </span>
+              )}
             </div>
 
             {/* Progress Bar & Timestamps */}
@@ -365,6 +387,16 @@ export default function SpotifyNowPlayingPanel({
                     artworkUrl: roomNext.thumbnail,
                     sourceType: 'Room Queue',
                   }
+                : upcomingSmartPick
+                ? {
+                    id: upcomingSmartPick.track.id,
+                    title: upcomingSmartPick.track.title,
+                    artist: upcomingSmartPick.track.artist,
+                    artworkUrl: upcomingSmartPick.track.artworkUrl,
+                    sourceType: 'Smart pick',
+                    reason: upcomingSmartPick.reason,
+                    onRemove: () => removeUpcomingSmartPick(upcomingSmartPick.track.id),
+                  }
                 : nextTrackInQueue
                 ? {
                     id: nextTrackInQueue.id,
@@ -372,6 +404,8 @@ export default function SpotifyNowPlayingPanel({
                     artist: nextTrackInQueue.artist,
                     artworkUrl: nextTrackInQueue.artworkUrl,
                     sourceType: 'Up Next',
+                    reason: '',
+                    onRemove: undefined,
                   }
                 : upcomingAutoplay
                 ? {
@@ -380,6 +414,8 @@ export default function SpotifyNowPlayingPanel({
                     artist: upcomingAutoplay.track.artist,
                     artworkUrl: upcomingAutoplay.track.artworkUrl,
                     sourceType: 'Autoplay',
+                    reason: upcomingAutoplay.reason,
+                    onRemove: skipUpcomingAutoplay,
                   }
                 : null;
 
@@ -424,7 +460,22 @@ export default function SpotifyNowPlayingPanel({
                         <p className="text-[10px] text-zinc-400 truncate mt-0.5">
                           {nextTrackItem.artist}
                         </p>
+                        {'reason' in nextTrackItem && nextTrackItem.reason && (
+                          <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                            {nextTrackItem.reason}
+                          </p>
+                        )}
                       </div>
+                      {'onRemove' in nextTrackItem && typeof nextTrackItem.onRemove === 'function' && (
+                        <button
+                          type="button"
+                          onClick={nextTrackItem.onRemove}
+                          className="px-2 py-1 rounded-md bg-white/5 hover:bg-red-500/20 text-[10px] text-zinc-400 hover:text-red-300 transition-colors cursor-pointer shrink-0"
+                          title="Skip this suggestion"
+                        >
+                          Skip
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={nextTrack}

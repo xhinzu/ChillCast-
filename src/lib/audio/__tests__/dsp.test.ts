@@ -154,9 +154,9 @@ s = dsp.getState();
 assert.strictEqual(s.isMuffledActive, true, 'Muffled should be active');
 assert.strictEqual(s.muffledCutoff, 300, 'Cutoff should clamp to minimum 300Hz');
 
-dsp.setMuffled(true, 3500); // Above 2000Hz
+dsp.setMuffled(true, 5000); // Above 4000Hz
 s = dsp.getState();
-assert.strictEqual(s.muffledCutoff, 2000, 'Cutoff should clamp to maximum 2000Hz');
+assert.strictEqual(s.muffledCutoff, 4000, 'Cutoff should clamp to maximum 4000Hz');
 
 dsp.setMuffled(true, 750);
 s = dsp.getState();
