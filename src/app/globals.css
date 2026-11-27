@@ -864,4 +864,85 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
+/* ============================================================================
+ * FULL APP THEME: STARBOY (CRIMSON RED, GOLD & ELECTRIC BLUE)
+ * ============================================================================ */
+[data-ui-skin="starboy"] {
+  --bg-base: #180306;
+  --surface: rgba(24, 5, 9, 0.78);
+  --surface-2: rgba(48, 9, 16, 0.82);
+  --surface-3: rgba(185, 28, 28, 0.45);
+  --border: rgba(250, 204, 21, 0.32);
+  --text: #fef2f2;
+  --text-muted: #fca5a5;
+  --accent: #facc15;
+  --accent-contrast: #140306;
+  --background: #180306;
+  --foreground: #fef2f2;
+}
+
+[data-ui-skin="starboy"] body {
+  background-color: #160205 !important;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(220, 38, 38, 0.48) 0%, transparent 50%),
+    radial-gradient(circle at 82% 78%, rgba(37, 99, 235, 0.28) 0%, transparent 52%),
+    linear-gradient(155deg, #7f0916 0%, #3b050b 52%, #0b0204 100%) !important;
+  color: #fef2f2 !important;
+}
+
+[data-ui-skin="starboy"] aside,
+[data-ui-skin="starboy"] main,
+[data-ui-skin="starboy"] .bg-\[\#121212\],
+[data-ui-skin="starboy"] .bg-\[\#121215\],
+[data-ui-skin="starboy"] .bg-\[\#141414\],
+[data-ui-skin="starboy"] .bg-\[\#151519\],
+[data-ui-skin="starboy"] .bg-\[\#16161a\],
+[data-ui-skin="starboy"] .bg-\[\#17171a\],
+[data-ui-skin="starboy"] .bg-\[\#181818\],
+[data-ui-skin="starboy"] .bg-\[\#18181b\],
+[data-ui-skin="starboy"] .bg-\[\#18181c\],
+[data-ui-skin="starboy"] .bg-\[\#1b1b22\],
+[data-ui-skin="starboy"] .bg-\[\#1c1c24\],
+[data-ui-skin="starboy"] .bg-\[\#222222\] {
+  background-color: rgba(20, 4, 8, 0.78) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(250, 204, 21, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(250, 204, 21, 0.14), 0 8px 28px rgba(0, 0, 0, 0.55) !important;
+}
+
+[data-ui-skin="starboy"] [aria-label="Interactive Radio"],
+[data-ui-skin="starboy"] [aria-label="Interactive Radio"] .bg-black {
+  background-color: #000000 !important;
+  backdrop-filter: none;
+}
+
+[data-ui-skin="starboy"] header,
+[data-ui-skin="starboy"] .bg-black\/95 {
+  background: linear-gradient(90deg, rgba(127, 9, 22, 0.9) 0%, rgba(24, 4, 8, 0.94) 60%, rgba(12, 24, 72, 0.88) 100%) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(250, 204, 21, 0.38) !important;
+}
+
+[data-ui-skin="starboy"] .text-white {
+  color: #fffbeb !important;
+}
+
+[data-ui-skin="starboy"] .text-zinc-400,
+[data-ui-skin="starboy"] .text-\[\#888888\],
+[data-ui-skin="starboy"] .text-\[\#b3b3b3\] {
+  color: #93c5fd !important;
+}
+
+[data-ui-skin="starboy"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-ui-skin="starboy"] ::-webkit-scrollbar-track {
+  background: #140205;
+}
+[data-ui-skin="starboy"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #dc2626, #facc15);
+  border-radius: 9999px;
+}
+
 

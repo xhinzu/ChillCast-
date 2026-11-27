@@ -34,7 +34,7 @@ export const SETTINGS_STORAGE_KEY = 'myujiku_settings_v2';
 export const SETTINGS_CHANGED_EVENT = 'myujiku_settings_changed';
 
 export type ThemeMode = 'dark' | 'light' | 'amoled' | 'system';
-export type AppSkinTheme = 'classic' | 'windows_xp' | 'xbox' | 'psp';
+export type AppSkinTheme = 'classic' | 'windows_xp' | 'xbox' | 'psp' | 'starboy';
 
 export interface AppearanceSettings {
   theme: ThemeMode;

@@ -430,6 +430,27 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
           <span>{trayNotice}</span>
         </div>
       )}
+
+      {/* 10. Starboy Theme Character Cutouts */}
+      {settings.appearance.uiSkin === 'starboy' && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none opacity-45">
+          <img
+            src="/themes/starboy/denji.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 left-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(220,38,38,0.55)]"
+          />
+          <img
+            src="/themes/starboy/lucy.png"
+            alt=""
+            className="hidden md:block absolute bottom-16 right-4 h-72 w-auto object-contain drop-shadow-[0_0_24px_rgba(56,189,248,0.5)]"
+          />
+          <img
+            src="/themes/starboy/reze.png"
+            alt=""
+            className="hidden lg:block absolute top-14 right-8 h-48 w-auto object-contain opacity-80 drop-shadow-[0_0_18px_rgba(250,204,21,0.4)]"
+          />
+        </div>
+      )}
     </div>
   );
 }

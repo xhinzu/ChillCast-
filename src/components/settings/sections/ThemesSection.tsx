@@ -40,6 +40,13 @@ const APP_THEMES: ThemeCardDef[] = [
     description:
       'Inspired by classic 2000s Sony PlayStation ads and PSP XMB waves: deep cobalt blue gradients, frosted translucent ice-blue glass panels, and steel-silver accents.',
   },
+  {
+    id: 'starboy',
+    name: 'Starboy',
+    subtitle: 'Crimson Red, Gold & Electric Blue',
+    description:
+      'Bold scarlet-red and obsidian backdrop with Starboy gold accents, electric-blue highlights, and transparent character cutouts around the stage.',
+  },
 ];
 
 export default function ThemesSection() {
@@ -149,7 +156,7 @@ export default function ThemesSection() {
                     <span className="w-3 h-3 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
                   </div>
                 </div>
-              ) : (
+              ) : t.id === 'psp' ? (
                 <div
                   className="w-full h-28 rounded-xl border border-sky-300/45 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_28px_rgba(96,165,250,0.28)]"
                   style={{
@@ -171,6 +178,30 @@ export default function ThemesSection() {
                   </div>
                   <div className="h-4 rounded bg-[#03153a]/75 border border-sky-300/35 flex items-center justify-center">
                     <span className="w-3 h-3 rounded-full bg-sky-300 shadow-[0_0_8px_#7dd3fc]" />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="w-full h-28 rounded-xl border border-yellow-400/60 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(220,38,38,0.45)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #991b1b 0%, #dc2626 48%, #1f060a 100%)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black tracking-widest uppercase text-yellow-400">
+                      STARBOY
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-600/40 border border-sky-400/50 text-[9px] text-sky-200">
+                      LTD
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-1 my-1.5">
+                    <div className="w-12 rounded bg-black/55 border border-red-500/40" />
+                    <div className="flex-1 rounded bg-black/55 border border-yellow-400/35" />
+                  </div>
+                  <div className="h-4 rounded bg-black/80 border border-yellow-400/45 flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]" />
                   </div>
                 </div>
               )}
