@@ -133,7 +133,10 @@ export class DspEngine {
   private lastFrameTime = 0;
   private alternatingDir = 1;
 
-  // 8. Master Section
+  // 8. Master Section (preceded by optional Radio Voicing & Ducking stage)
+  private radioHighPass: BiquadFilterNode | null = null;
+  private radioLowPass: BiquadFilterNode | null = null;
+  private radioDuckGain: GainNode | null = null;
   private masterBassShelf: BiquadFilterNode | null = null;
   private masterTrebleShelf: BiquadFilterNode | null = null;
   private widthSumNode: GainNode | null = null;
@@ -386,6 +389,18 @@ export class DspEngine {
     }
     this.reverbSum.connect(this.pannerNode);
 
+    // 7.5 Radio Voicing & RJ Ducking Stage (transparent when Radio is off)
+    this.radioHighPass = this.ctx.createBiquadFilter();
+    this.radioHighPass.type = 'highpass';
+    this.radioHighPass.frequency.setValueAtTime(10, now);
+
+    this.radioLowPass = this.ctx.createBiquadFilter();
+    this.radioLowPass.type = 'lowpass';
+    this.radioLowPass.frequency.setValueAtTime(22000, now);
+
+    this.radioDuckGain = this.ctx.createGain();
+    this.radioDuckGain.gain.setValueAtTime(1.0, now);
+
     // 8. Master Section: Bass/Treble shelves -> M/S Stereo Width -> Balance -> Compressor -> Limiter -> Output Gain
     this.masterBassShelf = this.ctx.createBiquadFilter();
     this.masterBassShelf.type = 'lowshelf';
@@ -395,7 +410,10 @@ export class DspEngine {
     this.masterTrebleShelf.type = 'highshelf';
     this.masterTrebleShelf.frequency.setValueAtTime(6500, now);
 
-    this.pannerNode.connect(this.masterBassShelf);
+    this.pannerNode.connect(this.radioHighPass);
+    this.radioHighPass.connect(this.radioLowPass);
+    this.radioLowPass.connect(this.radioDuckGain);
+    this.radioDuckGain.connect(this.masterBassShelf);
     this.masterBassShelf.connect(this.masterTrebleShelf);
 
     // M/S Stereo Width Matrix
@@ -1004,6 +1022,34 @@ export class DspEngine {
   public getAnalyserNode(): AnalyserNode | null {
     if (!this.analyserNode && !this.ctx) this.getContext();
     return this.analyserNode;
+  }
+
+  public getAudioContext(): AudioContext | null {
+    return this.ctx;
+  }
+
+  public setRadioVoicing(enabled: boolean, amount = 0.65, bandwidthHz = 5600, isAm = false): void {
+    if (!this.ctx || !this.radioHighPass || !this.radioLowPass) return;
+    const now = this.ctx.currentTime;
+    if (!enabled) {
+      this.radioHighPass.frequency.setTargetAtTime(10, now, 0.04);
+      this.radioLowPass.frequency.setTargetAtTime(22000, now, 0.04);
+      return;
+    }
+    const amt = Math.max(0, Math.min(1, amount));
+    const hpTarget = 10 + (isAm ? 220 : 150) * amt;
+    const maxLp = isAm ? 3800 : 5600;
+    const bw = Math.max(900, Math.min(maxLp, bandwidthHz));
+    const lpTarget = 22000 - (22000 - bw) * amt;
+    this.radioHighPass.frequency.setTargetAtTime(hpTarget, now, 0.04);
+    this.radioLowPass.frequency.setTargetAtTime(lpTarget, now, 0.04);
+  }
+
+  public setRadioDucking(ducked: boolean, duckDb = -12): void {
+    if (!this.ctx || !this.radioDuckGain) return;
+    const now = this.ctx.currentTime;
+    const gain = ducked ? dbToLinear(Math.max(-24, Math.min(0, duckDb))) : 1.0;
+    this.radioDuckGain.gain.setTargetAtTime(gain, now, 0.12);
   }
 
   public getDiagnostics(): DspDiagnostics {

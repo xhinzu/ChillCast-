@@ -221,6 +221,28 @@ export default function SpotifySidebar({
               )}
             </div>
           </button>
+
+          {/* Radio */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView('radio');
+              if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', '/radio');
+              }
+            }}
+            className={`flex items-center gap-4 px-3 py-2.5 rounded-lg font-bold text-sm transition-all cursor-pointer ${
+              activeView === 'radio'
+                ? 'text-white bg-[#222222] border border-[#333333]'
+                : 'text-[#888888] hover:text-white hover:bg-[#1a1a1a]'
+            }`}
+          >
+            <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5M19.1 4.9c3.9 3.9 3.9 10.3 0 14.2M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+            </svg>
+            <span>Radio</span>
+          </button>
         </nav>
 
         {/* "Your Library" Block */}

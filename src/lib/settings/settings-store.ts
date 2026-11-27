@@ -137,6 +137,36 @@ export interface ShortcutsSettings {
   bindings: Record<string, string>; // actionId -> keyCombo
 }
 
+export interface RadioPresetSlot {
+  slot: number; // 1..6
+  stationId: string;
+  frequency: number;
+  band: 'FM' | 'AM';
+  name: string;
+}
+
+export interface RadioSettings {
+  stationSeed: number;
+  defaultBand: 'FM' | 'AM';
+  vintageSoundEnabled: boolean;
+  vintageAmount: number; // 0 to 1
+  staticAmount: number; // 0 to 1
+  realisticReception: boolean;
+  allowSkipping: boolean;
+  radioColor: 'white' | 'black' | 'wood' | 'teal' | 'custom';
+  customRadioColor: string;
+  quality3d: 'auto' | 'high' | 'low' | '2d';
+  sfxVolume: number; // 0 to 1
+  rjFrequency: 'off' | 'rare' | 'normal' | 'often';
+  rjVolume: number; // 0 to 1
+  rjDuckDb: number; // -24 to 0
+  rjCaptions: boolean;
+  rjCustomClipsEnabled: boolean;
+  rjPersonaVoices: Record<string, string>;
+  simpleControls: boolean;
+  presets: RadioPresetSlot[];
+}
+
 export interface AppSettings {
   version: number;
   appearance: AppearanceSettings;
@@ -147,6 +177,7 @@ export interface AppSettings {
   discord: DiscordSettings;
   account: AccountSettings;
   shortcuts: ShortcutsSettings;
+  radio: RadioSettings;
 }
 
 export const DEFAULT_KEY_BINDINGS: Record<string, string> = {
@@ -256,6 +287,27 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shortcuts: {
     bindings: { ...DEFAULT_KEY_BINDINGS },
   },
+  radio: {
+    stationSeed: 4242,
+    defaultBand: 'FM',
+    vintageSoundEnabled: true,
+    vintageAmount: 0.65,
+    staticAmount: 0.55,
+    realisticReception: false,
+    allowSkipping: false,
+    radioColor: 'white',
+    customRadioColor: '#e5e7eb',
+    quality3d: 'auto',
+    sfxVolume: 0.6,
+    rjFrequency: 'normal',
+    rjVolume: 0.85,
+    rjDuckDb: -12,
+    rjCaptions: true,
+    rjCustomClipsEnabled: true,
+    rjPersonaVoices: {},
+    simpleControls: false,
+    presets: [],
+  },
 };
 
 let cachedSettings: AppSettings | null = null;
@@ -341,6 +393,12 @@ function loadAndMigrateSettings(): AppSettings {
           account: { ...DEFAULT_SETTINGS.account, ...(parsed.account || {}) },
           shortcuts: {
             bindings: { ...DEFAULT_KEY_BINDINGS, ...(parsed.shortcuts?.bindings || {}) },
+          },
+          radio: {
+            ...DEFAULT_SETTINGS.radio,
+            ...(parsed.radio || {}),
+            rjPersonaVoices: { ...(parsed.radio?.rjPersonaVoices || {}) },
+            presets: Array.isArray(parsed.radio?.presets) ? parsed.radio.presets : [],
           },
         };
       } catch (err) {

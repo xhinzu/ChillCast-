@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useRoom } from '@/context/RoomContext';
+import { useRadio } from '@/context/RadioContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from '@/components/spotify/AddSourceModal';
 import { getSavedPlaylists, toggleLikedSong, PLAYLISTS_UPDATED_EVENT } from '@/lib/playlist-storage';
 import {
@@ -53,6 +54,7 @@ export default function SpotifyNowPlayingPanel({
     smartPickReason,
   } = usePlayback();
   const { room, queue: roomQueue, canAdd, addToQueue } = useRoom();
+  const { isRadioActive, activeStation, upcomingSchedule } = useRadio();
 
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
   const [hasLyrics, setHasLyrics] = useState<boolean>(false);
@@ -359,6 +361,12 @@ export default function SpotifyNowPlayingPanel({
                   Autoplay{autoplayReason ? `: ${autoplayReason}` : ''}
                 </span>
               )}
+
+              {isRadioActive && activeStation && (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/30">
+                  On air · {activeStation.name} ({activeStation.band === 'FM' ? `${activeStation.frequency.toFixed(1)} MHz` : `${activeStation.frequency} kHz`})
+                </span>
+              )}
             </div>
 
             {/* Progress Bar & Timestamps */}
@@ -389,6 +397,14 @@ export default function SpotifyNowPlayingPanel({
                     artist: roomNext.artist,
                     artworkUrl: roomNext.thumbnail,
                     sourceType: 'Room Queue',
+                  }
+                : isRadioActive && upcomingSchedule
+                ? {
+                    id: upcomingSchedule.nextTrack.id,
+                    title: upcomingSchedule.nextTrack.title,
+                    artist: upcomingSchedule.nextTrack.artist,
+                    artworkUrl: upcomingSchedule.nextTrack.artworkUrl,
+                    sourceType: 'On air next',
                   }
                 : upcomingSmartPick
                 ? {

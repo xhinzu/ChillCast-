@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import { YouTubeSearchResult } from '@/app/api/youtube/search/route';
@@ -13,6 +14,8 @@ import LyricsPage from '@/components/lyrics/LyricsPage';
 import { useRoom } from '@/context/RoomContext';
 import RoomLobbyView from '@/components/rooms/RoomLobbyView';
 import RoomMainView from '@/components/rooms/RoomMainView';
+
+const RadioView = dynamic(() => import('@/components/radio/RadioView'), { ssr: false });
 import { formatCleanDisplayTrack } from '@/lib/lyrics/normalize';
 import {
   ALL_GENRE_TRENDING_SONGS,
@@ -405,6 +408,7 @@ export default function SpotifyMainContent({
   const isVinylView = activeView === 'vinyl';
   const isLyricsView = activeView === 'lyrics';
   const isTogetherView = activeView === 'together';
+  const isRadioView = activeView === 'radio';
   const isHomeView =
     !isSearchActive &&
     !isPlaylistView &&
@@ -412,7 +416,8 @@ export default function SpotifyMainContent({
     !isAmbienceView &&
     !isVinylView &&
     !isLyricsView &&
-    !isTogetherView;
+    !isTogetherView &&
+    !isRadioView;
   const customPlaylistsOnly = savedPlaylists.filter((p) => p.type === 'custom');
 
   // Track which curated playlist is currently playing
@@ -1657,6 +1662,11 @@ export default function SpotifyMainContent({
             <LyricsPage />
           </section>
         )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW: RADIO                                                   */}
+        {/* ------------------------------------------------------------- */}
+        {isRadioView && <RadioView />}
 
         {/* ------------------------------------------------------------- */}
         {/* VIEW: TOGETHER                                                */}

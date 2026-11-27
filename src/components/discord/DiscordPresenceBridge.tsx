@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useRoom } from '@/context/RoomContext';
+import { useRadio } from '@/context/RadioContext';
 import {
   DISCORD_SETTINGS_CHANGED_EVENT,
   getDiscordPresenceEnabled,
@@ -33,6 +34,7 @@ const FIRST_RUN_TOAST_KEY = 'myujiku_discord_toast_dismissed';
 export default function DiscordPresenceBridge() {
   const { currentTrack, isPlaying, currentTime, duration } = usePlayback();
   const { room, roomStatus } = useRoom();
+  const { isRadioActive, activeStation } = useRadio();
   const elementRef = useRef<HTMLDivElement | null>(null);
 
   // Keep track of values to detect real state changes vs normal 1-second ticks
@@ -199,10 +201,14 @@ export default function DiscordPresenceBridge() {
           const endTs = isPlaying && trackDur > 0 ? (startTs || Math.floor(now / 1000)) + Math.floor(trackDur) : undefined;
           const roomUrl = activeRoomCode ? `https://myujiku.vercel.app/together/${activeRoomCode}` : undefined;
 
+          const radioAlbum = isRadioActive && activeStation
+            ? `${activeStation.name} (${activeStation.band === 'FM' ? `${activeStation.frequency.toFixed(1)} MHz` : `${activeStation.frequency} kHz`})`
+            : currentTrack.album;
+
           setDesktopPresence({
             title: currentTrack.title || 'Untitled Track',
             artist: currentTrack.artist || 'Unknown Artist',
-            album: currentTrack.album,
+            album: radioAlbum,
             coverUrl,
             startTimestamp: startTs,
             endTimestamp: endTs,

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { PlaybackProvider, usePlayback } from '@/context/PlaybackContext';
 import { AmbientProvider } from '@/context/AmbientContext';
 import { RoomProvider, useRoom } from '@/context/RoomContext';
+import { RadioProvider } from '@/context/RadioContext';
 import SpotifyTopNav from '@/components/spotify/SpotifyTopNav';
 import SpotifySidebar from '@/components/spotify/SpotifySidebar';
 import SpotifyMainContent from '@/components/spotify/SpotifyMainContent';
@@ -438,7 +439,9 @@ export default function ChillCastApp({ initialView = 'home', initialRoomCode }: 
     <PlaybackProvider>
       <AmbientProvider>
         <RoomProvider>
-          <ChillCastShell initialView={initialView} initialRoomCode={initialRoomCode} />
+          <RadioProvider>
+            <ChillCastShell initialView={initialView} initialRoomCode={initialRoomCode} />
+          </RadioProvider>
         </RoomProvider>
       </AmbientProvider>
     </PlaybackProvider>

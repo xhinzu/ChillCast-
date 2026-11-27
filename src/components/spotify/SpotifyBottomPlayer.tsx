@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePlayback } from '@/context/PlaybackContext';
 import { useAmbient } from '@/context/AmbientContext';
 import { useRoom } from '@/context/RoomContext';
+import { useRadio } from '@/context/RadioContext';
 import { SavedPlaylistItem, CustomPlaylistTrack } from './AddSourceModal';
 import { getSavedPlaylists, toggleLikedSong, PLAYLISTS_UPDATED_EVENT } from '@/lib/playlist-storage';
 import Popover from '@/components/common/Popover';
@@ -74,6 +75,7 @@ export default function SpotifyBottomPlayer({
 
   const { activeCount } = useAmbient();
   const roomContext = useRoom();
+  const { isRadioActive, activeStation, scanNext } = useRadio();
 
   const isInConnectedRoom = Boolean(roomContext?.room && roomContext?.roomStatus === 'connected');
   const effectiveIsPlaying = isInConnectedRoom
@@ -91,10 +93,15 @@ export default function SpotifyBottomPlayer({
       }
       return;
     }
+    if (isRadioActive) {
+      toggleMute();
+      return;
+    }
     togglePlay();
   };
 
   const handleSeek = (targetSec: number) => {
+    if (isRadioActive) return;
     if (isInConnectedRoom) {
       if (roomContext.canControl) {
         roomContext.seekRoom(targetSec * 1000);
@@ -111,7 +118,19 @@ export default function SpotifyBottomPlayer({
       }
       return;
     }
+    if (isRadioActive && !settings.radio.allowSkipping) {
+      scanNext(1);
+      return;
+    }
     nextTrack();
+  };
+
+  const handlePrevTrack = () => {
+    if (isRadioActive && !settings.radio.allowSkipping) {
+      scanNext(-1);
+      return;
+    }
+    previousTrack();
   };
 
   const { settings } = useSettings();
@@ -410,7 +429,7 @@ export default function SpotifyBottomPlayer({
 
             <button
               type="button"
-              onClick={previousTrack}
+              onClick={handlePrevTrack}
               className="p-2 text-white cursor-pointer"
               aria-label="Previous"
             >
@@ -531,6 +550,14 @@ export default function SpotifyBottomPlayer({
         }`}
       >
       {/* 1. Left: Track Info & Artwork */}
+      {isRadioActive && activeStation && (
+        <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-[10px] font-bold text-red-300 mr-2 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+          <span className="truncate max-w-[140px]">
+            On air · {activeStation.name} ({activeStation.band === 'FM' ? activeStation.frequency.toFixed(1) : activeStation.frequency})
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-3 w-1/4 min-w-[160px] sm:min-w-[200px]">
         {/* Track Artwork */}
         <div className="relative w-14 h-14 rounded-md overflow-hidden bg-[#282828] shrink-0 shadow-md">
