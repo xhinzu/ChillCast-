@@ -26,6 +26,13 @@ const APP_THEMES: ThemeCardDef[] = [
     description:
       'Transforms the entire player into a classic Windows XP music player with #0054E3 Luna Blue titlebars, #ECE9D8 beveled panels, Tahoma typography, and a metallic WMP transport bar.',
   },
+  {
+    id: 'xbox',
+    name: 'Xbox',
+    subtitle: 'Retro Translucent Emerald Green',
+    description:
+      'Classic translucent green console aesthetic with frosted emerald glass panels, cyber-grid backdrop, glowing lime highlights, and luminous transport controls.',
+  },
 ];
 
 export default function ThemesSection() {
@@ -80,7 +87,7 @@ export default function ThemesSection() {
                     <span className="w-3 h-3 rounded-full bg-white" />
                   </div>
                 </div>
-              ) : (
+              ) : t.id === 'windows_xp' ? (
                 <div
                   className="w-full h-28 rounded border-2 border-[#0054E3] bg-[#ECE9D8] flex flex-col justify-between overflow-hidden"
                   style={{ fontFamily: 'Tahoma, Arial, sans-serif' }}
@@ -109,6 +116,30 @@ export default function ThemesSection() {
                     </span>
                     <span className="w-3.5 h-3.5 rounded-full bg-[#e8eef9] border border-[#243b6b]" />
                     <span className="text-[9px] text-white font-mono">XP</span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="w-full h-28 rounded-xl border border-[#84cc16]/60 p-2.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_0_24px_rgba(132,204,22,0.28)]"
+                  style={{
+                    background:
+                      'radial-gradient(circle at 25% 40%, rgba(132,204,22,0.35), rgba(8,28,7,0.94) 70%)',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-[#bef264]">
+                      XBOX MUSIC
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-[#84cc16]/25 border border-[#a3e635]/50 text-[9px] text-[#ecfccb]">
+                      2001
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-1 my-1.5">
+                    <div className="w-12 rounded bg-[#143d10]/65 border border-[#84cc16]/40" />
+                    <div className="flex-1 rounded bg-[#143d10]/55 border border-[#84cc16]/40" />
+                  </div>
+                  <div className="h-4 rounded bg-[#0c2909]/85 border border-[#84cc16]/50 flex items-center justify-center">
+                    <span className="w-3 h-3 rounded-full bg-[#a3e635] shadow-[0_0_8px_#a3e635]" />
                   </div>
                 </div>
               )}
