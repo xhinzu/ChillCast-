@@ -254,12 +254,12 @@ export default function Windows98Stage({
   const crtOpacity = Math.max(0, Math.min(1, (win98Settings.crtIntensity ?? 45) / 100));
 
   const desktopIcons = [
-    { id: 'computer', label: 'My Computer', color: '#60a5fa', glyph: 'PC' },
-    { id: 'docs', label: 'My Documents', color: '#fbbf24', glyph: 'DIR' },
-    { id: 'recycle', label: 'Recycle Bin', color: '#cbd5e1', glyph: 'BIN' },
-    { id: 'myujiku', label: 'myujiku.exe', color: '#10b981', glyph: 'MYU', action: () => setWindowState('normal') },
-    { id: 'notepad', label: 'Notepad', color: '#93c5fd', glyph: 'TXT', action: () => setNotepadOpen((v) => !v) },
-    { id: 'internet', label: 'Internet', color: '#38bdf8', glyph: 'WEB' },
+    { id: 'computer', label: 'My Computer', iconSrc: '/lyrics/windows98/icons/my-computer.png' },
+    { id: 'docs', label: 'My Documents', iconSrc: '/lyrics/windows98/icons/my-docs.png' },
+    { id: 'music', label: 'My Music', iconSrc: '/lyrics/windows98/icons/cd-music.png' },
+    { id: 'myujiku', label: 'myujiku.exe', iconSrc: '/myujiku-logo.png', action: () => setWindowState('normal') },
+    { id: 'notepad', label: 'Notepad', iconSrc: '/lyrics/windows98/icons/notepad.png', action: () => setNotepadOpen((v) => !v) },
+    { id: 'internet', label: 'Internet', iconSrc: '/lyrics/windows98/icons/internet.png' },
   ];
 
   return (
@@ -300,12 +300,11 @@ export default function Windows98Stage({
                     <Image src="/myujiku-logo.png" alt="myujiku.exe" width={24} height={24} className="w-full h-full object-contain" />
                   </div>
                 ) : (
-                  <div
-                    className="w-8 h-8 rounded-md border border-white/40 shadow flex items-center justify-center text-[9px] font-bold text-black"
-                    style={{ backgroundColor: ic.color }}
-                  >
-                    {ic.glyph}
-                  </div>
+                  <img
+                    src={ic.iconSrc}
+                    alt={ic.label}
+                    className="w-8 h-8 object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.65)]"
+                  />
                 )}
                 <span className="text-[10px] leading-tight text-white text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
                   {ic.label}
@@ -620,18 +619,19 @@ export default function Windows98Stage({
             <button
               type="button"
               onClick={() => setStartOpen((v) => !v)}
-              className={`h-full px-3.5 flex items-center gap-1.5 font-bold italic text-xs cursor-pointer ${
+              className={`h-full px-3 flex items-center gap-1.5 font-bold italic text-xs cursor-pointer ${
                 isClassicGrayTaskbar
                   ? 'text-black border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] m-0.5 h-6'
                   : 'text-white rounded-r-xl shadow-inner'
               }`}
               style={{ background: tb.startBg }}
             >
+              <img src="/lyrics/windows98/icons/start-orb.png" alt="" className="w-4 h-4 object-contain" />
               <span>start</span>
             </button>
 
             {/* Quick Launch */}
-            <div className="hidden sm:flex items-center gap-1 px-1.5 border-r border-white/20">
+            <div className="hidden sm:flex items-center gap-1.5 px-1.5 border-r border-white/20">
               <button
                 type="button"
                 onClick={() => setWindowState('normal')}
@@ -643,10 +643,18 @@ export default function Windows98Stage({
               <button
                 type="button"
                 onClick={() => setNotepadOpen((v) => !v)}
-                className="w-5 h-5 rounded bg-white/80 text-[8px] font-bold text-black flex items-center justify-center cursor-pointer"
+                className="w-5 h-5 flex items-center justify-center cursor-pointer"
                 title="Notepad"
               >
-                TXT
+                <img src="/lyrics/windows98/icons/notepad.png" alt="Notepad" className="w-4 h-4 object-contain" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWindowState('normal')}
+                className="w-5 h-5 flex items-center justify-center cursor-pointer"
+                title="Internet"
+              >
+                <img src="/lyrics/windows98/icons/internet.png" alt="Internet" className="w-4 h-4 object-contain" />
               </button>
             </div>
 
@@ -683,6 +691,7 @@ export default function Windows98Stage({
                 : 'bg-[#0f8aee] text-white border-l border-white/20'
             }`}
           >
+            <img src="/lyrics/windows98/icons/speaker.png" alt="Volume" className="w-4 h-4 object-contain" />
             <span className="text-[10px] font-mono">{Math.round(volume * 100)}%</span>
             <span className="font-semibold">{clockStr}</span>
           </div>
