@@ -201,6 +201,35 @@ export default function PlaybackSection() {
           </div>
         )}
 
+        <div className="flex items-center justify-between gap-4 pt-3 border-t border-[#22222a]">
+          <div>
+            <h4 className="text-xs font-semibold text-white">Autoplay Source</h4>
+            <p className="text-[11px] text-zinc-400">
+              Choose whether continuation favors your familiar songs or explores new tracks.
+            </p>
+          </div>
+          <div className="inline-flex rounded-lg bg-[#111115] border border-[#282830] p-0.5 shrink-0">
+            {([
+              { id: 'familiar', label: 'Familiar first' },
+              { id: 'mixed', label: 'Mixed (70/30)' },
+              { id: 'discover', label: 'Discover new' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => updateSettings('playback', { autoplaySource: opt.id })}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                  playback.autoplaySource === opt.id
+                    ? 'bg-[var(--accent)] text-black'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="pt-3 border-t border-[#22222a] space-y-2 text-[11px] text-zinc-400">
           <span className="font-semibold text-zinc-300 block">Candidate Discovery Hierarchy:</span>
           <ol className="list-decimal list-inside space-y-1 text-[11px]">

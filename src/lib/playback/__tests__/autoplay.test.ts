@@ -3,6 +3,7 @@ import {
   isDurationValid,
   isExcludedTitle,
   filterCandidates,
+  resolveAutoplayQueue,
   type AutoplayCandidate,
 } from '../autoplay';
 
@@ -64,6 +65,17 @@ const varietyFiltered = filterCandidates(candidatesWithSameArtist, new Set(), re
 assert.strictEqual(varietyFiltered.length, 1, 'Third consecutive track by same artist should be skipped for variety');
 assert.strictEqual(varietyFiltered[0].artist, 'Playboi Carti');
 console.log('   ✓ Artist variety constraint enforced');
+
+// 5. Room Guard for resolveAutoplayQueue
+const roomResult = await resolveAutoplayQueue(
+  { id: 't1', title: 'Track 1', artist: 'Artist A', duration: 200, source: 'youtube' },
+  new Set(),
+  [],
+  true,
+  'familiar',
+  3
+);
+assert.strictEqual(roomResult.length, 0, 'Autoplay queue must be empty in Listen Together rooms');
 
 console.log('\n========================================================');
 console.log('🎉 ALL AUTOPLAY ENGINE TESTS PASSED SUCCESSFULLY!');

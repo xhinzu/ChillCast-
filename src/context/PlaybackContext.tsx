@@ -15,7 +15,7 @@ import {
   TrackInfo,
 } from '@/types/playback';
 import { createAdapter, LocalAudioAdapter } from '@/lib/adapters';
-import { resolveNextAutoplayTrack, type AutoplayResult } from '@/lib/playback/autoplay';
+import { resolveNextAutoplayTrack, resolveAutoplayQueue, type AutoplayResult } from '@/lib/playback/autoplay';
 import { getSettings, updateSettings, SETTINGS_CHANGED_EVENT, type ShuffleMode } from '@/lib/settings/settings-store';
 import { getDspEngine } from '@/lib/audio/dsp-engine';
 import { selectSmartPicks, type SmartPickResult } from '@/lib/smartPicks';
@@ -52,7 +52,10 @@ interface PlaybackContextValue {
   nextTrackInQueue: TrackInfo | null;
 
   upcomingAutoplay: AutoplayResult | null;
+  upcomingAutoplayQueue: AutoplayResult[];
   skipUpcomingAutoplay: () => void;
+  removeUpcomingAutoplayItem: (trackId: string) => void;
+  reorderUpcomingAutoplayItem: (fromIdx: number, toIdx: number) => void;
   isAutoplayTrack: boolean;
   autoplayReason: string;
 
@@ -188,11 +191,14 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Autoplay State & Queue
+  // Autoplay State & Queue (stocks 2-3 upcoming picks)
   const [upcomingAutoplay, setUpcomingAutoplay] = useState<AutoplayResult | null>(null);
   const upcomingAutoplayRef = useRef<AutoplayResult | null>(null);
+  const [upcomingAutoplayQueue, setUpcomingAutoplayQueue] = useState<AutoplayResult[]>([]);
+  const upcomingAutoplayQueueRef = useRef<AutoplayResult[]>([]);
   const [isAutoplayTrack, setIsAutoplayTrack] = useState<boolean>(false);
   const [autoplayReason, setAutoplayReason] = useState<string>('');
+  const manuallyPausedRef = useRef<boolean>(false);
   const historyTrackIdsRef = useRef<Set<string>>(new Set());
   const recentArtistsRef = useRef<string[]>([]);
   const isResolvingAutoplayRef = useRef<boolean>(false);
@@ -276,34 +282,72 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     removeUpcomingSmartPick();
   }, [removeUpcomingSmartPick]);
 
+  const syncAutoplayQueue = useCallback((nextQueue: AutoplayResult[]) => {
+    upcomingAutoplayQueueRef.current = nextQueue;
+    setUpcomingAutoplayQueue(nextQueue);
+    const head = nextQueue[0] ?? null;
+    upcomingAutoplayRef.current = head;
+    setUpcomingAutoplay(head);
+  }, []);
+
   const triggerAutoplayPrefetch = useCallback(async (track: TrackInfo) => {
-    if (isResolvingAutoplayRef.current || upcomingAutoplayRef.current) return;
+    if (isInListenTogetherRoom()) return;
+    if (isResolvingAutoplayRef.current || upcomingAutoplayQueueRef.current.length >= 3) return;
     const settings = getSettings();
     if (!settings.playback.autoplay) return;
 
     isResolvingAutoplayRef.current = true;
     try {
-      const res = await resolveNextAutoplayTrack(
+      const existingIds = new Set<string>([
+        ...sessionRemovedPickIdsRef.current,
+        ...upcomingAutoplayQueueRef.current.map((q) => q.track.id),
+      ]);
+      const needed = 3 - upcomingAutoplayQueueRef.current.length;
+      const sourceMode = settings.playback.autoplaySource || 'familiar';
+      const picks = await resolveAutoplayQueue(
         track,
         historyTrackIdsRef.current,
         recentArtistsRef.current,
-        false
+        false,
+        sourceMode,
+        needed,
+        existingIds
       );
-      if (res) {
-        upcomingAutoplayRef.current = res;
-        setUpcomingAutoplay(res);
+      if (picks.length > 0) {
+        const merged = [...upcomingAutoplayQueueRef.current, ...picks].slice(0, 3);
+        syncAutoplayQueue(merged);
       }
     } catch {}
     isResolvingAutoplayRef.current = false;
-  }, []);
+  }, [syncAutoplayQueue]);
 
-  const skipUpcomingAutoplay = useCallback(() => {
-    upcomingAutoplayRef.current = null;
-    setUpcomingAutoplay(null);
+  const removeUpcomingAutoplayItem = useCallback((trackId: string) => {
+    sessionRemovedPickIdsRef.current.add(trackId);
+    const filtered = upcomingAutoplayQueueRef.current.filter((item) => item.track.id !== trackId);
+    syncAutoplayQueue(filtered);
     if (currentTrack) {
       triggerAutoplayPrefetch(currentTrack);
     }
-  }, [currentTrack, triggerAutoplayPrefetch]);
+  }, [currentTrack, syncAutoplayQueue, triggerAutoplayPrefetch]);
+
+  const reorderUpcomingAutoplayItem = useCallback((fromIdx: number, toIdx: number) => {
+    const arr = [...upcomingAutoplayQueueRef.current];
+    if (fromIdx < 0 || fromIdx >= arr.length || toIdx < 0 || toIdx >= arr.length || fromIdx === toIdx) {
+      return;
+    }
+    const [moved] = arr.splice(fromIdx, 1);
+    arr.splice(toIdx, 0, moved);
+    syncAutoplayQueue(arr);
+  }, [syncAutoplayQueue]);
+
+  const skipUpcomingAutoplay = useCallback(() => {
+    const head = upcomingAutoplayQueueRef.current[0];
+    if (head) {
+      removeUpcomingAutoplayItem(head.track.id);
+    } else if (currentTrack) {
+      triggerAutoplayPrefetch(currentTrack);
+    }
+  }, [currentTrack, removeUpcomingAutoplayItem, triggerAutoplayPrefetch]);
 
   const playCustomTrackListRef = useRef<((tracks: TrackInfo[], startIndex?: number) => Promise<void>) | null>(null);
   const playInjectedTrackRef = useRef<((track: TrackInfo) => Promise<void>) | null>(null);
@@ -364,6 +408,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         if (currentTrack) {
           recordPlayComplete(currentTrack);
         }
+        if (manuallyPausedRef.current) return;
         const { tracks, currentIndex } = playlistQueueRef.current;
         if (tracks.length > 0 && playCustomTrackListRef.current) {
           if (isShuffleRef.current && tracks.length > 1) {
@@ -401,19 +446,26 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
             setIsSmartPickTrack(false);
             setSmartPickReason('');
             playCustomTrackListRef.current(tracks, 0);
-          } else if (upcomingAutoplayRef.current && getSettings().playback.autoplay) {
-            const nextPick = upcomingAutoplayRef.current;
-            upcomingAutoplayRef.current = null;
-            setUpcomingAutoplay(null);
+          } else if (
+            !isInListenTogetherRoom() &&
+            upcomingAutoplayQueueRef.current.length > 0 &&
+            getSettings().playback.autoplay
+          ) {
+            const [nextPick, ...rest] = upcomingAutoplayQueueRef.current;
+            syncAutoplayQueue(rest);
             setIsSmartPickTrack(false);
             setIsAutoplayTrack(true);
             setAutoplayReason(nextPick.reason);
             playCustomTrackListRef.current([nextPick.track], 0);
           }
-        } else if (upcomingAutoplayRef.current && getSettings().playback.autoplay && playCustomTrackListRef.current) {
-          const nextPick = upcomingAutoplayRef.current;
-          upcomingAutoplayRef.current = null;
-          setUpcomingAutoplay(null);
+        } else if (
+          !isInListenTogetherRoom() &&
+          upcomingAutoplayQueueRef.current.length > 0 &&
+          getSettings().playback.autoplay &&
+          playCustomTrackListRef.current
+        ) {
+          const [nextPick, ...rest] = upcomingAutoplayQueueRef.current;
+          syncAutoplayQueue(rest);
           setIsSmartPickTrack(false);
           setIsAutoplayTrack(true);
           setAutoplayReason(nextPick.reason);
@@ -527,6 +579,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   );
 
   const play = useCallback(async () => {
+    manuallyPausedRef.current = false;
     if (adapterRef.current) {
       setErrorMessage(null);
       await adapterRef.current.play();
@@ -534,6 +587,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const pause = useCallback(() => {
+    manuallyPausedRef.current = true;
     if (adapterRef.current) {
       adapterRef.current.pause();
     }
@@ -542,8 +596,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const togglePlay = useCallback(async () => {
     if (!adapterRef.current) return;
     if (playbackState === 'playing') {
+      manuallyPausedRef.current = true;
       adapterRef.current.pause();
     } else {
+      manuallyPausedRef.current = false;
       await adapterRef.current.play();
     }
   }, [playbackState]);
@@ -634,11 +690,28 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   }, [playInjectedTrack]);
 
   const nextTrack = useCallback(() => {
+    manuallyPausedRef.current = false;
     if (currentTrack && duration > 10 && currentTimeRef.current / duration < 0.35) {
       recordPlaySkip(currentTrack);
     }
     const { tracks, currentIndex } = playlistQueueRef.current;
     if (tracks.length > 0) {
+      // If on the last track with Repeat off and Autoplay enabled, continue into Autoplay (shuffle on or off)
+      if (
+        currentIndex === tracks.length - 1 &&
+        !isRepeatRef.current &&
+        !isInListenTogetherRoom() &&
+        upcomingAutoplayQueueRef.current.length > 0 &&
+        getSettings().playback.autoplay
+      ) {
+        const [nextPick, ...rest] = upcomingAutoplayQueueRef.current;
+        syncAutoplayQueue(rest);
+        setIsSmartPickTrack(false);
+        setIsAutoplayTrack(true);
+        setAutoplayReason(nextPick.reason);
+        playCustomTrackList([nextPick.track], 0);
+        return;
+      }
       if (isShuffleRef.current && tracks.length > 1) {
         const interval = getSettings().playback.smartPicksInterval || 2;
         if (
@@ -680,10 +753,13 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         playCustomTrackList(tracks, 0);
         return;
       }
-      if (upcomingAutoplayRef.current && getSettings().playback.autoplay) {
-        const nextPick = upcomingAutoplayRef.current;
-        upcomingAutoplayRef.current = null;
-        setUpcomingAutoplay(null);
+      if (
+        !isInListenTogetherRoom() &&
+        upcomingAutoplayQueueRef.current.length > 0 &&
+        getSettings().playback.autoplay
+      ) {
+        const [nextPick, ...rest] = upcomingAutoplayQueueRef.current;
+        syncAutoplayQueue(rest);
         setIsSmartPickTrack(false);
         setIsAutoplayTrack(true);
         setAutoplayReason(nextPick.reason);
@@ -695,7 +771,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     if (adapter && 'nextTrack' in adapter && typeof (adapter as { nextTrack?: () => void }).nextTrack === 'function') {
       (adapter as { nextTrack: () => void }).nextTrack();
     }
-  }, [currentTrack, duration, playCustomTrackList]);
+  }, [currentTrack, duration, playCustomTrackList, syncAutoplayQueue]);
 
   const previousTrack = useCallback(() => {
     const { tracks, currentIndex } = playlistQueueRef.current;
@@ -935,7 +1011,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         isRawAudioAvailable,
         nextTrackInQueue,
         upcomingAutoplay,
+        upcomingAutoplayQueue,
         skipUpcomingAutoplay,
+        removeUpcomingAutoplayItem,
+        reorderUpcomingAutoplayItem,
         isAutoplayTrack,
         autoplayReason,
         upcomingSmartPick,

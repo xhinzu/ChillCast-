@@ -223,3 +223,75 @@ export async function resolveNextAutoplayTrack(
   // 2. Fallback to Liked Songs
   return getLikedSongsFallback(historyTrackIds, recentArtists);
 }
+
+export type AutoplaySourceMode = 'familiar' | 'mixed' | 'discover';
+
+export async function resolveAutoplayQueue(
+  currentTrack: TrackInfo,
+  historyTrackIds: Set<string>,
+  recentArtists: string[],
+  isInRoom = false,
+  sourceMode: AutoplaySourceMode = 'familiar',
+  count = 3,
+  excludeIds: Set<string> = new Set()
+): Promise<AutoplayResult[]> {
+  if (isInRoom) return [];
+
+  const results: AutoplayResult[] = [];
+  const usedIds = new Set<string>(excludeIds);
+  usedIds.add(currentTrack.id);
+
+  if (sourceMode === 'familiar' || sourceMode === 'mixed') {
+    try {
+      const [{ buildLocalSmartCandidates, fetchNewSuggestionCandidates }, { getListeningHistory }, { selectSmartPicks }] =
+        await Promise.all([
+          import('./smart-pool'),
+          import('./listening-history'),
+          import('@/lib/smartPicks'),
+        ]);
+
+      const localCands = buildLocalSmartCandidates();
+      let allCands = localCands;
+      if (sourceMode === 'mixed') {
+        const extra = await fetchNewSuggestionCandidates(currentTrack, historyTrackIds, recentArtists);
+        if (extra.length > 0) allCands = [...localCands, ...extra];
+      }
+
+      const history = getListeningHistory();
+      const picks = selectSmartPicks({
+        currentTrack,
+        candidates: allCands,
+        historyTracks: history.tracks,
+        transitions: history.transitions,
+        recentTrackIds: historyTrackIds,
+        queueTrackIds: usedIds,
+        sessionRemovedIds: excludeIds,
+        recentArtists,
+        includeNewPct: sourceMode === 'mixed' ? 30 : 0,
+        count,
+        seed: Date.now() & 0xfffffff,
+      });
+
+      for (const p of picks) {
+        if (!usedIds.has(p.track.id)) {
+          usedIds.add(p.track.id);
+          results.push({ track: p.track, reason: p.reason });
+        }
+      }
+    } catch {
+      // Fallback below
+    }
+  }
+
+  // Top up remaining slots via discovery if needed
+  if (results.length < count) {
+    const mergedHistory = new Set<string>([...historyTrackIds, ...usedIds]);
+    const fallback = await resolveNextAutoplayTrack(currentTrack, mergedHistory, recentArtists, isInRoom);
+    if (fallback && !usedIds.has(fallback.track.id)) {
+      usedIds.add(fallback.track.id);
+      results.push(fallback);
+    }
+  }
+
+  return results.slice(0, count);
+}
