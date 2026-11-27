@@ -194,27 +194,37 @@ export default function Miniplayer({ isOpen, onClose }: MiniplayerProps) {
     }
   };
 
+  const inDesktop = isTauri();
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   return (
     <div
       role="region"
       aria-label="Miniplayer"
-      style={{
-        width: `${size.width}px`,
-        ...(position
-          ? { left: `${position.x}px`, top: `${position.y}px` }
-          : { bottom: '96px', right: '24px' }),
-      }}
-      className={`fixed z-50 rounded-2xl bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.85)] p-4 select-none animate-in fade-in duration-200 ${
-        isDragging ? 'shadow-2xl ring-2 ring-[var(--accent)]/50' : ''
-      }`}
+      style={
+        inDesktop
+          ? undefined
+          : {
+              width: `${size.width}px`,
+              ...(position
+                ? { left: `${position.x}px`, top: `${position.y}px` }
+                : { bottom: '96px', right: '24px' }),
+            }
+      }
+      className={
+        inDesktop
+          ? 'fixed inset-0 w-full h-full z-[200] rounded-xl bg-[#121216]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-4 flex flex-col justify-between select-none'
+          : `fixed z-50 rounded-2xl bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.85)] p-4 select-none animate-in fade-in duration-200 ${
+              isDragging ? 'shadow-2xl ring-2 ring-[var(--accent)]/50' : ''
+            }`
+      }
     >
-      {/* Top Bar (Draggable Header) */}
+      {/* Top Bar (Draggable Header — native OS drag in Tauri, pointer drag in web) */}
       <div
-        onPointerDown={handlePointerDownHeader}
-        onPointerMove={handlePointerMoveHeader}
-        onPointerUp={handlePointerUpHeader}
+        data-tauri-drag-region={inDesktop ? true : undefined}
+        onPointerDown={inDesktop ? undefined : handlePointerDownHeader}
+        onPointerMove={inDesktop ? undefined : handlePointerMoveHeader}
+        onPointerUp={inDesktop ? undefined : handlePointerUpHeader}
         className="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.08] cursor-grab active:cursor-grabbing titlebar-drag touch-none"
         title="Drag to move miniplayer anywhere"
       >

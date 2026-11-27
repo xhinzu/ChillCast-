@@ -209,11 +209,21 @@ fn hide_window(app_handle: AppHandle) -> Result<(), String> {
 fn toggle_miniplayer(app_handle: AppHandle, enable: bool) -> Result<(), String> {
     if let Some(w) = app_handle.get_webview_window("main") {
         if enable {
-            let _ = w.set_size(tauri::Size::Logical(tauri::LogicalSize::new(420.0, 240.0)));
+            let _ = w.show();
+            let _ = w.unminimize();
+            let _ = w.set_decorations(false);
             let _ = w.set_always_on_top(true);
+            let _ = w.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize::new(280.0, 170.0))));
+            let _ = w.set_size(tauri::Size::Logical(tauri::LogicalSize::new(380.0, 220.0)));
+            let _ = w.set_focus();
         } else {
-            let _ = w.set_size(tauri::Size::Logical(tauri::LogicalSize::new(1280.0, 800.0)));
             let _ = w.set_always_on_top(false);
+            let _ = w.set_decorations(true);
+            let _ = w.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize::new(320.0, 180.0))));
+            let _ = w.set_size(tauri::Size::Logical(tauri::LogicalSize::new(1280.0, 800.0)));
+            let _ = w.center();
+            let _ = w.show();
+            let _ = w.set_focus();
         }
     }
     Ok(())

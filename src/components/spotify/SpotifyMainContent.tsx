@@ -568,10 +568,11 @@ export default function SpotifyMainContent({
                   onClick={() => {
                     const updated = savedPlaylists.map((p) =>
                       p.id === 'liked-songs'
-                        ? { ...p, tracks: [], subtitle: '0 songs • Liked Songs' }
+                        ? { ...p, tracks: [], updatedAt: Date.now(), subtitle: '0 songs • Liked Songs' }
                         : p
                     );
                     savePlaylists(updated);
+                    setActiveView('home');
                   }}
                   className="text-xs font-semibold text-[#888888] hover:text-rose-300 hover:bg-rose-950/40 px-3 py-1.5 rounded-full border border-[#333333] transition-colors cursor-pointer"
                   title="Clear all liked songs"
@@ -1352,7 +1353,10 @@ export default function SpotifyMainContent({
                 <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
                   Your Playlists
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#181818] text-[#b3b3b3] border border-[#282828]">
-                    {savedPlaylists.length}
+                    {savedPlaylists.filter((pl) => {
+                      const isLiked = pl.id === 'liked-songs' || (pl as any).kind === 'liked' || pl.title === 'Liked Songs';
+                      return isLiked ? Boolean(pl.tracks && pl.tracks.length > 0) : true;
+                    }).length}
                   </span>
                 </h2>
                 <button

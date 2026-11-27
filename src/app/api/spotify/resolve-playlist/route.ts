@@ -79,6 +79,24 @@ async function getSpotifyClientCredentialsToken(
   return data.access_token;
 }
 
+async function fetchTrackCoverViaOembed(trackId: string): Promise<string | null> {
+  if (!trackId || !/^[a-zA-Z0-9]{22}$/.test(trackId)) return null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(
+      `https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`,
+      { signal: controller.signal, cache: 'force-cache' }
+    );
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { thumbnail_url?: string };
+    return data.thumbnail_url || null;
+  } catch {
+    return null;
+  }
+}
+
 async function resolveViaSpotifyEmbed(playlistId: string) {
   const embedRes = await fetch(`https://open.spotify.com/embed/playlist/${playlistId}`, {
     headers: {
@@ -110,19 +128,36 @@ async function resolveViaSpotifyEmbed(playlistId: string) {
     entity.visualIdentity?.image?.[0]?.url ||
     '';
 
-  const tracks = (entity.trackList || []).map((t: {
+  const rawList: Array<{
     uri?: string;
     uid?: string;
     title?: string;
     subtitle?: string;
     duration?: number;
-  }) => ({
-    id: t.uri ? t.uri.replace('spotify:track:', '') : (t.uid || Math.random().toString(36).slice(2)),
+  }> = entity.trackList || [];
+
+  const trackIds = rawList.map((t) =>
+    t.uri ? t.uri.replace('spotify:track:', '') : ''
+  );
+
+  // Resolve individual track album covers in parallel batches via Spotify oEmbed
+  const trackCovers = new Array<string | null>(rawList.length).fill(null);
+  const BATCH_SIZE = 15;
+  for (let i = 0; i < trackIds.length; i += BATCH_SIZE) {
+    const batch = trackIds.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(batch.map((id) => fetchTrackCoverViaOembed(id)));
+    for (let j = 0; j < results.length; j++) {
+      trackCovers[i + j] = results[j];
+    }
+  }
+
+  const tracks = rawList.map((t, idx) => ({
+    id: trackIds[idx] || t.uid || Math.random().toString(36).slice(2),
     title: t.title || 'Untitled Track',
     artist: t.subtitle || 'Unknown Artist',
     album: entity.name || 'Spotify Playlist',
     duration: t.duration ? Math.round(t.duration / 1000) : 0,
-    artworkUrl: coverUrl,
+    artworkUrl: trackCovers[idx] || coverUrl,
   }));
 
   return {

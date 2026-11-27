@@ -220,8 +220,8 @@ export function migrateLocalPlaylists(rawPlaylists: any[]): SyncedPlaylist[] {
 
       const title = p.title || p.name || (isLiked ? 'Liked Songs' : 'My Playlist');
 
-      // Retain or reconstitute tracks array
-      const tracks: any[] = (Array.isArray(p.tracks) && p.tracks.length > 0)
+      // Retain or reconstitute tracks array (empty p.tracks is intentional, do not resurrect stale p.items)
+      const tracks: any[] = Array.isArray(p.tracks)
         ? p.tracks
         : (p.items || []).map((it: any) => ({
             id: it.track?.sourceId || it.id || '',
@@ -611,21 +611,26 @@ class PlaylistSyncEngine {
         }
 
         // Upsert playlist
-        const { error: plError } = await supabase.from('playlists').upsert({
-          id: pl.id,
-          user_id: user.id,
-          name: pl.name,
-          description: pl.description,
-          cover_url: finalCover,
-          kind: pl.kind,
-          updated_at: pl.updated_at,
-          deleted_at: pl.deleted_at,
-        });
+        const { error: plError } = await supabase.from('playlists').upsert(
+          {
+            id: pl.id,
+            user_id: user.id,
+            name: pl.name,
+            description: pl.description,
+            cover_url: finalCover,
+            kind: pl.kind,
+            updated_at: pl.updated_at,
+            deleted_at: pl.deleted_at,
+          },
+          { onConflict: 'id' }
+        );
         if (plError) {
           console.warn('[Sync] Failed to upsert playlist:', pl.id, plError);
+          continue;
         }
 
-        // Upsert items
+        // Upsert items & soft-delete removed items
+        const nowIso = new Date().toISOString();
         if (pl.items && pl.items.length > 0) {
           const itemPayloads = pl.items.map((it) => ({
             id: it.id,
@@ -637,10 +642,28 @@ class PlaylistSyncEngine {
             deleted_at: it.deleted_at,
           }));
 
-          const { error: itemError } = await supabase.from('playlist_items').upsert(itemPayloads);
+          const { error: itemError } = await supabase
+            .from('playlist_items')
+            .upsert(itemPayloads, { onConflict: 'id' });
           if (itemError) {
             console.warn('[Sync] Failed to upsert playlist items:', pl.id, itemError);
+          } else {
+            const activeIds = pl.items.map((it) => it.id);
+            await supabase
+              .from('playlist_items')
+              .update({ deleted_at: nowIso })
+              .eq('playlist_id', pl.id)
+              .eq('user_id', user.id)
+              .is('deleted_at', null)
+              .not('id', 'in', `(${activeIds.join(',')})`);
           }
+        } else {
+          await supabase
+            .from('playlist_items')
+            .update({ deleted_at: nowIso })
+            .eq('playlist_id', pl.id)
+            .eq('user_id', user.id)
+            .is('deleted_at', null);
         }
       }
 

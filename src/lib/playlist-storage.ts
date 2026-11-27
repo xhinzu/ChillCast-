@@ -36,7 +36,7 @@ export function normalizePlaylist(p: any): SavedPlaylistItem {
     (isLiked ? 'Liked Songs' : 'Custom Playlist');
 
   let tracks: CustomPlaylistTrack[] = [];
-  if (Array.isArray(p.tracks) && p.tracks.length > 0) {
+  if (Array.isArray(p.tracks)) {
     tracks = p.tracks;
   } else if (Array.isArray(p.items)) {
     tracks = p.items.map((it: any) => ({
@@ -143,14 +143,15 @@ export function addOrUpdatePlaylist(item: SavedPlaylistItem): SavedPlaylistItem[
   let updated: SavedPlaylistItem[];
   if (index >= 0) {
     updated = [...current];
-    updated[index] = { ...current[index], ...normalizedItem };
+    updated[index] = { ...current[index], ...normalizedItem, updatedAt: Date.now() };
   } else {
+    const withTimestamp = { ...normalizedItem, updatedAt: Date.now() };
     // Preserve liked-songs at index 0 if present, otherwise prepend
     const likedIndex = current.findIndex((p) => p.id === 'liked-songs');
     if (likedIndex === 0) {
-      updated = [current[0], normalizedItem, ...current.slice(1)];
+      updated = [current[0], withTimestamp, ...current.slice(1)];
     } else {
-      updated = [normalizedItem, ...current];
+      updated = [withTimestamp, ...current];
     }
   }
 
@@ -221,6 +222,7 @@ export function addTrackToPlaylist(
       return {
         ...p,
         tracks: newTracks,
+        updatedAt: Date.now(),
         subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • ${
           p.id === 'liked-songs' ? 'Liked Songs' : 'Custom Playlist'
         }`,
@@ -248,6 +250,7 @@ export function removeTrackFromPlaylist(
       return {
         ...p,
         tracks: newTracks,
+        updatedAt: Date.now(),
         subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • ${
           p.id === 'liked-songs' ? 'Liked Songs' : 'Custom Playlist'
         }`,
@@ -313,6 +316,7 @@ export function toggleLikedSong(track: {
       return {
         ...p,
         tracks: newTracks,
+        updatedAt: Date.now(),
         subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} • Liked Songs`,
       };
     }

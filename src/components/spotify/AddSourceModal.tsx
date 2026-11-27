@@ -27,6 +27,7 @@ export interface SavedPlaylistItem {
   tracks?: CustomPlaylistTrack[];
   description?: string;
   createdAt: number;
+  updatedAt?: number;
 }
 
 interface AddSourceModalProps {

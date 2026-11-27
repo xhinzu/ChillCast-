@@ -157,9 +157,9 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
     // Listen for window close requested
     let unlistenClose: (() => void) | undefined;
     listenWindowCloseRequested(async () => {
-      // If miniplayer is active, closing window minimizes to tray so music and popup state remain safe
+      // If miniplayer is active, keep it as a standalone always-on-top overlay rather than hiding it
       if (showMiniplayerRef.current) {
-        await hideWindow();
+        await toggleDesktopMiniplayer(true);
         return;
       }
 
