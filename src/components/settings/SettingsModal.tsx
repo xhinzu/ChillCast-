@@ -7,6 +7,7 @@ import AppearanceSection from './sections/AppearanceSection';
 import GlowSection from './sections/GlowSection';
 import AudioSection from './sections/AudioSection';
 import PlaybackSection from './sections/PlaybackSection';
+import RadioSection from './sections/RadioSection';
 import DesktopSection from './sections/DesktopSection';
 import DiscordSection from './sections/DiscordSection';
 import AccountSection from './sections/AccountSection';
@@ -24,6 +25,7 @@ import {
   SettingsAboutIcon,
   SettingsCloseIcon,
   SettingsCheckIcon,
+  SettingsRadioIcon,
 } from './SettingsIcons';
 import { useSettings } from '@/lib/settings/useSettings';
 import type { AppSettings } from '@/lib/settings/settings-store';
@@ -33,6 +35,7 @@ export type SettingsSectionId =
   | 'glow'
   | 'audio'
   | 'playback'
+  | 'radio'
   | 'desktop'
   | 'discord'
   | 'account'
@@ -75,6 +78,13 @@ const SECTIONS: SectionMeta[] = [
     icon: SettingsPlaybackIcon,
     desc: 'Autoplay and queue transition preferences',
     keywords: ['autoplay', 'similar', 'queue', 'mix', 'radio', 'loop', 'playback'],
+  },
+  {
+    id: 'radio',
+    label: 'Radio',
+    icon: SettingsRadioIcon,
+    desc: '3D receiver, static & vintage voicing, RJ personas, and custom clips',
+    keywords: ['radio', 'fm', 'am', 'static', 'rj', 'jockey', 'antenna', '3d', 'preset'],
   },
   {
     id: 'desktop',
@@ -391,6 +401,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
               {activeSection === 'glow' && <GlowSection />}
               {activeSection === 'audio' && <AudioSection />}
               {activeSection === 'playback' && <PlaybackSection />}
+              {activeSection === 'radio' && <RadioSection />}
               {activeSection === 'desktop' && <DesktopSection />}
               {activeSection === 'discord' && <DiscordSection />}
               {activeSection === 'account' && <AccountSection />}
