@@ -12,56 +12,82 @@ import { AM_MAX, AM_MIN, FM_MAX, FM_MIN } from '@/lib/radio/stations';
 import { frequencyToDialAngle } from '@/lib/radio/reception';
 import RadioFallback2D from './RadioFallback2D';
 
-const SKIN_MAP: Record<string, string> = {
-  white: '#eceef2',
-  black: '#1c1d22',
-  wood: '#7c4a2d',
-  teal: '#1f6f78',
+const SKIN_MAP: Record<string, { body: string; bezel: string; trim: string }> = {
+  white: { body: '#e8eaef', bezel: '#141519', trim: '#111216' },
+  black: { body: '#1c1e24', bezel: '#0d0e12', trim: '#2b2e38' },
+  wood: { body: '#7c4a2d', bezel: '#1f140e', trim: '#2b1a10' },
+  teal: { body: '#1f6f78', bezel: '#102d32', trim: '#0d2327' },
 };
 
 function createDialCanvasTexture(band: 'FM' | 'AM', frequency: number, stationName: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
-  canvas.height = 256;
+  canvas.height = 320;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#09090d';
+    // Deep backlit receiver glass
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#070b12');
+    grad.addColorStop(1, '#0c1320');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Subtle glass border
-    ctx.strokeStyle = '#27272a';
+    ctx.strokeStyle = '#334155';
     ctx.lineWidth = 6;
     ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
 
+    // FM scale row
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('FM', 42, 62);
+    const fmLabels = ['88', '92', '96', '100', '104', '108'];
+    fmLabels.forEach((lbl, i) => {
+      const x = 110 + (i / (fmLabels.length - 1)) * 840;
+      ctx.fillStyle = band === 'FM' ? '#f8fafc' : '#64748b';
+      ctx.fillText(lbl, x - 18, 62);
+    });
+
     // Tick marks
-    const ticks = 40;
+    const ticks = 50;
     for (let i = 0; i <= ticks; i++) {
-      const x = 64 + (i / ticks) * (canvas.width - 128);
+      const x = 110 + (i / ticks) * 840;
       const major = i % 5 === 0;
-      ctx.strokeStyle = major ? '#d4d4d8' : '#52525b';
+      ctx.strokeStyle = major ? '#e2e8f0' : '#475569';
       ctx.lineWidth = major ? 3 : 1.5;
       ctx.beginPath();
-      ctx.moveTo(x, major ? 80 : 94);
-      ctx.lineTo(x, 120);
+      ctx.moveTo(x, major ? 82 : 94);
+      ctx.lineTo(x, 122);
       ctx.stroke();
     }
 
-    ctx.fillStyle = '#a1a1aa';
+    // AM scale row
+    ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 24px monospace';
-    ctx.fillText(
-      band === 'FM' ? '88      92      96      100      104      108  MHz' : '530     800     1100     1400     1700  kHz',
-      64,
-      58
-    );
+    ctx.fillText('AM', 42, 166);
+    const amLabels = ['530', '800', '1100', '1400', '1700'];
+    amLabels.forEach((lbl, i) => {
+      const x = 110 + (i / (amLabels.length - 1)) * 840;
+      ctx.fillStyle = band === 'AM' ? '#38bdf8' : '#475569';
+      ctx.fillText(lbl, x - 24, 166);
+    });
 
-    ctx.fillStyle = '#f4f4f5';
-    ctx.font = 'bold 34px monospace';
+    // Divider line
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(42, 196);
+    ctx.lineTo(982, 196);
+    ctx.stroke();
+
+    // Live readout
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 40px monospace';
     const freqStr = band === 'FM' ? `${frequency.toFixed(1)} MHz` : `${frequency} kHz`;
-    ctx.fillText(`${band}  ${freqStr}`, 64, 194);
+    ctx.fillText(`${band} ${freqStr}`, 44, 266);
 
     ctx.fillStyle = '#fbbf24';
-    ctx.font = '600 28px sans-serif';
-    ctx.fillText(stationName.slice(0, 26), 420, 194);
+    ctx.font = '600 32px sans-serif';
+    ctx.fillText(stationName.slice(0, 24), 430, 264);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -72,20 +98,64 @@ function createDialCanvasTexture(band: 'FM' | 'AM', frequency: number, stationNa
 
 function createGrilleTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
+  canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#18181b';
+    ctx.fillStyle = '#14151a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#050507';
-    for (let y = 16; y < 500; y += 22) {
-      for (let x = 16; x < 244; x += 22) {
+
+    // Subtle speaker cone shadow behind holes
+    const rad = ctx.createRadialGradient(256, 256, 24, 256, 256, 230);
+    rad.addColorStop(0, 'rgba(60, 65, 78, 0.35)');
+    rad.addColorStop(0.55, 'rgba(20, 22, 28, 0.25)');
+    rad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = rad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Dense perforated speaker holes
+    for (let y = 18; y < 500; y += 20) {
+      for (let x = 18; x < 500; x += 20) {
+        ctx.fillStyle = '#040406';
         ctx.beginPath();
         ctx.arc(x, y, 6.2, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+function createKnobRingTexture(label: string, ticks = 11): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, 256, 256);
+    const cx = 128;
+    const cy = 128;
+    for (let i = 0; i < ticks; i++) {
+      const a = ((-135 + (i / (ticks - 1)) * 270) - 90) * (Math.PI / 180);
+      const r1 = 92;
+      const r2 = i % 2 === 0 ? 108 : 102;
+      ctx.strokeStyle = i === 0 ? '#ef4444' : '#cbd5e1';
+      ctx.lineWidth = i % 2 === 0 ? 4 : 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+      ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, cx, 238);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -123,54 +193,53 @@ function RadioMesh({
   const playback = usePlayback();
   const { settings } = useSettings();
 
-  const bodyColor =
+  const skin =
     settings.radio.radioColor === 'custom'
-      ? settings.radio.customRadioColor || '#eceef2'
+      ? { body: settings.radio.customRadioColor || '#e8eaef', bezel: '#141519', trim: '#111216' }
       : SKIN_MAP[settings.radio.radioColor] || SKIN_MAP.white;
 
   const groupRef = useRef<THREE.Group>(null);
   const ledMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragModeRef = useRef<'none' | 'tuning' | 'volume' | 'antenna'>('none');
-  const dragStartRef = useRef<{ x: number; y: number; val: number }>({ x: 0, y: 0, val: 0 });
+  const dragStartRef = useRef<{ x: number; y: number; val: number; lastAngle: number }>({
+    x: 0,
+    y: 0,
+    val: 0,
+    lastAngle: 0,
+  });
 
   const dialTexture = useMemo(
     () => createDialCanvasTexture(band, frequency, activeStation ? activeStation.name : 'STATIC'),
     [band, frequency, activeStation]
   );
-
   const grilleTexture = useMemo(() => createGrilleTexture(), []);
+  const tuningRingTex = useMemo(() => createKnobRingTexture('TUNING', 13), []);
+  const volumeRingTex = useMemo(() => createKnobRingTexture('VOLUME', 11), []);
 
-  useEffect(() => {
-    return () => dialTexture.dispose();
-  }, [dialTexture]);
+  useEffect(() => () => dialTexture.dispose(), [dialTexture]);
+  useEffect(() => () => grilleTexture.dispose(), [grilleTexture]);
+  useEffect(() => () => tuningRingTex.dispose(), [tuningRingTex]);
+  useEffect(() => () => volumeRingTex.dispose(), [volumeRingTex]);
 
-  useEffect(() => {
-    return () => grilleTexture.dispose();
-  }, [grilleTexture]);
-
-  // Global pointer move/up for smooth knob & antenna dragging
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (dragModeRef.current === 'none') return;
       const dx = e.clientX - dragStartRef.current.x;
       const dy = dragStartRef.current.y - e.clientY;
-      const delta = dx + dy * 0.6;
+      const delta = dx + dy * 0.65;
 
       if (dragModeRef.current === 'tuning') {
-        const scale = band === 'FM' ? (e.shiftKey ? 0.015 : 0.05) : (e.shiftKey ? 2 : 8);
+        const scale = band === 'FM' ? (e.shiftKey ? 0.015 : 0.055) : (e.shiftKey ? 2 : 8);
         tuneToFrequency(dragStartRef.current.val + delta * scale, { snap: false });
       } else if (dragModeRef.current === 'volume') {
-        const nextVol = Math.max(0, Math.min(1, dragStartRef.current.val + delta * 0.004));
-        if (nextVol <= 0.01 && powerOn) {
-          setPowerOn(false);
-        } else if (nextVol > 0.03 && !powerOn) {
-          setPowerOn(true);
-        }
+        const nextVol = Math.max(0, Math.min(1, dragStartRef.current.val + delta * 0.0045));
+        if (nextVol <= 0.01 && powerOn) setPowerOn(false);
+        else if (nextVol > 0.03 && !powerOn) setPowerOn(true);
         playback.setVolume(nextVol);
       } else if (dragModeRef.current === 'antenna') {
         const nextLen = Math.max(0.25, Math.min(1, dragStartRef.current.val + dy * 0.004));
-        const nextAng = Math.max(-40, Math.min(40, dx * 0.35));
+        const nextAng = Math.max(-42, Math.min(42, dx * 0.35));
         setAntenna(nextLen, nextAng);
       }
     };
@@ -191,76 +260,96 @@ function RadioMesh({
   const min = band === 'FM' ? FM_MIN : AM_MIN;
   const max = band === 'FM' ? FM_MAX : AM_MAX;
   const t = Math.max(0, Math.min(1, (frequency - min) / (max - min)));
-  const needleX = -0.35 + t * 1.9;
-  const tuningRot = -frequencyToDialAngle(frequency, band);
-  const volumeRot = -((-135 + playback.volume * 270) * Math.PI) / 180;
+  // Dial window is at x = +0.78, width = 2.04 -> span from -0.02 to +1.58
+  const needleX = -0.02 + t * 1.6;
+
+  // Clockwise rotation around Z axis (negative Z in Three.js)
+  const tuningAngleZ = -frequencyToDialAngle(frequency, band);
+  const volumeAngleZ = -((-135 + playback.volume * 270) * Math.PI) / 180;
 
   useFrame((state) => {
     if (!groupRef.current) return;
     const tElapsed = state.clock.getElapsedTime();
-    const idleY = reducedMotion ? 0 : Math.sin(tElapsed * 1.1) * 0.018;
-    groupRef.current.position.y = idleY;
-    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, cameraTilt.current.x, 0.12);
-    groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, cameraTilt.current.y, 0.12);
+    groupRef.current.position.y = reducedMotion ? 0 : Math.sin(tElapsed * 1.1) * 0.015;
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, cameraTilt.current.x, 0.14);
+    groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, cameraTilt.current.y, 0.14);
 
     if (ledMatRef.current) {
       const peak = powerOn ? getDspEngine().getOutputPeak() : 0;
-      ledMatRef.current.emissiveIntensity = powerOn ? 1.2 + peak * 1.8 : 0.05;
+      ledMatRef.current.emissiveIntensity = powerOn ? 1.3 + peak * 1.8 : 0.05;
     }
   });
 
+  // Front face of main body is at z = +0.525
+  const frontZ = 0.526;
+
   return (
     <group ref={groupRef}>
-      {/* Carry Handle */}
-      <mesh position={[0, 1.32, -0.08]}>
-        <torusGeometry args={[1.25, 0.06, 12, 32, Math.PI]} />
-        <meshStandardMaterial color="#27272a" roughness={0.5} metalness={0.3} />
+      {/* Carry Handle (top brackets + bar) */}
+      <mesh position={[-1.48, 1.18, -0.05]}>
+        <boxGeometry args={[0.14, 0.34, 0.14]} />
+        <meshStandardMaterial color="#1f2026" roughness={0.45} metalness={0.35} />
+      </mesh>
+      <mesh position={[1.48, 1.18, -0.05]}>
+        <boxGeometry args={[0.14, 0.34, 0.14]} />
+        <meshStandardMaterial color="#1f2026" roughness={0.45} metalness={0.35} />
+      </mesh>
+      <mesh position={[0, 1.35, -0.05]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.065, 0.065, 3.06, 20]} />
+        <meshStandardMaterial color="#27272d" roughness={0.4} metalness={0.4} />
       </mesh>
 
       {/* Four Rubber Feet */}
-      {[-1.7, 1.7].map((fx) =>
+      {[-1.72, 1.72].map((fx) =>
         [-0.36, 0.36].map((fz) => (
-          <mesh key={`${fx}-${fz}`} position={[fx, -1.16, fz]}>
+          <mesh key={`${fx}-${fz}`} position={[fx, -1.14, fz]}>
             <cylinderGeometry args={[0.14, 0.16, 0.08, 16]} />
-            <meshStandardMaterial color="#18181b" roughness={0.9} />
+            <meshStandardMaterial color="#141418" roughness={0.9} />
           </mesh>
         ))
       )}
 
-      {/* Main Body */}
-      <RoundedBox args={[4.2, 2.2, 1.05]} radius={0.14} smoothness={4} castShadow receiveShadow>
-        <meshStandardMaterial color={bodyColor} roughness={0.38} metalness={0.08} />
+      {/* Main Body (depth 1.05 -> front face at z = +0.525) */}
+      <RoundedBox args={[4.3, 2.24, 1.05]} radius={0.14} smoothness={4} castShadow receiveShadow>
+        <meshStandardMaterial color={skin.body} roughness={0.35} metalness={0.08} />
       </RoundedBox>
 
-      {/* Black Trim Frame */}
-      <RoundedBox args={[4.02, 2.02, 1.06]} radius={0.11} smoothness={3} position={[0, 0, 0.005]}>
-        <meshStandardMaterial color="#18181b" roughness={0.6} />
+      {/* Subtle Dark Trim Inset Ring on front face */}
+      <mesh position={[0, 0, frontZ]}>
+        <ringGeometry args={[0, 0, 1]} />
+      </mesh>
+      <RoundedBox args={[4.06, 2.02, 0.02]} radius={0.11} smoothness={3} position={[0, 0, frontZ]}>
+        <meshStandardMaterial color={skin.trim} roughness={0.55} />
       </RoundedBox>
-      <RoundedBox args={[3.94, 1.94, 1.065]} radius={0.1} smoothness={3} position={[0, 0, 0.008]}>
-        <meshStandardMaterial color={bodyColor} roughness={0.38} metalness={0.08} />
+      <RoundedBox args={[3.98, 1.94, 0.022]} radius={0.1} smoothness={3} position={[0, 0, frontZ + 0.004]}>
+        <meshStandardMaterial color={skin.body} roughness={0.35} metalness={0.08} />
       </RoundedBox>
 
-      {/* Speaker Grille */}
-      <mesh position={[-1.22, 0, 0.54]}>
-        <planeGeometry args={[1.15, 1.65]} />
-        <meshStandardMaterial map={grilleTexture} roughness={0.75} />
+      {/* LEFT: Speaker Grille Frame + Perforated Mesh */}
+      <RoundedBox args={[1.64, 1.72, 0.04]} radius={0.08} smoothness={3} position={[-1.08, 0, frontZ + 0.015]}>
+        <meshStandardMaterial color={skin.bezel} roughness={0.55} />
+      </RoundedBox>
+      <mesh position={[-1.08, 0, frontZ + 0.037]}>
+        <planeGeometry args={[1.52, 1.6]} />
+        <meshStandardMaterial map={grilleTexture} roughness={0.7} />
       </mesh>
 
-      {/* Dial Window */}
-      <mesh position={[0.6, 0.45, 0.54]}>
-        <planeGeometry args={[2.15, 0.56]} />
-        <meshStandardMaterial map={dialTexture} roughness={0.2} metalness={0.1} />
+      {/* RIGHT TOP: Dial Window Bezel + Glass Scale + Moving Needle */}
+      <RoundedBox args={[2.16, 0.72, 0.04]} radius={0.06} smoothness={3} position={[0.78, 0.5, frontZ + 0.015]}>
+        <meshStandardMaterial color="#0b0c10" roughness={0.35} metalness={0.2} />
+      </RoundedBox>
+      <mesh position={[0.78, 0.5, frontZ + 0.037]}>
+        <planeGeometry args={[2.04, 0.62]} />
+        <meshStandardMaterial map={dialTexture} roughness={0.18} metalness={0.08} />
+      </mesh>
+      <mesh position={[needleX, 0.54, frontZ + 0.044]}>
+        <boxGeometry args={[0.024, 0.44, 0.014]} />
+        <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={1.1} />
       </mesh>
 
-      {/* Moving Needle */}
-      <mesh position={[needleX, 0.45, 0.55]}>
-        <boxGeometry args={[0.025, 0.5, 0.015]} />
-        <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
-      </mesh>
-
-      {/* Power LED */}
-      <mesh position={[-0.35, 0.02, 0.545]}>
-        <sphereGeometry args={[0.04, 16, 16]} />
+      {/* RIGHT MIDDLE: Power LED, Power Button, FM/AM Switch */}
+      <mesh position={[-0.08, 0.02, frontZ + 0.025]}>
+        <sphereGeometry args={[0.042, 16, 16]} />
         <meshStandardMaterial
           ref={ledMatRef}
           color={powerOn ? '#22c55e' : '#3f3f46'}
@@ -269,9 +358,8 @@ function RadioMesh({
         />
       </mesh>
 
-      {/* Power Button */}
       <mesh
-        position={[-0.08, 0.02, 0.545]}
+        position={[0.24, 0.02, frontZ + 0.03]}
         onPointerOver={() => {
           document.body.style.cursor = 'pointer';
           setHoveredLabel('Power');
@@ -285,13 +373,12 @@ function RadioMesh({
           togglePower();
         }}
       >
-        <boxGeometry args={[0.32, 0.16, 0.06]} />
-        <meshStandardMaterial color={powerOn ? '#16a34a' : '#27272a'} roughness={0.4} />
+        <boxGeometry args={[0.36, 0.15, 0.05]} />
+        <meshStandardMaterial color={powerOn ? '#16a34a' : '#27272a'} roughness={0.35} />
       </mesh>
 
-      {/* Band Switch (FM/AM) */}
       <mesh
-        position={[0.35, 0.02, 0.545]}
+        position={[0.72, 0.02, frontZ + 0.03]}
         onPointerOver={() => {
           document.body.style.cursor = 'pointer';
           setHoveredLabel(`Band (${band})`);
@@ -305,8 +392,8 @@ function RadioMesh({
           setBand(band === 'FM' ? 'AM' : 'FM');
         }}
       >
-        <boxGeometry args={[0.36, 0.16, 0.06]} />
-        <meshStandardMaterial color="#27272a" roughness={0.45} />
+        <boxGeometry args={[0.38, 0.15, 0.05]} />
+        <meshStandardMaterial color="#27272a" roughness={0.4} />
       </mesh>
 
       {/* 6 Preset Buttons */}
@@ -315,7 +402,7 @@ function RadioMesh({
         return (
           <mesh
             key={slot}
-            position={[-0.32 + i * 0.36, -0.25, 0.545]}
+            position={[-0.06 + i * 0.34, -0.22, frontZ + 0.028]}
             onPointerOver={() => {
               document.body.style.cursor = 'pointer';
               setHoveredLabel(`Preset ${slot}`);
@@ -341,87 +428,107 @@ function RadioMesh({
               }
             }}
           >
-            <boxGeometry args={[0.28, 0.13, 0.05]} />
-            <meshStandardMaterial color={has ? '#ef4444' : '#27272a'} roughness={0.5} />
+            <boxGeometry args={[0.26, 0.12, 0.045]} />
+            <meshStandardMaterial color={has ? '#ef4444' : '#27272a'} roughness={0.45} />
           </mesh>
         );
       })}
 
-      {/* Volume Knob */}
-      <group
-        position={[0.05, -0.66, 0.58]}
-        rotation={[Math.PI / 2, 0, volumeRot]}
-        onPointerOver={() => {
-          document.body.style.cursor = 'grab';
-          setHoveredLabel('Volume');
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto';
-          setHoveredLabel(null);
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          dragModeRef.current = 'volume';
-          dragStartRef.current = { x: e.clientX, y: e.clientY, val: playback.volume };
-        }}
-        onWheel={(e) => {
-          e.stopPropagation();
-          const next = Math.max(0, Math.min(1, playback.volume + (e.deltaY < 0 ? 0.05 : -0.05)));
-          if (next <= 0.01 && powerOn) setPowerOn(false);
-          else if (next > 0.03 && !powerOn) setPowerOn(true);
-          playback.setVolume(next);
-        }}
-      >
-        <mesh castShadow>
-          <cylinderGeometry args={[0.21, 0.23, 0.16, 28]} />
-          <meshStandardMaterial color="#1f2026" roughness={0.4} metalness={0.5} />
+      {/* VOLUME KNOB (Ring markings + True Z-Axis Circular Rotation) */}
+      <mesh position={[0.25, -0.62, frontZ + 0.018]}>
+        <planeGeometry args={[0.56, 0.56]} />
+        <meshBasicMaterial map={volumeRingTex} transparent />
+      </mesh>
+      <group position={[0.25, -0.62, frontZ + 0.06]} rotation={[0, 0, volumeAngleZ]}>
+        <mesh
+          rotation={[Math.PI / 2, 0, 0]}
+          castShadow
+          onPointerOver={() => {
+            document.body.style.cursor = 'grab';
+            setHoveredLabel('Volume');
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = 'auto';
+            setHoveredLabel(null);
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            dragModeRef.current = 'volume';
+            dragStartRef.current = { x: e.clientX, y: e.clientY, val: playback.volume, lastAngle: 0 };
+          }}
+          onWheel={(e) => {
+            e.stopPropagation();
+            const next = Math.max(0, Math.min(1, playback.volume + (e.deltaY < 0 ? 0.05 : -0.05)));
+            if (next <= 0.01 && powerOn) setPowerOn(false);
+            else if (next > 0.03 && !powerOn) setPowerOn(true);
+            playback.setVolume(next);
+          }}
+        >
+          <cylinderGeometry args={[0.19, 0.21, 0.14, 32]} />
+          <meshStandardMaterial color="#1f2128" roughness={0.35} metalness={0.55} />
         </mesh>
-        <mesh position={[0, 0.085, -0.11]}>
-          <boxGeometry args={[0.028, 0.02, 0.14]} />
-          <meshStandardMaterial color="#ffffff" />
+        {/* Chrome outer lip */}
+        <mesh position={[0, 0, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.215, 0.215, 0.02, 32]} />
+          <meshStandardMaterial color="#64748b" roughness={0.25} metalness={0.85} />
+        </mesh>
+        {/* Pointer tick on face */}
+        <mesh position={[0, 0.1, 0.075]}>
+          <boxGeometry args={[0.026, 0.14, 0.018]} />
+          <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.4} />
         </mesh>
       </group>
 
-      {/* Tuning Knob */}
-      <group
-        position={[1.15, -0.66, 0.58]}
-        rotation={[Math.PI / 2, 0, tuningRot]}
-        onPointerOver={() => {
-          document.body.style.cursor = 'grab';
-          setHoveredLabel('Tuning');
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto';
-          setHoveredLabel(null);
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          dragModeRef.current = 'tuning';
-          dragStartRef.current = { x: e.clientX, y: e.clientY, val: frequency };
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          scanNext(1);
-        }}
-        onWheel={(e) => {
-          e.stopPropagation();
-          const step = band === 'FM' ? (e.shiftKey ? 0.1 : 0.3) : (e.shiftKey ? 10 : 30);
-          tuneToFrequency(frequency + (e.deltaY < 0 ? step : -step), { snap: !e.shiftKey });
-        }}
-      >
-        <mesh castShadow>
-          <cylinderGeometry args={[0.25, 0.27, 0.18, 32]} />
-          <meshStandardMaterial color="#1f2026" roughness={0.35} metalness={0.55} />
+      {/* TUNING KNOB (Ring markings + True Z-Axis Circular Rotation) */}
+      <mesh position={[1.3, -0.62, frontZ + 0.018]}>
+        <planeGeometry args={[0.66, 0.66]} />
+        <meshBasicMaterial map={tuningRingTex} transparent />
+      </mesh>
+      <group position={[1.3, -0.62, frontZ + 0.07]} rotation={[0, 0, tuningAngleZ]}>
+        <mesh
+          rotation={[Math.PI / 2, 0, 0]}
+          castShadow
+          onPointerOver={() => {
+            document.body.style.cursor = 'grab';
+            setHoveredLabel('Tuning');
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = 'auto';
+            setHoveredLabel(null);
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            dragModeRef.current = 'tuning';
+            dragStartRef.current = { x: e.clientX, y: e.clientY, val: frequency, lastAngle: 0 };
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            scanNext(1);
+          }}
+          onWheel={(e) => {
+            e.stopPropagation();
+            const step = band === 'FM' ? (e.shiftKey ? 0.1 : 0.3) : (e.shiftKey ? 10 : 30);
+            tuneToFrequency(frequency + (e.deltaY < 0 ? step : -step), { snap: !e.shiftKey });
+          }}
+        >
+          <cylinderGeometry args={[0.23, 0.25, 0.16, 36]} />
+          <meshStandardMaterial color="#1f2128" roughness={0.32} metalness={0.55} />
         </mesh>
-        <mesh position={[0, 0.095, -0.13]}>
-          <boxGeometry args={[0.03, 0.02, 0.16]} />
-          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.6} />
+        {/* Amber/Gold outer ring */}
+        <mesh position={[0, 0, -0.045]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.258, 0.258, 0.022, 36]} />
+          <meshStandardMaterial color="#eab308" roughness={0.3} metalness={0.7} />
+        </mesh>
+        {/* Pointer tick on face */}
+        <mesh position={[0, 0.12, 0.085]}>
+          <boxGeometry args={[0.028, 0.16, 0.018]} />
+          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
         </mesh>
       </group>
 
       {/* Telescopic 5-Segment Antenna */}
       <group
-        position={[1.72, 1.1, -0.25]}
+        position={[1.76, 1.12, -0.25]}
         rotation={[0, 0, (-antennaAngleDeg * Math.PI) / 180]}
         onPointerOver={() => {
           document.body.style.cursor = 'grab';
@@ -434,7 +541,7 @@ function RadioMesh({
         onPointerDown={(e) => {
           e.stopPropagation();
           dragModeRef.current = 'antenna';
-          dragStartRef.current = { x: e.clientX, y: e.clientY, val: antennaLength };
+          dragStartRef.current = { x: e.clientX, y: e.clientY, val: antennaLength, lastAngle: 0 };
         }}
       >
         <mesh position={[0, 0.05, 0]}>
@@ -442,19 +549,19 @@ function RadioMesh({
           <meshStandardMaterial color="#71717a" metalness={0.8} roughness={0.25} />
         </mesh>
         {[0, 1, 2, 3, 4].map((seg) => {
-          const segH = 0.28 * antennaLength;
+          const segH = 0.26 * antennaLength;
           const yPos = 0.1 + seg * segH * 0.92 + segH / 2;
-          const r = 0.034 - seg * 0.005;
+          const r = 0.032 - seg * 0.0045;
           return (
             <mesh key={seg} position={[0, yPos, 0]}>
               <cylinderGeometry args={[r * 0.9, r, segH, 12]} />
-              <meshStandardMaterial color="#d4d4d8" metalness={0.9} roughness={0.2} />
+              <meshStandardMaterial color="#e4e4e7" metalness={0.92} roughness={0.18} />
             </mesh>
           );
         })}
-        <mesh position={[0, 0.1 + 5 * 0.28 * antennaLength * 0.92, 0]}>
+        <mesh position={[0, 0.1 + 5 * 0.26 * antennaLength * 0.92, 0]}>
           <sphereGeometry args={[0.038, 12, 12]} />
-          <meshStandardMaterial color="#e4e4e7" metalness={0.9} roughness={0.2} />
+          <meshStandardMaterial color="#f4f4f5" metalness={0.92} roughness={0.18} />
         </mesh>
       </group>
 
@@ -536,14 +643,14 @@ export default function RadioStage3D() {
         shadows
         dpr={[1, 2]}
         frameloop={shouldAnimate ? 'always' : 'demand'}
-        camera={{ position: [0, 0.25, 5.4], fov: 38 }}
+        camera={{ position: [0, 0.3, 5.7], fov: 38 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
         <color attach="background" args={['#000000']} />
-        <ambientLight intensity={0.55} />
-        <directionalLight position={[4, 6, 5]} intensity={1.4} castShadow />
-        <directionalLight position={[-5, 2, -4]} intensity={0.65} color="#93c5fd" />
-        <pointLight position={[0, -1, 4]} intensity={0.4} color="#fef3c7" />
+        <ambientLight intensity={0.65} />
+        <directionalLight position={[4, 6, 6]} intensity={1.45} castShadow />
+        <directionalLight position={[-5, 2, -4]} intensity={0.7} color="#93c5fd" />
+        <pointLight position={[0, -0.5, 4.5]} intensity={0.45} color="#fef3c7" />
 
         <RadioMesh
           hoveredLabel={hoveredLabel}
@@ -552,7 +659,7 @@ export default function RadioStage3D() {
           cameraTilt={cameraTilt}
         />
 
-        <ContactShadows position={[0, -1.25, 0]} opacity={0.45} scale={9} blur={2.4} far={3} />
+        <ContactShadows position={[0, -1.24, 0]} opacity={0.45} scale={9} blur={2.4} far={3} />
       </Canvas>
 
       {hoveredLabel && (
