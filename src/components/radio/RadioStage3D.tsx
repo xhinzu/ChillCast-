@@ -1,45 +1,565 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { ContactShadows, RoundedBox } from '@react-three/drei';
 import { useRadio } from '@/context/RadioContext';
+import { usePlayback } from '@/context/PlaybackContext';
+import { useSettings } from '@/lib/settings/useSettings';
+import { getDspEngine } from '@/lib/audio/dsp-engine';
+import { AM_MAX, AM_MIN, FM_MAX, FM_MIN } from '@/lib/radio/stations';
+import { frequencyToDialAngle } from '@/lib/radio/reception';
+import RadioFallback2D from './RadioFallback2D';
 
-export default function RadioStage3D() {
-  const { band, frequency, activeStation, powerOn, togglePower, scanNext } = useRadio();
+const SKIN_MAP: Record<string, string> = {
+  white: '#eceef2',
+  black: '#1c1d22',
+  wood: '#7c4a2d',
+  teal: '#1f6f78',
+};
+
+function createDialCanvasTexture(band: 'FM' | 'AM', frequency: number, stationName: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#09090d';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Subtle glass border
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+    // Tick marks
+    const ticks = 40;
+    for (let i = 0; i <= ticks; i++) {
+      const x = 64 + (i / ticks) * (canvas.width - 128);
+      const major = i % 5 === 0;
+      ctx.strokeStyle = major ? '#d4d4d8' : '#52525b';
+      ctx.lineWidth = major ? 3 : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, major ? 80 : 94);
+      ctx.lineTo(x, 120);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#a1a1aa';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(
+      band === 'FM' ? '88      92      96      100      104      108  MHz' : '530     800     1100     1400     1700  kHz',
+      64,
+      58
+    );
+
+    ctx.fillStyle = '#f4f4f5';
+    ctx.font = 'bold 34px monospace';
+    const freqStr = band === 'FM' ? `${frequency.toFixed(1)} MHz` : `${frequency} kHz`;
+    ctx.fillText(`${band}  ${freqStr}`, 64, 194);
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = '600 28px sans-serif';
+    ctx.fillText(stationName.slice(0, 26), 420, 194);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function createGrilleTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#050507';
+    for (let y = 16; y < 500; y += 22) {
+      for (let x = 16; x < 244; x += 22) {
+        ctx.beginPath();
+        ctx.arc(x, y, 6.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function RadioMesh({
+  hoveredLabel,
+  setHoveredLabel,
+  reducedMotion,
+  cameraTilt,
+}: {
+  hoveredLabel: string | null;
+  setHoveredLabel: (l: string | null) => void;
+  reducedMotion: boolean;
+  cameraTilt: React.MutableRefObject<{ x: number; y: number }>;
+}) {
+  const {
+    powerOn,
+    band,
+    frequency,
+    activeStation,
+    presets,
+    antennaLength,
+    antennaAngleDeg,
+    togglePower,
+    setPowerOn,
+    setBand,
+    tuneToFrequency,
+    scanNext,
+    savePreset,
+    recallPreset,
+    setAntenna,
+  } = useRadio();
+  const playback = usePlayback();
+  const { settings } = useSettings();
+
+  const bodyColor =
+    settings.radio.radioColor === 'custom'
+      ? settings.radio.customRadioColor || '#eceef2'
+      : SKIN_MAP[settings.radio.radioColor] || SKIN_MAP.white;
+
+  const groupRef = useRef<THREE.Group>(null);
+  const ledMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragModeRef = useRef<'none' | 'tuning' | 'volume' | 'antenna'>('none');
+  const dragStartRef = useRef<{ x: number; y: number; val: number }>({ x: 0, y: 0, val: 0 });
+
+  const dialTexture = useMemo(
+    () => createDialCanvasTexture(band, frequency, activeStation ? activeStation.name : 'STATIC'),
+    [band, frequency, activeStation]
+  );
+
+  const grilleTexture = useMemo(() => createGrilleTexture(), []);
+
+  useEffect(() => {
+    return () => dialTexture.dispose();
+  }, [dialTexture]);
+
+  useEffect(() => {
+    return () => grilleTexture.dispose();
+  }, [grilleTexture]);
+
+  // Global pointer move/up for smooth knob & antenna dragging
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (dragModeRef.current === 'none') return;
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = dragStartRef.current.y - e.clientY;
+      const delta = dx + dy * 0.6;
+
+      if (dragModeRef.current === 'tuning') {
+        const scale = band === 'FM' ? (e.shiftKey ? 0.015 : 0.05) : (e.shiftKey ? 2 : 8);
+        tuneToFrequency(dragStartRef.current.val + delta * scale, { snap: false });
+      } else if (dragModeRef.current === 'volume') {
+        const nextVol = Math.max(0, Math.min(1, dragStartRef.current.val + delta * 0.004));
+        if (nextVol <= 0.01 && powerOn) {
+          setPowerOn(false);
+        } else if (nextVol > 0.03 && !powerOn) {
+          setPowerOn(true);
+        }
+        playback.setVolume(nextVol);
+      } else if (dragModeRef.current === 'antenna') {
+        const nextLen = Math.max(0.25, Math.min(1, dragStartRef.current.val + dy * 0.004));
+        const nextAng = Math.max(-40, Math.min(40, dx * 0.35));
+        setAntenna(nextLen, nextAng);
+      }
+    };
+    const onUp = () => {
+      if (dragModeRef.current === 'tuning') {
+        tuneToFrequency(frequency, { snap: true, silent: true });
+      }
+      dragModeRef.current = 'none';
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [band, frequency, powerOn, playback, setAntenna, setPowerOn, tuneToFrequency]);
+
+  const min = band === 'FM' ? FM_MIN : AM_MIN;
+  const max = band === 'FM' ? FM_MAX : AM_MAX;
+  const t = Math.max(0, Math.min(1, (frequency - min) / (max - min)));
+  const needleX = -0.35 + t * 1.9;
+  const tuningRot = -frequencyToDialAngle(frequency, band);
+  const volumeRot = -((-135 + playback.volume * 270) * Math.PI) / 180;
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    const tElapsed = state.clock.getElapsedTime();
+    const idleY = reducedMotion ? 0 : Math.sin(tElapsed * 1.1) * 0.018;
+    groupRef.current.position.y = idleY;
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, cameraTilt.current.x, 0.12);
+    groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, cameraTilt.current.y, 0.12);
+
+    if (ledMatRef.current) {
+      const peak = powerOn ? getDspEngine().getOutputPeak() : 0;
+      ledMatRef.current.emissiveIntensity = powerOn ? 1.2 + peak * 1.8 : 0.05;
+    }
+  });
 
   return (
-    <div className="w-full h-[360px] sm:h-[420px] rounded-2xl bg-black border border-white/10 flex flex-col items-center justify-center gap-4 p-6">
-      <div className="text-center space-y-1">
-        <div className="font-mono text-3xl font-bold text-white tracking-wider">
-          {band === 'FM' ? `${frequency.toFixed(1)} MHz` : `${frequency} kHz`}
-        </div>
-        <div className="text-xs text-zinc-400">
-          {activeStation ? `${activeStation.name} · ${activeStation.tag}` : 'Static'}
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => scanNext(-1)}
-          className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-semibold cursor-pointer"
-        >
-          Scan Prev
-        </button>
-        <button
-          type="button"
-          onClick={togglePower}
-          className="px-3 py-1.5 rounded-lg bg-[var(--accent)] text-black text-xs font-bold cursor-pointer"
-        >
-          {powerOn ? 'Power ON' : 'Power OFF'}
-        </button>
-        <button
-          type="button"
-          onClick={() => scanNext(1)}
-          className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-semibold cursor-pointer"
-        >
-          Scan Next
-        </button>
-      </div>
-    </div>
+    <group ref={groupRef}>
+      {/* Carry Handle */}
+      <mesh position={[0, 1.32, -0.08]}>
+        <torusGeometry args={[1.25, 0.06, 12, 32, Math.PI]} />
+        <meshStandardMaterial color="#27272a" roughness={0.5} metalness={0.3} />
+      </mesh>
+
+      {/* Four Rubber Feet */}
+      {[-1.7, 1.7].map((fx) =>
+        [-0.36, 0.36].map((fz) => (
+          <mesh key={`${fx}-${fz}`} position={[fx, -1.16, fz]}>
+            <cylinderGeometry args={[0.14, 0.16, 0.08, 16]} />
+            <meshStandardMaterial color="#18181b" roughness={0.9} />
+          </mesh>
+        ))
+      )}
+
+      {/* Main Body */}
+      <RoundedBox args={[4.2, 2.2, 1.05]} radius={0.14} smoothness={4} castShadow receiveShadow>
+        <meshStandardMaterial color={bodyColor} roughness={0.38} metalness={0.08} />
+      </RoundedBox>
+
+      {/* Black Trim Frame */}
+      <RoundedBox args={[4.02, 2.02, 1.06]} radius={0.11} smoothness={3} position={[0, 0, 0.005]}>
+        <meshStandardMaterial color="#18181b" roughness={0.6} />
+      </RoundedBox>
+      <RoundedBox args={[3.94, 1.94, 1.065]} radius={0.1} smoothness={3} position={[0, 0, 0.008]}>
+        <meshStandardMaterial color={bodyColor} roughness={0.38} metalness={0.08} />
+      </RoundedBox>
+
+      {/* Speaker Grille */}
+      <mesh position={[-1.22, 0, 0.54]}>
+        <planeGeometry args={[1.15, 1.65]} />
+        <meshStandardMaterial map={grilleTexture} roughness={0.75} />
+      </mesh>
+
+      {/* Dial Window */}
+      <mesh position={[0.6, 0.45, 0.54]}>
+        <planeGeometry args={[2.15, 0.56]} />
+        <meshStandardMaterial map={dialTexture} roughness={0.2} metalness={0.1} />
+      </mesh>
+
+      {/* Moving Needle */}
+      <mesh position={[needleX, 0.45, 0.55]}>
+        <boxGeometry args={[0.025, 0.5, 0.015]} />
+        <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
+      </mesh>
+
+      {/* Power LED */}
+      <mesh position={[-0.35, 0.02, 0.545]}>
+        <sphereGeometry args={[0.04, 16, 16]} />
+        <meshStandardMaterial
+          ref={ledMatRef}
+          color={powerOn ? '#22c55e' : '#3f3f46'}
+          emissive={powerOn ? '#22c55e' : '#000000'}
+          emissiveIntensity={powerOn ? 1.5 : 0}
+        />
+      </mesh>
+
+      {/* Power Button */}
+      <mesh
+        position={[-0.08, 0.02, 0.545]}
+        onPointerOver={() => {
+          document.body.style.cursor = 'pointer';
+          setHoveredLabel('Power');
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+          setHoveredLabel(null);
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePower();
+        }}
+      >
+        <boxGeometry args={[0.32, 0.16, 0.06]} />
+        <meshStandardMaterial color={powerOn ? '#16a34a' : '#27272a'} roughness={0.4} />
+      </mesh>
+
+      {/* Band Switch (FM/AM) */}
+      <mesh
+        position={[0.35, 0.02, 0.545]}
+        onPointerOver={() => {
+          document.body.style.cursor = 'pointer';
+          setHoveredLabel(`Band (${band})`);
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+          setHoveredLabel(null);
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setBand(band === 'FM' ? 'AM' : 'FM');
+        }}
+      >
+        <boxGeometry args={[0.36, 0.16, 0.06]} />
+        <meshStandardMaterial color="#27272a" roughness={0.45} />
+      </mesh>
+
+      {/* 6 Preset Buttons */}
+      {[1, 2, 3, 4, 5, 6].map((slot, i) => {
+        const has = presets.some((p) => p.slot === slot);
+        return (
+          <mesh
+            key={slot}
+            position={[-0.32 + i * 0.36, -0.25, 0.545]}
+            onPointerOver={() => {
+              document.body.style.cursor = 'pointer';
+              setHoveredLabel(`Preset ${slot}`);
+            }}
+            onPointerOut={() => {
+              document.body.style.cursor = 'auto';
+              setHoveredLabel(null);
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              longPressRef.current = setTimeout(() => {
+                savePreset(slot);
+                longPressRef.current = null;
+              }, 480);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (longPressRef.current) {
+                clearTimeout(longPressRef.current);
+                longPressRef.current = null;
+                if (has) recallPreset(slot);
+                else savePreset(slot);
+              }
+            }}
+          >
+            <boxGeometry args={[0.28, 0.13, 0.05]} />
+            <meshStandardMaterial color={has ? '#ef4444' : '#27272a'} roughness={0.5} />
+          </mesh>
+        );
+      })}
+
+      {/* Volume Knob */}
+      <group
+        position={[0.05, -0.66, 0.58]}
+        rotation={[Math.PI / 2, 0, volumeRot]}
+        onPointerOver={() => {
+          document.body.style.cursor = 'grab';
+          setHoveredLabel('Volume');
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+          setHoveredLabel(null);
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          dragModeRef.current = 'volume';
+          dragStartRef.current = { x: e.clientX, y: e.clientY, val: playback.volume };
+        }}
+        onWheel={(e) => {
+          e.stopPropagation();
+          const next = Math.max(0, Math.min(1, playback.volume + (e.deltaY < 0 ? 0.05 : -0.05)));
+          if (next <= 0.01 && powerOn) setPowerOn(false);
+          else if (next > 0.03 && !powerOn) setPowerOn(true);
+          playback.setVolume(next);
+        }}
+      >
+        <mesh castShadow>
+          <cylinderGeometry args={[0.21, 0.23, 0.16, 28]} />
+          <meshStandardMaterial color="#1f2026" roughness={0.4} metalness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.085, -0.11]}>
+          <boxGeometry args={[0.028, 0.02, 0.14]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+      </group>
+
+      {/* Tuning Knob */}
+      <group
+        position={[1.15, -0.66, 0.58]}
+        rotation={[Math.PI / 2, 0, tuningRot]}
+        onPointerOver={() => {
+          document.body.style.cursor = 'grab';
+          setHoveredLabel('Tuning');
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+          setHoveredLabel(null);
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          dragModeRef.current = 'tuning';
+          dragStartRef.current = { x: e.clientX, y: e.clientY, val: frequency };
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          scanNext(1);
+        }}
+        onWheel={(e) => {
+          e.stopPropagation();
+          const step = band === 'FM' ? (e.shiftKey ? 0.1 : 0.3) : (e.shiftKey ? 10 : 30);
+          tuneToFrequency(frequency + (e.deltaY < 0 ? step : -step), { snap: !e.shiftKey });
+        }}
+      >
+        <mesh castShadow>
+          <cylinderGeometry args={[0.25, 0.27, 0.18, 32]} />
+          <meshStandardMaterial color="#1f2026" roughness={0.35} metalness={0.55} />
+        </mesh>
+        <mesh position={[0, 0.095, -0.13]}>
+          <boxGeometry args={[0.03, 0.02, 0.16]} />
+          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.6} />
+        </mesh>
+      </group>
+
+      {/* Telescopic 5-Segment Antenna */}
+      <group
+        position={[1.72, 1.1, -0.25]}
+        rotation={[0, 0, (-antennaAngleDeg * Math.PI) / 180]}
+        onPointerOver={() => {
+          document.body.style.cursor = 'grab';
+          setHoveredLabel('Antenna');
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+          setHoveredLabel(null);
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          dragModeRef.current = 'antenna';
+          dragStartRef.current = { x: e.clientX, y: e.clientY, val: antennaLength };
+        }}
+      >
+        <mesh position={[0, 0.05, 0]}>
+          <cylinderGeometry args={[0.06, 0.07, 0.1, 14]} />
+          <meshStandardMaterial color="#71717a" metalness={0.8} roughness={0.25} />
+        </mesh>
+        {[0, 1, 2, 3, 4].map((seg) => {
+          const segH = 0.28 * antennaLength;
+          const yPos = 0.1 + seg * segH * 0.92 + segH / 2;
+          const r = 0.034 - seg * 0.005;
+          return (
+            <mesh key={seg} position={[0, yPos, 0]}>
+              <cylinderGeometry args={[r * 0.9, r, segH, 12]} />
+              <meshStandardMaterial color="#d4d4d8" metalness={0.9} roughness={0.2} />
+            </mesh>
+          );
+        })}
+        <mesh position={[0, 0.1 + 5 * 0.28 * antennaLength * 0.92, 0]}>
+          <sphereGeometry args={[0.038, 12, 12]} />
+          <meshStandardMaterial color="#e4e4e7" metalness={0.9} roughness={0.2} />
+        </mesh>
+      </group>
+
+      {hoveredLabel && <group name="hover-active" />}
+    </group>
   );
 }
 
+export default function RadioStage3D() {
+  const { settings } = useSettings();
+  const { isScanning, powerOn } = useRadio();
+  const playback = usePlayback();
+
+  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
+  const [webglSupported, setWebglSupported] = useState(true);
+  const [isTabHidden, setIsTabHidden] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const cameraTilt = useRef({ x: 0, y: 0 });
+  const bgDragRef = useRef<{ active: boolean; x: number; y: number }>({ active: false, x: 0, y: 0 });
+
+  useEffect(() => {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl2') || c.getContext('webgl');
+      if (!gl) setWebglSupported(false);
+    } catch {
+      setWebglSupported(false);
+    }
+
+    const onVis = () => setIsTabHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVis);
+
+    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    if (mq) {
+      setReducedMotion(mq.matches);
+      const onChange = () => setReducedMotion(mq.matches);
+      mq.addEventListener?.('change', onChange);
+      return () => {
+        document.removeEventListener('visibilitychange', onVis);
+        mq.removeEventListener?.('change', onChange);
+      };
+    }
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
+  const quality = settings.radio.quality3d;
+  if (!webglSupported || quality === 'low' || quality === '2d') {
+    return <RadioFallback2D />;
+  }
+
+  const shouldAnimate =
+    !isTabHidden && (isScanning || (!reducedMotion && (powerOn || playback.isPlaying)));
+
+  return (
+    <div
+      className="relative w-full h-[380px] sm:h-[440px] rounded-2xl bg-black border border-white/10 overflow-hidden select-none"
+      onPointerDown={(e) => {
+        bgDragRef.current = { active: true, x: e.clientX, y: e.clientY };
+      }}
+      onPointerMove={(e) => {
+        if (!bgDragRef.current.active) return;
+        const dx = (e.clientX - bgDragRef.current.x) * 0.0025;
+        const dy = (e.clientY - bgDragRef.current.y) * 0.0018;
+        cameraTilt.current = {
+          x: Math.max(-0.35, Math.min(0.35, dx)),
+          y: Math.max(-0.18, Math.min(0.18, dy)),
+        };
+      }}
+      onPointerUp={() => {
+        bgDragRef.current.active = false;
+        cameraTilt.current = { x: 0, y: 0 };
+      }}
+      onPointerLeave={() => {
+        bgDragRef.current.active = false;
+        cameraTilt.current = { x: 0, y: 0 };
+      }}
+    >
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        frameloop={shouldAnimate ? 'always' : 'demand'}
+        camera={{ position: [0, 0.25, 5.4], fov: 38 }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
+      >
+        <color attach="background" args={['#000000']} />
+        <ambientLight intensity={0.55} />
+        <directionalLight position={[4, 6, 5]} intensity={1.4} castShadow />
+        <directionalLight position={[-5, 2, -4]} intensity={0.65} color="#93c5fd" />
+        <pointLight position={[0, -1, 4]} intensity={0.4} color="#fef3c7" />
+
+        <RadioMesh
+          hoveredLabel={hoveredLabel}
+          setHoveredLabel={setHoveredLabel}
+          reducedMotion={reducedMotion}
+          cameraTilt={cameraTilt}
+        />
+
+        <ContactShadows position={[0, -1.25, 0]} opacity={0.45} scale={9} blur={2.4} far={3} />
+      </Canvas>
+
+      {hoveredLabel && (
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-zinc-900/90 border border-white/15 text-[11px] font-semibold text-white shadow">
+          {hoveredLabel}
+        </div>
+      )}
+    </div>
+  );
+}
