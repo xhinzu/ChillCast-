@@ -98,12 +98,13 @@
   --spotify-subtext: var(--text-muted);
 }
 
-/* Accent Color Mode: uses the picked --accent color as the primary app background & surfaces */
-[data-theme="accent"] {
+/* Accent Color Mode: uses the picked --accent color as the primary app background & surfaces (Classic skin) */
+[data-theme="accent"][data-ui-skin="classic"],
+[data-theme="accent"]:not([data-ui-skin]) {
   --bg-base: var(--accent);
-  --surface: color-mix(in srgb, var(--accent) 84%, #000000);
-  --surface-2: color-mix(in srgb, var(--accent) 74%, #000000);
-  --surface-3: color-mix(in srgb, var(--accent) 64%, #000000);
+  --surface: color-mix(in srgb, var(--accent) 88%, #000000);
+  --surface-2: color-mix(in srgb, var(--accent) 78%, #000000);
+  --surface-3: color-mix(in srgb, var(--accent) 68%, #000000);
   --border: color-mix(in srgb, var(--accent-contrast) 24%, transparent);
   --text: var(--accent-contrast);
   --text-muted: color-mix(in srgb, var(--accent-contrast) 75%, var(--accent));
@@ -120,50 +121,60 @@
   --spotify-subtext: var(--text-muted);
 }
 
-[data-theme="accent"] body {
+[data-theme="accent"][data-ui-skin="classic"] body,
+[data-theme="accent"]:not([data-ui-skin]) body {
   background: var(--accent) !important;
   color: var(--accent-contrast) !important;
 }
 
-[data-theme="accent"] aside,
-[data-theme="accent"] main,
-[data-theme="accent"] header,
-[data-theme="accent"] footer,
-[data-theme="accent"] .bg-black,
-[data-theme="accent"] .bg-black\/95,
-[data-theme="accent"] .bg-black\/90,
-[data-theme="accent"] .bg-black\/80,
-[data-theme="accent"] .bg-zinc-950,
-[data-theme="accent"] .bg-zinc-900,
-[data-theme="accent"] .bg-neutral-950,
-[data-theme="accent"] .bg-neutral-900 {
+[data-theme="accent"][data-ui-skin="classic"] aside,
+[data-theme="accent"][data-ui-skin="classic"] main,
+[data-theme="accent"][data-ui-skin="classic"] header,
+[data-theme="accent"][data-ui-skin="classic"] footer,
+[data-theme="accent"][data-ui-skin="classic"] .bg-black,
+[data-theme="accent"][data-ui-skin="classic"] .bg-black\/95,
+[data-theme="accent"][data-ui-skin="classic"] .bg-zinc-950,
+[data-theme="accent"][data-ui-skin="classic"] .bg-zinc-900,
+[data-theme="accent"][data-ui-skin="classic"] .bg-neutral-950,
+[data-theme="accent"][data-ui-skin="classic"] .bg-neutral-900,
+[data-theme="accent"]:not([data-ui-skin]) aside,
+[data-theme="accent"]:not([data-ui-skin]) main,
+[data-theme="accent"]:not([data-ui-skin]) header,
+[data-theme="accent"]:not([data-ui-skin]) footer,
+[data-theme="accent"]:not([data-ui-skin]) .bg-black,
+[data-theme="accent"]:not([data-ui-skin]) .bg-black\/95,
+[data-theme="accent"]:not([data-ui-skin]) .bg-zinc-950,
+[data-theme="accent"]:not([data-ui-skin]) .bg-zinc-900 {
   background-color: color-mix(in srgb, var(--accent) 88%, #000000) !important;
   border-color: var(--border) !important;
 }
 
-[data-theme="accent"] [class*="bg-[#0"],
-[data-theme="accent"] [class*="bg-[#1"] {
+[data-theme="accent"][data-ui-skin="classic"] [class*="bg-[#0"],
+[data-theme="accent"][data-ui-skin="classic"] [class*="bg-[#1"],
+[data-theme="accent"]:not([data-ui-skin]) [class*="bg-[#0"],
+[data-theme="accent"]:not([data-ui-skin]) [class*="bg-[#1"] {
   background-color: var(--surface) !important;
   border-color: var(--border) !important;
 }
 
-[data-theme="accent"] [class*="bg-[#2"] {
+[data-theme="accent"][data-ui-skin="classic"] [class*="bg-[#2"],
+[data-theme="accent"]:not([data-ui-skin]) [class*="bg-[#2"] {
   background-color: var(--surface-2) !important;
   border-color: var(--border) !important;
 }
 
-[data-theme="accent"]:not([data-accent-font="true"]) .text-white,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-100,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-200,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-300,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-slate-100,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-slate-200 {
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-white,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-zinc-100,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-zinc-200,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-zinc-300,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-slate-100,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-slate-200 {
   color: var(--accent-contrast) !important;
 }
 
-[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-400,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-zinc-500,
-[data-theme="accent"]:not([data-accent-font="true"]) .text-slate-400 {
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-zinc-400,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-zinc-500,
+[data-theme="accent"][data-ui-skin="classic"]:not([data-accent-font="true"]) .text-slate-400 {
   color: var(--text-muted) !important;
 }
 
@@ -702,8 +713,25 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
 }
 
-[data-ui-skin="windows_xp"] header * {
-  color: #ffffff;
+[data-ui-skin="windows_xp"] header button,
+[data-ui-skin="windows_xp"] header .bg-\[\#18181c\],
+[data-ui-skin="windows_xp"] header .bg-\[\#18181b\],
+[data-ui-skin="windows_xp"] header .bg-\[\#222222\],
+[data-ui-skin="windows_xp"] header .bg-white\/10,
+[data-ui-skin="windows_xp"] header .bg-white\/5 {
+  background-color: rgba(0, 40, 135, 0.55) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow: none !important;
+}
+
+[data-ui-skin="windows_xp"] header *:not(input):not(select):not(textarea) {
+  color: #ffffff !important;
+}
+
+/* Remove dark hero gradient inside main so dark XP text is readable everywhere */
+[data-ui-skin="windows_xp"] main > div > [class*="bg-gradient-to-"] {
+  background-image: linear-gradient(180deg, rgba(0, 84, 227, 0.12) 0%, transparent 100%) !important;
 }
 
 /* Bottom Player Bar -> Windows Media Player 9/10 Metallic Blue/Silver Transport */
@@ -715,16 +743,33 @@ body {
 }
 
 /* Text colors adapted for light #ECE9D8 panels */
-[data-ui-skin="windows_xp"] .text-white {
+[data-ui-skin="windows_xp"] .text-white,
+[data-ui-skin="windows_xp"] .text-white\/95,
+[data-ui-skin="windows_xp"] .text-white\/90,
+[data-ui-skin="windows_xp"] .text-white\/80,
+[data-ui-skin="windows_xp"] .text-zinc-100,
+[data-ui-skin="windows_xp"] .text-zinc-200,
+[data-ui-skin="windows_xp"] .text-slate-100,
+[data-ui-skin="windows_xp"] .text-slate-200,
+[data-ui-skin="windows_xp"] .text-neutral-100,
+[data-ui-skin="windows_xp"] .text-neutral-200 {
   color: #111827 !important;
 }
 [data-ui-skin="windows_xp"] header .text-white,
 [data-ui-skin="windows_xp"] .bg-\[\#0054e3\] .text-white,
+[data-ui-skin="windows_xp"] .bg-black\/80 .text-white,
+[data-ui-skin="windows_xp"] .bg-black\/85 .text-white,
+[data-ui-skin="windows_xp"] .bg-black\/90 .text-white,
 [data-ui-skin="windows_xp"] [aria-label="Interactive Radio"] .text-white {
   color: #ffffff !important;
 }
 [data-ui-skin="windows_xp"] .text-zinc-300,
 [data-ui-skin="windows_xp"] .text-zinc-400,
+[data-ui-skin="windows_xp"] .text-zinc-500,
+[data-ui-skin="windows_xp"] .text-slate-300,
+[data-ui-skin="windows_xp"] .text-slate-400,
+[data-ui-skin="windows_xp"] .text-white\/70,
+[data-ui-skin="windows_xp"] .text-white\/60,
 [data-ui-skin="windows_xp"] .text-\[\#b3b3b3\],
 [data-ui-skin="windows_xp"] .text-\[\#888888\] {
   color: #374151 !important;
@@ -732,6 +777,13 @@ body {
 [data-ui-skin="windows_xp"] header .text-zinc-400,
 [data-ui-skin="windows_xp"] header .text-\[\#888888\] {
   color: #e2e8f0 !important;
+}
+
+/* Active sidebar item in XP */
+[data-ui-skin="windows_xp"] aside .bg-white\/10,
+[data-ui-skin="windows_xp"] aside .bg-white\/5 {
+  background-color: #d6e4f7 !important;
+  border-color: #7f9db9 !important;
 }
 
 /* Classic XP Inputs & Search */

@@ -550,11 +550,6 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
             className="hidden md:block absolute bottom-16 right-4 h-64 w-auto object-contain drop-shadow-[0_0_24px_rgba(244,63,94,0.45)]"
           />
           <img
-            src="/themes/yamaha/r1.png"
-            alt=""
-            className="hidden lg:block absolute bottom-20 left-1/2 -translate-x-1/2 h-40 w-auto object-contain opacity-30 drop-shadow-[0_0_22px_rgba(6,182,212,0.5)]"
-          />
-          <img
             src="/themes/yamaha/logo.png"
             alt=""
             className="hidden lg:block absolute top-14 right-8 h-12 w-auto object-contain opacity-85 drop-shadow-[0_0_16px_rgba(34,211,238,0.55)]"
@@ -574,11 +569,6 @@ function ChillCastShell({ initialView = 'home', initialRoomCode }: ChillCastAppP
             src="/themes/yamaha/teto.png"
             alt=""
             className="hidden md:block absolute bottom-16 right-4 h-64 w-auto object-contain drop-shadow-[0_0_24px_rgba(244,63,94,0.45)]"
-          />
-          <img
-            src="/themes/yamaha/r1.png"
-            alt=""
-            className="hidden lg:block absolute bottom-20 left-1/2 -translate-x-1/2 h-40 w-auto object-contain opacity-30 drop-shadow-[0_0_22px_rgba(6,182,212,0.5)]"
           />
           <img
             src="/themes/yamaha/logo.png"
