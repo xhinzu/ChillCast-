@@ -211,6 +211,8 @@ fn toggle_miniplayer(app_handle: AppHandle, enable: bool) -> Result<(), String> 
         if enable {
             let _ = w.show();
             let _ = w.unminimize();
+            let _ = w.unmaximize();
+            let _ = w.set_resizable(true);
             let _ = w.set_decorations(false);
             let _ = w.set_always_on_top(true);
             let _ = w.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize::new(280.0, 170.0))));

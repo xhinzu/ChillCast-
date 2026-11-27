@@ -8,6 +8,7 @@
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-start-dragging",
     "opener:default",
     "allow-get-discord-status",
     "allow-get-discord-debug-info",
@@ -18,7 +19,10 @@
     "allow-send-discord-webhook",
     "allow-hide-window",
     "allow-quit-app",
-    "allow-update-tray-tooltip"
+    "allow-update-tray-tooltip",
+    "allow-toggle-miniplayer",
+    "allow-get-stream-port",
+    "allow-get-youtube-stream-url"
   ],
   "remote": {
     "urls": [

@@ -12,6 +12,9 @@ fn main() {
                 "hide_window",
                 "quit_app",
                 "update_tray_tooltip",
+                "toggle_miniplayer",
+                "get_stream_port",
+                "get_youtube_stream_url",
             ]),
         ),
     )
