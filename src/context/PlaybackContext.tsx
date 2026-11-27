@@ -16,7 +16,8 @@ import {
 } from '@/types/playback';
 import { createAdapter, LocalAudioAdapter } from '@/lib/adapters';
 import { resolveNextAutoplayTrack, type AutoplayResult } from '@/lib/playback/autoplay';
-import { getSettings } from '@/lib/settings/settings-store';
+import { getSettings, updateSettings, SETTINGS_CHANGED_EVENT } from '@/lib/settings/settings-store';
+import { getDspEngine } from '@/lib/audio/dsp-engine';
 
 interface PlaybackContextValue {
   activeAdapterType: AdapterType;
@@ -36,6 +37,7 @@ interface PlaybackContextValue {
   isNoiseGate: boolean;
   isShuffle: boolean;
   isRepeat: boolean;
+  isRawAudioAvailable: boolean;
   nextTrackInQueue: TrackInfo | null;
 
   upcomingAutoplay: AutoplayResult | null;
@@ -94,6 +96,42 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [isReverb, setIsReverb] = useState<boolean>(false);
   const [isChorus, setIsChorus] = useState<boolean>(false);
   const [isNoiseGate, setIsNoiseGate] = useState<boolean>(false);
+  const [isRawAudioAvailable, setIsRawAudioAvailable] = useState<boolean>(true);
+
+  // Sync full audio DSP settings (EQ, FX, Master) from settings store into DspEngine
+  useEffect(() => {
+    const syncDspFromSettings = () => {
+      const s = getSettings().audio;
+      const dsp = getDspEngine();
+      if (s.eq) dsp.applyEq(s.eq);
+      if (s.effects) {
+        dsp.applyEffects(s.effects);
+        setIsSpatial8D(s.effects.spatial8D.enabled);
+        setIsMuffled(s.effects.muffled.enabled);
+        setIsReverb(s.effects.reverb.enabled);
+        setIsChorus(s.effects.chorus.enabled);
+        setIsNoiseGate(s.effects.noiseGate.enabled);
+      }
+      if (s.master) dsp.applyMaster(s.master);
+
+      const adapter = adapterRef.current as unknown as {
+        syncAudioSettings?: () => void;
+        hasRawAudioAccess?: () => boolean;
+      } | null;
+      if (adapter && typeof adapter.syncAudioSettings === 'function') {
+        adapter.syncAudioSettings();
+      }
+      if (adapter && typeof adapter.hasRawAudioAccess === 'function') {
+        setIsRawAudioAvailable(adapter.hasRawAudioAccess());
+      } else {
+        setIsRawAudioAvailable(true);
+      }
+    };
+
+    syncDspFromSettings();
+    window.addEventListener(SETTINGS_CHANGED_EVENT, syncDspFromSettings);
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, syncDspFromSettings);
+  }, []);
 
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const isShuffleRef = useRef<boolean>(false);
@@ -550,10 +588,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const toggleSpatial8D = useCallback(() => {
     setIsSpatial8D((prev) => {
       const next = !prev;
-      const adapter = adapterRef.current;
-      if (adapter && 'setSpatial8D' in adapter && typeof (adapter as unknown as { setSpatial8D: (b: boolean) => void }).setSpatial8D === 'function') {
-        (adapter as unknown as { setSpatial8D: (b: boolean) => void }).setSpatial8D(next);
-      }
+      const curAudio = getSettings().audio;
+      updateSettings('audio', {
+        spatial8DEnabled: next,
+        effects: { ...curAudio.effects, spatial8D: { ...curAudio.effects.spatial8D, enabled: next } },
+      });
       return next;
     });
   }, []);
@@ -561,10 +600,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const toggleMuffled = useCallback(() => {
     setIsMuffled((prev) => {
       const next = !prev;
-      const adapter = adapterRef.current;
-      if (adapter && 'setMuffled' in adapter && typeof (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled === 'function') {
-        (adapter as unknown as { setMuffled: (b: boolean) => void }).setMuffled(next);
-      }
+      const curAudio = getSettings().audio;
+      updateSettings('audio', {
+        muffledEnabled: next,
+        effects: { ...curAudio.effects, muffled: { ...curAudio.effects.muffled, enabled: next } },
+      });
       return next;
     });
   }, []);
@@ -572,10 +612,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const toggleReverb = useCallback(() => {
     setIsReverb((prev) => {
       const next = !prev;
-      const adapter = adapterRef.current;
-      if (adapter && 'setReverb' in adapter && typeof (adapter as unknown as { setReverb: (b: boolean) => void }).setReverb === 'function') {
-        (adapter as unknown as { setReverb: (b: boolean) => void }).setReverb(next);
-      }
+      const curAudio = getSettings().audio;
+      updateSettings('audio', {
+        effects: { ...curAudio.effects, reverb: { ...curAudio.effects.reverb, enabled: next } },
+      });
       return next;
     });
   }, []);
@@ -583,10 +623,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const toggleChorus = useCallback(() => {
     setIsChorus((prev) => {
       const next = !prev;
-      const adapter = adapterRef.current;
-      if (adapter && 'setChorus' in adapter && typeof (adapter as unknown as { setChorus: (b: boolean) => void }).setChorus === 'function') {
-        (adapter as unknown as { setChorus: (b: boolean) => void }).setChorus(next);
-      }
+      const curAudio = getSettings().audio;
+      updateSettings('audio', {
+        effects: { ...curAudio.effects, chorus: { ...curAudio.effects.chorus, enabled: next } },
+      });
       return next;
     });
   }, []);
@@ -594,10 +634,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const toggleNoiseGate = useCallback(() => {
     setIsNoiseGate((prev) => {
       const next = !prev;
-      const adapter = adapterRef.current;
-      if (adapter && 'setNoiseGate' in adapter && typeof (adapter as unknown as { setNoiseGate: (b: boolean) => void }).setNoiseGate === 'function') {
-        (adapter as unknown as { setNoiseGate: (b: boolean) => void }).setNoiseGate(next);
-      }
+      const curAudio = getSettings().audio;
+      updateSettings('audio', {
+        effects: { ...curAudio.effects, noiseGate: { ...curAudio.effects.noiseGate, enabled: next } },
+      });
       return next;
     });
   }, []);
@@ -679,6 +719,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         isNoiseGate,
         isShuffle,
         isRepeat,
+        isRawAudioAvailable,
         nextTrackInQueue,
         upcomingAutoplay,
         skipUpcomingAutoplay,

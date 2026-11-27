@@ -99,3 +99,4 @@ export function useUserAvatar(): UserAvatarInfo {
     isDiscordConnected: isDiscordIpcConnected || Boolean(profile?.discord_id),
   };
 }
+

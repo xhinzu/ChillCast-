@@ -20,6 +20,15 @@ import {
   DISCORD_WEBHOOK_BOT_NAME_KEY,
   DISCORD_WEBHOOK_DELETE_ON_STOP_KEY,
 } from '@/lib/discord/webhook';
+import {
+  DEFAULT_EQ_SETTINGS,
+  DEFAULT_EFFECTS_SETTINGS,
+  DEFAULT_MASTER_SETTINGS,
+  type EqSettingsState,
+  type EffectsSettingsState,
+  type MasterSettingsState,
+  type SoundProfile,
+} from '@/lib/audio/audio-presets';
 
 export const SETTINGS_STORAGE_KEY = 'myujiku_settings_v2';
 export const SETTINGS_CHANGED_EVENT = 'myujiku_settings_changed';
@@ -72,12 +81,21 @@ export interface GlowSettings {
   lyricsEdgeGlowBlendMode: 'normal' | 'screen' | 'plus-lighter';
 }
 
+export interface AudioProfilesState {
+  activeProfileId: string;
+  userProfiles: SoundProfile[];
+}
+
 export interface AudioSettings {
   spatial8DEnabled: boolean;
   spatial8DSpeed: number; // Period in seconds: 4 to 20 s (default 8 s)
   spatial8DWidth: number; // 0.2 to 1.0 (default 0.85)
   muffledEnabled: boolean;
-  muffledCutoff: number; // 300 to 2000 Hz (default 700 Hz)
+  muffledCutoff: number; // 300 to 4000 Hz (default 700 Hz)
+  eq: EqSettingsState;
+  effects: EffectsSettingsState;
+  master: MasterSettingsState;
+  profiles: AudioProfilesState;
 }
 
 export interface PlaybackSettings {
@@ -146,7 +164,7 @@ export const DEFAULT_KEY_BINDINGS: Record<string, string> = {
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  version: 2,
+  version: 3,
   appearance: {
     theme: 'dark',
     accentPreset: 'emerald',
@@ -182,6 +200,22 @@ export const DEFAULT_SETTINGS: AppSettings = {
     spatial8DWidth: 0.85,
     muffledEnabled: false,
     muffledCutoff: 700,
+    eq: { ...DEFAULT_EQ_SETTINGS, bands: [...DEFAULT_EQ_SETTINGS.bands], customPresets: [] },
+    effects: {
+      spatial8D: { ...DEFAULT_EFFECTS_SETTINGS.spatial8D },
+      muffled: { ...DEFAULT_EFFECTS_SETTINGS.muffled },
+      reverb: { ...DEFAULT_EFFECTS_SETTINGS.reverb },
+      chorus: { ...DEFAULT_EFFECTS_SETTINGS.chorus },
+      noiseGate: { ...DEFAULT_EFFECTS_SETTINGS.noiseGate },
+    },
+    master: {
+      ...DEFAULT_MASTER_SETTINGS,
+      compressor: { ...DEFAULT_MASTER_SETTINGS.compressor },
+    },
+    profiles: {
+      activeProfileId: 'flat',
+      userProfiles: [],
+    },
   },
   playback: {
     autoplay: true,
@@ -235,7 +269,58 @@ function loadAndMigrateSettings(): AppSettings {
           ...parsed,
           appearance: { ...DEFAULT_SETTINGS.appearance, ...(parsed.appearance || {}) },
           glow: { ...DEFAULT_SETTINGS.glow, ...(parsed.glow || {}) },
-          audio: { ...DEFAULT_SETTINGS.audio, ...(parsed.audio || {}) },
+          audio: (() => {
+            const pa = parsed.audio || {};
+            const migratedSpatial = {
+              ...DEFAULT_EFFECTS_SETTINGS.spatial8D,
+              ...(pa.effects?.spatial8D || {}),
+              enabled: pa.effects?.spatial8D?.enabled ?? Boolean(pa.spatial8DEnabled),
+              speedSec: pa.effects?.spatial8D?.speedSec ?? pa.spatial8DSpeed ?? 8,
+              width: pa.effects?.spatial8D?.width ?? pa.spatial8DWidth ?? 0.85,
+            };
+            const migratedMuffled = {
+              ...DEFAULT_EFFECTS_SETTINGS.muffled,
+              ...(pa.effects?.muffled || {}),
+              enabled: pa.effects?.muffled?.enabled ?? Boolean(pa.muffledEnabled),
+              cutoffHz: pa.effects?.muffled?.cutoffHz ?? pa.muffledCutoff ?? 700,
+            };
+            return {
+              ...DEFAULT_SETTINGS.audio,
+              ...pa,
+              spatial8DEnabled: migratedSpatial.enabled,
+              spatial8DSpeed: migratedSpatial.speedSec,
+              spatial8DWidth: migratedSpatial.width,
+              muffledEnabled: migratedMuffled.enabled,
+              muffledCutoff: migratedMuffled.cutoffHz,
+              eq: {
+                ...DEFAULT_EQ_SETTINGS,
+                ...(pa.eq || {}),
+                bands: Array.isArray(pa.eq?.bands) && pa.eq.bands.length === 10
+                  ? pa.eq.bands
+                  : [...DEFAULT_EQ_SETTINGS.bands],
+                customPresets: Array.isArray(pa.eq?.customPresets) ? pa.eq.customPresets : [],
+              },
+              effects: {
+                spatial8D: migratedSpatial,
+                muffled: migratedMuffled,
+                reverb: { ...DEFAULT_EFFECTS_SETTINGS.reverb, ...(pa.effects?.reverb || {}) },
+                chorus: { ...DEFAULT_EFFECTS_SETTINGS.chorus, ...(pa.effects?.chorus || {}) },
+                noiseGate: { ...DEFAULT_EFFECTS_SETTINGS.noiseGate, ...(pa.effects?.noiseGate || {}) },
+              },
+              master: {
+                ...DEFAULT_MASTER_SETTINGS,
+                ...(pa.master || {}),
+                compressor: {
+                  ...DEFAULT_MASTER_SETTINGS.compressor,
+                  ...(pa.master?.compressor || {}),
+                },
+              },
+              profiles: {
+                activeProfileId: pa.profiles?.activeProfileId || 'flat',
+                userProfiles: Array.isArray(pa.profiles?.userProfiles) ? pa.profiles.userProfiles : [],
+              },
+            };
+          })(),
           playback: { ...DEFAULT_SETTINGS.playback, ...(parsed.playback || {}) },
           desktop: { ...DEFAULT_SETTINGS.desktop, ...(parsed.desktop || {}) },
           discord: { ...DEFAULT_SETTINGS.discord, ...(parsed.discord || {}) },

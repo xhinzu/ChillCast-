@@ -10,6 +10,8 @@ import { getSavedPlaylists, toggleLikedSong, PLAYLISTS_UPDATED_EVENT } from '@/l
 import Popover from '@/components/common/Popover';
 import Toast from '@/components/common/Toast';
 import AddToPlaylistMenu from './AddToPlaylistMenu';
+import FxMixerPanel from '@/components/audio/FxMixerPanel';
+import { useSettings } from '@/lib/settings/useSettings';
 import { Z_INDEX } from '@/constants/zIndex';
 import {
   HeartIcon,
@@ -110,13 +112,15 @@ export default function SpotifyBottomPlayer({
     nextTrack();
   };
 
+  const { settings } = useSettings();
   // Scrubber dragging state
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
   const [scrubTime, setScrubTime] = useState<number>(0);
   const [showFxMenu, setShowFxMenu] = useState<boolean>(false);
+  const [showLargeMixer, setShowLargeMixer] = useState<boolean>(false);
   const [showMobileSheet, setShowMobileSheet] = useState<boolean>(false);
   const fxButtonRef = useRef<HTMLButtonElement | null>(null);
-  const hasActiveFx = isSpatial8D || isMuffled || isReverb || isChorus || isNoiseGate;
+  const hasActiveFx = isSpatial8D || isMuffled || isReverb || isChorus || isNoiseGate || settings.audio.eq.enabled;
 
   // Playlists state for adding current track
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistItem[]>([]);
@@ -766,14 +770,14 @@ export default function SpotifyBottomPlayer({
             aria-haspopup="true"
             aria-expanded={showFxMenu}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold font-mono tracking-wider transition-all cursor-pointer select-none ${
-              isSpatial8D || isMuffled || isReverb || isChorus || isNoiseGate
+              hasActiveFx
                 ? 'bg-white/15 text-white border-white/30 shadow-sm ring-1 ring-white/20'
                 : 'text-[#888888] hover:text-white hover:bg-white/10 border-[#2a2a2a]'
             }`}
-            title="Audio DSP Effects (8D, Muffled, Reverb, Chorus, Gate)"
+            title="Audio DSP Effects, Equalizer, Master & Profiles"
           >
             <span>FX</span>
-            {(isSpatial8D || isMuffled || isReverb || isChorus || isNoiseGate) && (
+            {hasActiveFx && (
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
             )}
           </button>
@@ -786,156 +790,32 @@ export default function SpotifyBottomPlayer({
             align="end"
             ariaLabel="Audio Effects Menu"
           >
-            <div className="w-72 p-3 bg-[#16161a] border border-[#2c2c36] rounded-xl shadow-2xl text-xs space-y-2.5">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-                <span className="font-bold text-white uppercase tracking-wider text-[11px]">
-                  Audio Effects
-                </span>
-                <span className="text-[10px] text-zinc-400">Web Audio DSP</span>
-              </div>
-
-              {/* 8D Spatial Audio */}
-              <button
-                type="button"
-                onClick={() => toggleSpatial8D()}
-                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
-                  isSpatial8D
-                    ? 'bg-white/10 border-white/30 text-white'
-                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <HeadphonesIcon className="w-4 h-4 text-zinc-300" />
-                  <div>
-                    <p className="font-semibold text-white">8D Spatial Audio</p>
-                    <p className="text-[10px] text-zinc-400">Orbits 360° around headset</p>
-                  </div>
-                </div>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
-                    isSpatial8D ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
-                  }`}
-                >
-                  <div className="w-3 h-3 rounded-full bg-white shadow" />
-                </div>
-              </button>
-
-              {/* Muffled Audio */}
-              <button
-                type="button"
-                onClick={() => toggleMuffled()}
-                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
-                  isMuffled
-                    ? 'bg-white/10 border-white/30 text-white'
-                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 fill-current text-zinc-300" viewBox="0 0 24 24">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1z" />
-                    <circle cx="15.5" cy="12" r="1.5" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-white">Muffled Effect</p>
-                    <p className="text-[10px] text-zinc-400">Lo-fi sound from another room</p>
-                  </div>
-                </div>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
-                    isMuffled ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
-                  }`}
-                >
-                  <div className="w-3 h-3 rounded-full bg-white shadow" />
-                </div>
-              </button>
-
-              {/* Reverb */}
-              <button
-                type="button"
-                onClick={() => toggleReverb()}
-                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
-                  isReverb
-                    ? 'bg-white/10 border-white/30 text-white'
-                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 fill-none stroke-current text-zinc-300" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h3l3 8 4-16 3 12 2-4h3" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-white">Reverb</p>
-                    <p className="text-[10px] text-zinc-400">Concert hall ambient acoustics</p>
-                  </div>
-                </div>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
-                    isReverb ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
-                  }`}
-                >
-                  <div className="w-3 h-3 rounded-full bg-white shadow" />
-                </div>
-              </button>
-
-              {/* Chorus */}
-              <button
-                type="button"
-                onClick={() => toggleChorus()}
-                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
-                  isChorus
-                    ? 'bg-white/10 border-white/30 text-white'
-                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 fill-none stroke-current text-zinc-300" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 18V5l12-2v13" />
-                    <circle cx="6" cy="18" r="3" fill="currentColor" />
-                    <circle cx="18" cy="16" r="3" fill="currentColor" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-white">Chorus</p>
-                    <p className="text-[10px] text-zinc-400">Lush pitch shimmer effect</p>
-                  </div>
-                </div>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
-                    isChorus ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
-                  }`}
-                >
-                  <div className="w-3 h-3 rounded-full bg-white shadow" />
-                </div>
-              </button>
-
-              {/* Noise Gate */}
-              <button
-                type="button"
-                onClick={() => toggleNoiseGate()}
-                className={`w-full flex items-center justify-between p-2 rounded-lg border transition-all text-left cursor-pointer ${
-                  isNoiseGate
-                    ? 'bg-white/10 border-white/30 text-white'
-                    : 'bg-[#1b1b22] border-[#262630] text-zinc-400 hover:text-white hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 fill-none stroke-current text-zinc-300" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-white">Noise Gate</p>
-                    <p className="text-[10px] text-zinc-400">Cut hiss & quiet background noise</p>
-                  </div>
-                </div>
-                <div
-                  className={`w-8 h-4 rounded-full transition-colors p-0.5 flex items-center ${
-                    isNoiseGate ? 'bg-[var(--accent)] justify-end' : 'bg-zinc-700 justify-start'
-                  }`}
-                >
-                  <div className="w-3 h-3 rounded-full bg-white shadow" />
-                </div>
-              </button>
-            </div>
+            <FxMixerPanel
+              isOpen={showFxMenu}
+              onOpenLargeModal={() => {
+                setShowFxMenu(false);
+                setShowLargeMixer(true);
+              }}
+            />
           </Popover>
+
+          {showLargeMixer && (
+            <div
+              className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Audio Effects and Equalizer Mixer"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowLargeMixer(false);
+              }}
+            >
+              <FxMixerPanel
+                isOpen={showLargeMixer}
+                isLargeModal
+                onClose={() => setShowLargeMixer(false)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Miniplayer Option Button (Near FX Button) */}

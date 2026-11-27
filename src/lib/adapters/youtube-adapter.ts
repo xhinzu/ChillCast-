@@ -46,6 +46,18 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
   private isChorusActive = false;
   private isNoiseGateActive = false;
   private shouldPlayOnReady = false;
+  private streamError = false;
+
+  public hasRawAudioAccess(): boolean {
+    return !this.streamError;
+  }
+
+  public syncAudioSettings(): void {
+    if (getDspEngine().getState().eqEnabled && this.currentVideoId) {
+      this.loadStreamForVideo(this.currentVideoId);
+    }
+    this.enforceAudioRouting();
+  }
 
   public isAnyFxActive(): boolean {
     return (
@@ -53,7 +65,8 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
       this.isMuffledActive ||
       this.isReverbActive ||
       this.isChorusActive ||
-      this.isNoiseGateActive
+      this.isNoiseGateActive ||
+      getDspEngine().getState().eqEnabled
     );
   }
 
@@ -180,6 +193,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     this.streamAudio.addEventListener('error', (e) => {
       console.warn('[YouTubeAdapter] streamAudio error fired:', this.streamAudio?.error, e);
       this.isStreamingActive = false;
+      this.streamError = true;
       if (this.player) {
         try {
           if (typeof this.player.unMute === 'function') this.player.unMute();
@@ -204,6 +218,7 @@ export class YouTubeAdapter extends BasePlaybackAdapter {
     if (this.streamAudioVideoId === videoId && this.streamAudio && this.streamAudio.src) return;
 
     console.log('[YouTubeAdapter] loadStreamForVideo starting for videoId:', videoId);
+    this.streamError = false;
     this.streamAudioVideoId = videoId;
     this.ensureStreamAudioInitialized();
 

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-youtube-stream-url"
+description = "Enables the get_youtube_stream_url command without any pre-configured scope."
+commands.allow = ["get_youtube_stream_url"]
+
+[[permission]]
+identifier = "deny-get-youtube-stream-url"
+description = "Denies the get_youtube_stream_url command without any pre-configured scope."
+commands.deny = ["get_youtube_stream_url"]

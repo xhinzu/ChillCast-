@@ -28,6 +28,11 @@ class MockBiquadFilterNode extends MockAudioNode {
   type = 'lowpass';
   frequency = new MockAudioParam(22050);
   Q = new MockAudioParam(0.7);
+  gain = new MockAudioParam(0);
+  getFrequencyResponse(_freqs: Float32Array, mag: Float32Array, phase: Float32Array) {
+    mag.fill(1);
+    phase.fill(0);
+  }
 }
 
 class MockPannerNode extends MockAudioNode {
@@ -98,6 +103,8 @@ class MockAudioContext {
   createConvolver() { return new MockConvolverNode(); }
   createDelay(max?: number) { return new MockDelayNode(max); }
   createDynamicsCompressor() { return new MockDynamicsCompressorNode(); }
+  createChannelSplitter() { return new MockAudioNode(); }
+  createChannelMerger() { return new MockAudioNode(); }
   createBuffer(channels: number, length: number, sampleRate: number) {
     return new MockAudioBuffer(channels, length, sampleRate);
   }
@@ -193,6 +200,68 @@ const highGain = volumeToGain(0.75);
 assert.ok(highGain > midGain && highGain < 0.6, `High volume (75%) should scale smoothly, got gain: ${highGain.toFixed(4)}`);
 
 console.log('   ✓ Logarithmic audio taper verified: silent at 0, quiet at 20%, half-perceived at 50%, full at 100%');
+
+// 8. Test 10-band EQ, Presets, Auto Headroom, Profiles, and v2->v3 Settings Migration
+console.log('\n7. Testing 10-band EQ, Presets, Auto Headroom & Settings Migration...');
+import {
+  EQ_FREQUENCIES,
+  BUILTIN_EQ_PRESETS,
+  BUILTIN_SOUND_PROFILES,
+  DEFAULT_EQ_SETTINGS,
+  DEFAULT_EFFECTS_SETTINGS,
+  DEFAULT_MASTER_SETTINGS,
+  computeAutoHeadroomDb,
+  getEqFilterType,
+} from '../audio-presets';
+import { DEFAULT_SETTINGS, getSettings, SETTINGS_STORAGE_KEY } from '../../settings/settings-store';
+
+assert.strictEqual(EQ_FREQUENCIES.length, 10, 'EQ must have 10 frequency bands');
+assert.deepStrictEqual([...EQ_FREQUENCIES], [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]);
+assert.strictEqual(getEqFilterType(0), 'lowshelf');
+assert.strictEqual(getEqFilterType(5), 'peaking');
+assert.strictEqual(getEqFilterType(9), 'highshelf');
+
+assert.ok(BUILTIN_EQ_PRESETS.length >= 16, 'Must have at least 16 built-in EQ presets');
+for (const preset of BUILTIN_EQ_PRESETS) {
+  assert.strictEqual(preset.bands.length, 10, `Preset ${preset.name} must have 10 bands`);
+  assert.ok(preset.preampDb >= -12 && preset.preampDb <= 12, `Preset ${preset.name} preamp in [-12, 12]`);
+  for (const b of preset.bands) {
+    assert.ok(b >= -12 && b <= 12, `Preset ${preset.name} band ${b} in [-12, 12]`);
+  }
+}
+
+assert.strictEqual(computeAutoHeadroomDb(true, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0);
+assert.ok(computeAutoHeadroomDb(true, [6, 4, 0, 0, 0, 0, 0, 0, 0, 0]) <= -6, 'Auto headroom attenuates positive boost');
+assert.strictEqual(computeAutoHeadroomDb(false, [6, 4, 0, 0, 0, 0, 0, 0, 0, 0]), 0);
+assert.ok(BUILTIN_SOUND_PROFILES.length >= 5, 'Built-in sound profiles must exist');
+
+dsp.applyEq({ ...DEFAULT_EQ_SETTINGS, enabled: true, bands: [4, 2, 0, 0, 0, 0, 0, 0, 2, 4] });
+assert.strictEqual(dsp.getState().eqEnabled, true);
+dsp.applyEffects({ ...DEFAULT_EFFECTS_SETTINGS, reverb: { ...DEFAULT_EFFECTS_SETTINGS.reverb, enabled: true, roomType: 'hall' } });
+assert.strictEqual(dsp.getState().isReverbActive, true);
+dsp.applyMaster({ ...DEFAULT_MASTER_SETTINGS, stereoWidthPct: 130 });
+const diag = dsp.getDiagnostics();
+assert.strictEqual(diag.eqEnabled, true);
+
+const memStore = new Map<string, string>();
+memStore.set(SETTINGS_STORAGE_KEY, JSON.stringify({
+  version: 2,
+  audio: { eqEnabled: false, spatial8DEnabled: true, muffledEnabled: false, reverbEnabled: false, chorusEnabled: false, noiseGateEnabled: true },
+}));
+(globalThis as unknown as { localStorage: Storage }).localStorage = {
+  getItem: (k: string) => memStore.get(k) ?? null,
+  setItem: (k: string, v: string) => { memStore.set(k, v); },
+  removeItem: (k: string) => { memStore.delete(k); },
+  clear: () => { memStore.clear(); },
+  key: () => null,
+  length: 0,
+} as Storage;
+const migrated = getSettings();
+assert.strictEqual(migrated.version, DEFAULT_SETTINGS.version);
+assert.strictEqual(migrated.audio.effects.spatial8D.enabled, true);
+assert.strictEqual(migrated.audio.effects.noiseGate.enabled, true);
+assert.strictEqual(migrated.audio.eq.bands.length, 10);
+console.log('   ✓ EQ, Presets, Auto Headroom, Profiles & v2->v3 migration verified');
 
 console.log('\n========================================================');
 console.log('🎉 ALL WEB AUDIO DSP ENGINE TESTS PASSED SUCCESSFULLY!');
