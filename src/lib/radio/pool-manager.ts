@@ -215,3 +215,23 @@ export function prefetchNeighborStations(station: RadioStation, allStations: Rad
   }
 }
 
+let prewarmRunning = false;
+export async function prewarmBandStations(
+  bandStations: RadioStation[],
+  isStillActive: () => boolean
+): Promise<void> {
+  if (prewarmRunning) return;
+  prewarmRunning = true;
+  try {
+    for (const st of bandStations) {
+      if (!isStillActive()) break;
+      if (!getCachedStationPool(st.id)) {
+        await ensureStationPool(st).catch(() => {});
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+  } finally {
+    prewarmRunning = false;
+  }
+}
+

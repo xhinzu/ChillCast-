@@ -35,6 +35,7 @@ import {
   ensureStationPool,
   getCachedStationPool,
   prefetchNeighborStations,
+  prewarmBandStations,
 } from '@/lib/radio/pool-manager';
 import { computeFallbackJoinOffset, computeLiveBroadcast } from '@/lib/radio/schedule';
 import { getRadioAudio } from '@/lib/radio/radio-audio';
@@ -105,6 +106,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const lastLockedStationIdRef = useRef<string | null>(null);
   const lastPassedStationIdRef = useRef<string | null>(null);
   const tuneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tuneRequestIdRef = useRef<number>(0);
   const lastRjSpokeAtRef = useRef<number>(0);
   const recentRjTemplatesRef = useRef<string[]>([]);
   const hasCustomClipsRef = useRef<boolean>(false);
@@ -185,24 +187,41 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     radioSettings.vintageAmount,
   ]);
 
+  // Background pre-warm all stations on active band so channel switching is instant
+  useEffect(() => {
+    if (!isRadioActive || !powerOn || isInRoom) return;
+    const bandStations = stations.filter((s) => s.band === band);
+    const timer = setTimeout(() => {
+      void prewarmBandStations(bandStations, () => isRadioActive && powerOn && !isInRoom);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [isRadioActive, powerOn, isInRoom, stations, band]);
+
   const tuneStationPlayback = useCallback(
     async (station: RadioStation) => {
       if (!powerOn || !isRadioActive || isInRoom) return;
+      const reqId = ++tuneRequestIdRef.current;
       setWeakSignal(false);
+
+      // Pause previous track immediately while tuning so old station doesn't linger
+      if (playback.currentTrack && playback.isPlaying) {
+        playback.pause();
+      }
 
       // Immediate cached check or async fetch
       let pool = getCachedStationPool(station.id);
       if (!pool || pool.length === 0) {
         const res = await ensureStationPool(station);
+        if (tuneRequestIdRef.current !== reqId) return;
         pool = res.tracks;
         setWeakSignal(res.weakSignal);
       }
-      if (!pool || pool.length === 0) return;
+      if (!pool || pool.length === 0 || tuneRequestIdRef.current !== reqId) return;
 
       prefetchNeighborStations(station, stations);
 
       const broadcast = computeLiveBroadcast(station.jingleSeed, Date.now(), pool);
-      if (!broadcast) return;
+      if (!broadcast || tuneRequestIdRef.current !== reqId) return;
 
       setUpcomingSchedule({
         nextTrack: broadcast.nextTrack,
@@ -216,10 +235,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
 
       if (playback.currentTrack?.id !== broadcast.track.id) {
         await playback.playCustomTrackList([broadcast.track], 0);
+        if (tuneRequestIdRef.current !== reqId) return;
         const offset = broadcast.offsetSec || computeFallbackJoinOffset(station.jingleSeed, broadcast.track.duration);
         setTimeout(() => {
-          playback.seek(offset);
-        }, 450);
+          if (tuneRequestIdRef.current === reqId) {
+            playback.seek(offset);
+          }
+        }, 350);
+      } else if (!playback.isPlaying) {
+        await playback.play();
       }
     },
     [powerOn, isRadioActive, isInRoom, stations, playback]
@@ -230,6 +254,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     if (!isRadioActive || !powerOn || isInRoom) return;
     if (!activeStation) {
       lastLockedStationIdRef.current = null;
+      tuneRequestIdRef.current++;
       return;
     }
     if (lastLockedStationIdRef.current === activeStation.id) return;
@@ -238,7 +263,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     if (tuneDebounceRef.current) clearTimeout(tuneDebounceRef.current);
     tuneDebounceRef.current = setTimeout(() => {
       void tuneStationPlayback(activeStation);
-    }, 180);
+    }, 55);
 
     return () => {
       if (tuneDebounceRef.current) clearTimeout(tuneDebounceRef.current);

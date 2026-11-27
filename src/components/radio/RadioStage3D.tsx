@@ -162,6 +162,35 @@ function createKnobRingTexture(label: string, ticks = 11): THREE.CanvasTexture {
   return tex;
 }
 
+function createKeycapTexture(label: string, activeColor?: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 160;
+  canvas.height = 80;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#1b1d24';
+    ctx.fillRect(0, 0, 160, 80);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(3, 3, 154, 74);
+
+    if (activeColor) {
+      ctx.fillStyle = activeColor;
+      ctx.fillRect(28, 12, 104, 8);
+    }
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 30px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 80, activeColor ? 48 : 42);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
 function RadioMesh({
   hoveredLabel,
   setHoveredLabel,
@@ -216,11 +245,20 @@ function RadioMesh({
   const grilleTexture = useMemo(() => createGrilleTexture(), []);
   const tuningRingTex = useMemo(() => createKnobRingTexture('TUNING', 13), []);
   const volumeRingTex = useMemo(() => createKnobRingTexture('VOLUME', 11), []);
+  const pwrTex = useMemo(() => createKeycapTexture('PWR', powerOn ? '#22c55e' : '#3f3f46'), [powerOn]);
+  const bandTex = useMemo(() => createKeycapTexture(band, '#38bdf8'), [band]);
+  const presetTexList = useMemo(
+    () => [1, 2, 3, 4, 5, 6].map((slot) => createKeycapTexture(`P${slot}`, presets.some((p) => p.slot === slot) ? '#f59e0b' : undefined)),
+    [presets]
+  );
 
   useEffect(() => () => dialTexture.dispose(), [dialTexture]);
   useEffect(() => () => grilleTexture.dispose(), [grilleTexture]);
   useEffect(() => () => tuningRingTex.dispose(), [tuningRingTex]);
   useEffect(() => () => volumeRingTex.dispose(), [volumeRingTex]);
+  useEffect(() => () => pwrTex.dispose(), [pwrTex]);
+  useEffect(() => () => bandTex.dispose(), [bandTex]);
+  useEffect(() => () => presetTexList.forEach((t) => t.dispose()), [presetTexList]);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -347,7 +385,7 @@ function RadioMesh({
         <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={1.1} />
       </mesh>
 
-      {/* RIGHT MIDDLE: Power LED, Power Button, FM/AM Switch */}
+      {/* RIGHT MIDDLE: Power LED, Beveled Power & Band Switches */}
       <mesh position={[-0.08, 0.02, frontZ + 0.025]}>
         <sphereGeometry args={[0.042, 16, 16]} />
         <meshStandardMaterial
@@ -358,8 +396,9 @@ function RadioMesh({
         />
       </mesh>
 
-      <mesh
-        position={[0.24, 0.02, frontZ + 0.03]}
+      {/* Power Switch */}
+      <group
+        position={[0.26, 0.02, frontZ + 0.015]}
         onPointerOver={() => {
           document.body.style.cursor = 'pointer';
           setHoveredLabel('Power');
@@ -373,12 +412,21 @@ function RadioMesh({
           togglePower();
         }}
       >
-        <boxGeometry args={[0.36, 0.15, 0.05]} />
-        <meshStandardMaterial color={powerOn ? '#16a34a' : '#27272a'} roughness={0.35} />
-      </mesh>
+        <RoundedBox args={[0.42, 0.2, 0.02]} radius={0.025} smoothness={2}>
+          <meshStandardMaterial color="#0b0c10" roughness={0.6} />
+        </RoundedBox>
+        <RoundedBox args={[0.36, 0.15, 0.04]} radius={0.02} smoothness={2} position={[0, 0, powerOn ? 0.015 : 0.024]}>
+          <meshStandardMaterial color="#1f2128" roughness={0.32} metalness={0.35} />
+        </RoundedBox>
+        <mesh position={[0, 0, (powerOn ? 0.015 : 0.024) + 0.021]}>
+          <planeGeometry args={[0.32, 0.12]} />
+          <meshBasicMaterial map={pwrTex} />
+        </mesh>
+      </group>
 
-      <mesh
-        position={[0.72, 0.02, frontZ + 0.03]}
+      {/* Band Switch (FM/AM) */}
+      <group
+        position={[0.78, 0.02, frontZ + 0.015]}
         onPointerOver={() => {
           document.body.style.cursor = 'pointer';
           setHoveredLabel(`Band (${band})`);
@@ -392,17 +440,29 @@ function RadioMesh({
           setBand(band === 'FM' ? 'AM' : 'FM');
         }}
       >
-        <boxGeometry args={[0.38, 0.15, 0.05]} />
-        <meshStandardMaterial color="#27272a" roughness={0.4} />
-      </mesh>
+        <RoundedBox args={[0.44, 0.2, 0.02]} radius={0.025} smoothness={2}>
+          <meshStandardMaterial color="#0b0c10" roughness={0.6} />
+        </RoundedBox>
+        <RoundedBox args={[0.38, 0.15, 0.04]} radius={0.02} smoothness={2} position={[0, 0, 0.02]}>
+          <meshStandardMaterial color="#1f2128" roughness={0.32} metalness={0.35} />
+        </RoundedBox>
+        <mesh position={[0, 0, 0.041]}>
+          <planeGeometry args={[0.34, 0.12]} />
+          <meshBasicMaterial map={bandTex} />
+        </mesh>
+      </group>
 
-      {/* 6 Preset Buttons */}
+      {/* Recessed Preset Tray + 6 Beveled Tactile Preset Keys */}
+      <RoundedBox args={[2.12, 0.2, 0.02]} radius={0.03} smoothness={2} position={[0.78, -0.22, frontZ + 0.012]}>
+        <meshStandardMaterial color="#0a0b0f" roughness={0.65} />
+      </RoundedBox>
       {[1, 2, 3, 4, 5, 6].map((slot, i) => {
         const has = presets.some((p) => p.slot === slot);
+        const isActivePreset = has && activeStation && presets.find((p) => p.slot === slot)?.stationId === activeStation.id;
         return (
-          <mesh
+          <group
             key={slot}
-            position={[-0.06 + i * 0.34, -0.22, frontZ + 0.028]}
+            position={[-0.06 + i * 0.34, -0.22, frontZ + 0.026]}
             onPointerOver={() => {
               document.body.style.cursor = 'pointer';
               setHoveredLabel(`Preset ${slot}`);
@@ -428,9 +488,14 @@ function RadioMesh({
               }
             }}
           >
-            <boxGeometry args={[0.26, 0.12, 0.045]} />
-            <meshStandardMaterial color={has ? '#ef4444' : '#27272a'} roughness={0.45} />
-          </mesh>
+            <RoundedBox args={[0.28, 0.14, 0.038]} radius={0.018} smoothness={2} position={[0, 0, isActivePreset ? -0.006 : 0]}>
+              <meshStandardMaterial color="#1f2128" roughness={0.35} metalness={0.3} />
+            </RoundedBox>
+            <mesh position={[0, 0, (isActivePreset ? -0.006 : 0) + 0.02]}>
+              <planeGeometry args={[0.25, 0.115]} />
+              <meshBasicMaterial map={presetTexList[i]} />
+            </mesh>
+          </group>
         );
       })}
 
@@ -576,27 +641,28 @@ export default function RadioStage3D() {
   const playback = usePlayback();
 
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
-  const [webglSupported, setWebglSupported] = useState(true);
+  const [webglSupported] = useState<boolean>(() => {
+    if (typeof document === 'undefined') return true;
+    try {
+      const c = document.createElement('canvas');
+      return Boolean(c.getContext('webgl2') || c.getContext('webgl'));
+    } catch {
+      return false;
+    }
+  });
   const [isTabHidden, setIsTabHidden] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState<boolean>(() =>
+    typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  );
   const cameraTilt = useRef({ x: 0, y: 0 });
   const bgDragRef = useRef<{ active: boolean; x: number; y: number }>({ active: false, x: 0, y: 0 });
 
   useEffect(() => {
-    try {
-      const c = document.createElement('canvas');
-      const gl = c.getContext('webgl2') || c.getContext('webgl');
-      if (!gl) setWebglSupported(false);
-    } catch {
-      setWebglSupported(false);
-    }
-
     const onVis = () => setIsTabHidden(document.hidden);
     document.addEventListener('visibilitychange', onVis);
 
     const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     if (mq) {
-      setReducedMotion(mq.matches);
       const onChange = () => setReducedMotion(mq.matches);
       mq.addEventListener?.('change', onChange);
       return () => {
