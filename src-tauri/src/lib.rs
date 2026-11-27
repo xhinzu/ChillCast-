@@ -266,6 +266,56 @@ fn get_youtube_stream_url(
     )
 }
 
+#[tauri::command]
+async fn synthesize_rj_speech(
+    text: String,
+    rate: i32,
+    voice_hint: String,
+) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let clamped_rate = rate.clamp(-6, 6);
+        let safe_text = text.replace('"', "'").replace('`', "");
+        let safe_hint = voice_hint.replace('"', "'").replace('`', "");
+        let script = format!(
+            "Add-Type -AssemblyName System.Speech; \
+            $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; \
+            $s.Rate = {}; \
+            $hint = '{}'; \
+            if ($hint -ne '') {{ \
+              $v = $s.GetInstalledVoices() | Where-Object {{ $_.VoiceInfo.Name -like \"*$hint*\" -or $_.VoiceInfo.Gender.ToString() -like \"*$hint*\" }} | Select-Object -First 1; \
+              if ($v) {{ $s.SelectVoice($v.VoiceInfo.Name) }} \
+            }}; \
+            $ms = New-Object System.IO.MemoryStream; \
+            $s.SetOutputToWaveStream($ms); \
+            $s.Speak(\"{}\"); \
+            [Convert]::ToBase64String($ms.ToArray())",
+            clamped_rate, safe_hint, safe_text
+        );
+
+        let output = tokio::task::spawn_blocking(move || {
+            std::process::Command::new("powershell")
+                .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+                .creation_flags(0x08000000)
+                .output()
+        })
+        .await
+        .map_err(|e| format!("TTS task failed: {}", e))?
+        .map_err(|e| format!("TTS spawn failed: {}", e))?;
+
+        if !output.status.success() {
+            return Err("SpeechSynthesizer failed".into());
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (text, rate, voice_hint);
+        Err("Native TTS only supported on Windows".into())
+    }
+}
+
 pub fn run() {
     let discord_manager: SharedDiscordManager = Arc::new(Mutex::new(DiscordManager::new()));
     let worker_manager = discord_manager.clone();
@@ -308,7 +358,8 @@ pub fn run() {
             update_tray_tooltip,
             get_stream_port,
             get_youtube_stream_url,
-            toggle_miniplayer
+            toggle_miniplayer,
+            synthesize_rj_speech
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();

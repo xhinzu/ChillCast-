@@ -38,6 +38,10 @@ import {
 } from '@/lib/radio/pool-manager';
 import { computeFallbackJoinOffset, computeLiveBroadcast } from '@/lib/radio/schedule';
 import { getRadioAudio } from '@/lib/radio/radio-audio';
+import { pickRjScript, type RjScriptCategory } from '@/lib/radio/rj-scripts';
+import { planRjTrigger } from '@/lib/radio/rj-planner';
+import { playRandomCustomRjClip, speakRjLine, stopRjSpeech } from '@/lib/radio/rj-voice';
+import { listCustomRjClips } from '@/lib/radio/custom-clips';
 
 export interface RadioContextValue {
   isRadioActive: boolean;
@@ -101,6 +105,15 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
   const lastLockedStationIdRef = useRef<string | null>(null);
   const lastPassedStationIdRef = useRef<string | null>(null);
   const tuneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastRjSpokeAtRef = useRef<number>(0);
+  const recentRjTemplatesRef = useRef<string[]>([]);
+  const hasCustomClipsRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    listCustomRjClips().then((list) => {
+      hasCustomClipsRef.current = list.length > 0;
+    }).catch(() => {});
+  }, [isRadioActive]);
 
   const stations = useMemo(() => {
     const fm = generateStations(radioSettings.stationSeed, 'FM');
@@ -232,9 +245,77 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isRadioActive, powerOn, isInRoom, activeStation, tuneStationPlayback]);
 
-  // Keep broadcast advancing when a radio track nears completion
+  const setRjSpeechState = useCallback((speaking: boolean, caption: string | null) => {
+    setIsRjSpeaking(speaking);
+    setRjCaption(caption);
+    getRadioAudio().setRjDucking(speaking, radioSettings.rjDuckDb);
+  }, [radioSettings.rjDuckDb]);
+
+  // Keep broadcast advancing when a radio track nears completion & plan RJ speech
   useEffect(() => {
     if (!isRadioActive || !powerOn || !activeStation || isInRoom) return;
+
+    // Plan RJ speech during intro or outro windows
+    if (playback.isPlaying && playback.currentTrack && playback.duration > 30) {
+      const nowMs = Date.now();
+      const decision = planRjTrigger({
+        frequency: radioSettings.rjFrequency,
+        elapsedSec: playback.currentTime,
+        durationSec: playback.duration,
+        lastSpokeAtMs: lastRjSpokeAtRef.current,
+        nowMs,
+        customClipsEnabled: radioSettings.rjCustomClipsEnabled,
+        hasCustomClips: hasCustomClipsRef.current,
+        roll: Math.random(),
+        clipRoll: Math.random(),
+      });
+
+      if (decision.shouldSpeak && !isRjSpeaking) {
+        lastRjSpokeAtRef.current = nowMs;
+        if (decision.useCustomClip) {
+          void playRandomCustomRjClip({
+            volume: radioSettings.rjVolume,
+            onStart: (clipName) => {
+              setRjSpeechState(true, `Studio Clip: ${clipName}`);
+            },
+            onEnd: () => {
+              setRjSpeechState(false, null);
+            },
+          });
+        } else {
+          const cat: RjScriptCategory =
+            decision.reason === 'Outro window'
+              ? Math.random() < 0.5 ? 'intro' : 'backAnnounce'
+              : Math.random() < 0.4 ? 'ident' : Math.random() < 0.5 ? 'timeCheck' : 'mood';
+          const timeStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          const picked = pickRjScript({
+            category: cat,
+            context: {
+              song: playback.currentTrack.title,
+              artist: playback.currentTrack.artist,
+              nextSong: upcomingSchedule?.nextTrack.title,
+              nextArtist: upcomingSchedule?.nextTrack.artist,
+              station: activeStation,
+              timeStr,
+            },
+            recentLines: recentRjTemplatesRef.current,
+            seed: nowMs,
+          });
+          recentRjTemplatesRef.current.push(picked.template);
+          if (recentRjTemplatesRef.current.length > 30) recentRjTemplatesRef.current.shift();
+
+          void speakRjLine({
+            text: picked.line,
+            personaId: activeStation.rjPersonaId,
+            volume: radioSettings.rjVolume,
+            voiceOverride: radioSettings.rjPersonaVoices[activeStation.rjPersonaId],
+            onStart: () => setRjSpeechState(true, `${picked.personaName}: "${picked.line}"`),
+            onEnd: () => setRjSpeechState(false, null),
+          });
+        }
+      }
+    }
+
     if (playback.duration > 0 && playback.currentTime >= playback.duration - 1.5 && playback.isPlaying) {
       const pool = getCachedStationPool(activeStation.id);
       if (!pool || pool.length === 0) return;
@@ -248,12 +329,26 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
         });
       }
     }
-  }, [isRadioActive, powerOn, activeStation, isInRoom, playback]);
+  }, [
+    isRadioActive,
+    powerOn,
+    activeStation,
+    isInRoom,
+    playback,
+    radioSettings.rjFrequency,
+    radioSettings.rjCustomClipsEnabled,
+    radioSettings.rjVolume,
+    radioSettings.rjPersonaVoices,
+    isRjSpeaking,
+    upcomingSchedule,
+    setRjSpeechState,
+  ]);
 
   const setRadioActive = useCallback(
     (active: boolean) => {
       setIsRadioActive(active);
       if (!active) {
+        stopRjSpeech();
         setRjCaption(null);
         setIsRjSpeaking(false);
         getRadioAudio().setRjDucking(false);
@@ -267,6 +362,7 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       setPowerOnState(on);
       getRadioAudio().playPowerToggle(on);
       if (!on) {
+        stopRjSpeech();
         playback.pause();
         setRjCaption(null);
         setIsRjSpeaking(false);
@@ -328,6 +424,8 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
       if (station.band !== band) {
         setBandState(station.band);
       }
+      stopRjSpeech();
+      setRjSpeechState(false, null);
       getRadioAudio().playStaticBurst(0.2);
       setFrequency(station.frequency);
       lastLockedStationIdRef.current = null;
@@ -401,12 +499,6 @@ export function RadioProvider({ children }: { children: React.ReactNode }) {
     setAntennaLength(Math.max(0.2, Math.min(1, length)));
     setAntennaAngleDeg(Math.max(-45, Math.min(45, angleDeg)));
   }, []);
-
-  const setRjSpeechState = useCallback((speaking: boolean, caption: string | null) => {
-    setIsRjSpeaking(speaking);
-    setRjCaption(caption);
-    getRadioAudio().setRjDucking(speaking, radioSettings.rjDuckDb);
-  }, [radioSettings.rjDuckDb]);
 
   const clearAllRadioData = useCallback(() => {
     clearRadioPoolCache();
