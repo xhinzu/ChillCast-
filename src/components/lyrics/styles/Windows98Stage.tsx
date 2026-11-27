@@ -98,14 +98,14 @@ export default function Windows98Stage({
         const t = effectiveTimeRef.current;
         let count = 0;
         for (const w of currentLine.words) {
-          if (t >= w.time) count++;
+          if (t >= w.start) count++;
         }
         setRevealedWordCount(Math.max(1, count));
       } else if (activeWordIndex >= 0) {
         setRevealedWordCount(Math.max(1, activeWordIndex + 1));
       } else {
-        const lineStart = currentLine.time;
-        const lineEnd = nextLine ? nextLine.time : lineStart + 3.2;
+        const lineStart = currentLine.start;
+        const lineEnd = nextLine ? nextLine.start : currentLine.end || lineStart + 3.2;
         const span = Math.max(0.6, Math.min(4.5, lineEnd - lineStart));
         const progress = Math.max(0, Math.min(1, (effectiveTimeRef.current - lineStart) / (span * 0.85)));
         setRevealedWordCount(Math.max(1, Math.ceil(progress * words.length)));
