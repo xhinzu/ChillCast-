@@ -98,7 +98,7 @@ export default function AppearanceSection({ onOpenLyricsSettings }: AppearanceSe
             { id: 'dark', label: 'Dark', icon: ThemeMoonIcon, desc: 'Deep zinc & obsidian' },
             { id: 'light', label: 'Light', icon: ThemeSunIcon, desc: 'Clean bright surfaces' },
             { id: 'amoled', label: 'AMOLED', icon: ThemeAmoledIcon, desc: 'Pure #000000 black' },
-            { id: 'system', label: 'System', icon: ThemeSystemIcon, desc: 'Matches your OS' },
+            { id: 'accent', label: 'Accent Color', icon: ThemeSystemIcon, desc: 'Uses your picked color' },
           ].map((theme) => {
             const isSelected = currentTheme === theme.id;
             const Icon = theme.icon;

@@ -50,7 +50,7 @@ export function getContrastColor(hex: string): string {
 /**
  * Resolves current theme mode ('dark' | 'light' | 'amoled') based on mode and OS preferences.
  */
-export function resolveTheme(mode: ThemeMode): 'dark' | 'light' | 'amoled' {
+export function resolveTheme(mode: ThemeMode): 'dark' | 'light' | 'amoled' | 'accent' {
   if (mode === 'system') {
     if (typeof window !== 'undefined' && window.matchMedia) {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

@@ -49,12 +49,25 @@ const APP_THEMES: ThemeCardDef[] = [
   },
 ];
 
+const THEME_DEFAULT_ACCENTS: Record<AppSkinTheme, { accentPreset: string; customAccent: string | null }> = {
+  classic: { accentPreset: 'emerald', customAccent: null },
+  windows_xp: { accentPreset: 'blue', customAccent: '#0054E3' },
+  xbox: { accentPreset: 'lime', customAccent: '#84CC16' },
+  psp: { accentPreset: 'cyan', customAccent: '#38BDF8' },
+  starboy: { accentPreset: 'rose', customAccent: '#DC2626' },
+};
+
 export default function ThemesSection() {
   const { settings, updateSettings } = useSettings();
   const activeSkin: AppSkinTheme = settings.appearance.uiSkin || 'classic';
 
   const selectTheme = (skin: AppSkinTheme) => {
-    updateSettings('appearance', { uiSkin: skin });
+    const matched = THEME_DEFAULT_ACCENTS[skin] || THEME_DEFAULT_ACCENTS.classic;
+    updateSettings('appearance', {
+      uiSkin: skin,
+      accentPreset: matched.accentPreset,
+      customAccent: matched.customAccent,
+    });
   };
 
   return (

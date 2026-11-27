@@ -98,6 +98,56 @@
   --spotify-subtext: var(--text-muted);
 }
 
+/* Accent Color Mode: tints the entire app with the chosen --accent color */
+[data-theme="accent"] {
+  --bg-base: color-mix(in srgb, var(--accent) 24%, #09090c);
+  --surface: color-mix(in srgb, var(--accent) 32%, #111116);
+  --surface-2: color-mix(in srgb, var(--accent) 44%, #18181f);
+  --surface-3: color-mix(in srgb, var(--accent) 55%, #202028);
+  --border: color-mix(in srgb, var(--accent) 50%, rgba(255, 255, 255, 0.15));
+  --text: #ffffff;
+  --text-muted: color-mix(in srgb, var(--accent) 35%, #d4d4d8);
+  --background: var(--bg-base);
+  --foreground: var(--text);
+  --chillify-grey-bg: var(--bg-base);
+  --chillify-card: var(--surface);
+  --chillify-card-hover: var(--surface-2);
+  --chillify-border: var(--border);
+  --spotify-black: var(--bg-base);
+  --spotify-dark: var(--surface);
+  --spotify-card: var(--surface);
+  --spotify-card-hover: var(--surface-2);
+  --spotify-subtext: var(--text-muted);
+}
+
+[data-theme="accent"] body {
+  background: radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 38%, #09090c) 0%, color-mix(in srgb, var(--accent) 18%, #070709) 70%) !important;
+}
+
+[data-theme="accent"] aside,
+[data-theme="accent"] main,
+[data-theme="accent"] .bg-\[\#121212\],
+[data-theme="accent"] .bg-\[\#121215\],
+[data-theme="accent"] .bg-\[\#141414\],
+[data-theme="accent"] .bg-\[\#151519\],
+[data-theme="accent"] .bg-\[\#16161a\],
+[data-theme="accent"] .bg-\[\#17171a\],
+[data-theme="accent"] .bg-\[\#181818\],
+[data-theme="accent"] .bg-\[\#18181b\],
+[data-theme="accent"] .bg-\[\#18181c\],
+[data-theme="accent"] .bg-\[\#1b1b22\],
+[data-theme="accent"] .bg-\[\#1c1c24\],
+[data-theme="accent"] .bg-\[\#222222\] {
+  background-color: color-mix(in srgb, var(--accent) 26%, #111116) !important;
+  border-color: color-mix(in srgb, var(--accent) 42%, rgba(255, 255, 255, 0.12)) !important;
+}
+
+[data-theme="accent"] header,
+[data-theme="accent"] .bg-black\/95 {
+  background-color: color-mix(in srgb, var(--accent) 34%, #09090c) !important;
+  border-color: color-mix(in srgb, var(--accent) 48%, rgba(255, 255, 255, 0.14)) !important;
+}
+
 /* Theme color changes font color mode */
 [data-accent-font="true"] {
   --text: var(--accent);
