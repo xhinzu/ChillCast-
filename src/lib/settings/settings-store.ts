@@ -34,9 +34,11 @@ export const SETTINGS_STORAGE_KEY = 'myujiku_settings_v2';
 export const SETTINGS_CHANGED_EVENT = 'myujiku_settings_changed';
 
 export type ThemeMode = 'dark' | 'light' | 'amoled' | 'system';
+export type AppSkinTheme = 'classic' | 'windows_xp';
 
 export interface AppearanceSettings {
   theme: ThemeMode;
+  uiSkin: AppSkinTheme;
   accentPreset: string; // 'emerald' | 'spotify' | 'blue' | 'violet' | 'rose' | 'amber' | 'cyan' | 'lime' | 'orange' | 'magenta'
   customAccent: string | null;
   backgroundTint: string | null;
@@ -206,6 +208,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   version: 3,
   appearance: {
     theme: 'dark',
+    uiSkin: 'classic',
     accentPreset: 'emerald',
     customAccent: null,
     backgroundTint: null,

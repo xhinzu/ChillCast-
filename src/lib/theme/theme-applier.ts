@@ -70,9 +70,11 @@ export function applyTheme(appearance: AppearanceSettings, coverArtPalette?: str
 
   const root = document.documentElement;
   const resolved = resolveTheme(appearance.theme);
+  const uiSkin = appearance.uiSkin || 'classic';
 
-  // Set data-theme attribute
+  // Set data-theme and data-ui-skin attributes
   root.setAttribute('data-theme', resolved);
+  root.setAttribute('data-ui-skin', uiSkin);
 
   // Determine active accent
   let activeAccent = ACCENT_PRESETS[appearance.accentPreset] || '#10b981';

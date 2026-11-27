@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import AppearanceSection from './sections/AppearanceSection';
+import ThemesSection from './sections/ThemesSection';
 import GlowSection from './sections/GlowSection';
 import AudioSection from './sections/AudioSection';
 import PlaybackSection from './sections/PlaybackSection';
@@ -26,11 +27,13 @@ import {
   SettingsCloseIcon,
   SettingsCheckIcon,
   SettingsRadioIcon,
+  SettingsThemesIcon,
 } from './SettingsIcons';
 import { useSettings } from '@/lib/settings/useSettings';
 import type { AppSettings } from '@/lib/settings/settings-store';
 
 export type SettingsSectionId =
+  | 'themes'
   | 'appearance'
   | 'glow'
   | 'audio'
@@ -51,6 +54,13 @@ interface SectionMeta {
 }
 
 const SECTIONS: SectionMeta[] = [
+  {
+    id: 'themes',
+    label: 'Themes',
+    icon: SettingsThemesIcon,
+    desc: 'Full application skins (Classic MyuJiku & Windows XP)',
+    keywords: ['themes', 'skin', 'windows', 'xp', 'classic', 'luna', 'retro', 'wmp'],
+  },
   {
     id: 'appearance',
     label: 'Appearance',
@@ -380,7 +390,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
                 <p className="text-xs text-zinc-400 mt-0.5">{currentMeta.desc}</p>
               </div>
 
-              {currentMeta.id !== 'about' && (
+              {currentMeta.id !== 'about' && currentMeta.id !== 'themes' && (
                 <button
                   type="button"
                   onClick={() => resetSection(currentMeta.id as keyof AppSettings)}
@@ -397,6 +407,7 @@ export default function SettingsModal({ isOpen, onClose, initialSection = 'appea
               className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6 overscroll-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
+              {activeSection === 'themes' && <ThemesSection />}
               {activeSection === 'appearance' && <AppearanceSection onOpenLyricsSettings={onClose} />}
               {activeSection === 'glow' && <GlowSection />}
               {activeSection === 'audio' && <AudioSection />}
