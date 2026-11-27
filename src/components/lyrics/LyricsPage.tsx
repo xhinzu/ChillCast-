@@ -33,6 +33,7 @@ import {
 // Lyric Styles
 import ClassicStage from './styles/ClassicStage';
 import VisualStage from './styles/VisualStage';
+import Windows98Stage from './styles/Windows98Stage';
 import ConstellationStage from './styles/ConstellationStage';
 import ShipStage from './styles/ShipStage';
 import CameraStage from './styles/CameraStage';
@@ -1226,6 +1227,23 @@ export default function LyricsPage() {
             lyricColor={palette.lyric}
           />
         );
+      case 'windows98':
+        return (
+          <Windows98Stage
+            lines={displayLines}
+            activeLineIndex={lineIndex}
+            activeWordIndex={wordIndex}
+            effectiveTimeRef={effectiveTimeRef}
+            win98Settings={settings.windows98}
+            font={settings.font}
+            textSize={settings.textSize}
+            trackId={currentTrack?.id}
+            trackTitle={cleanDisplayInfo?.cleanTitle || currentTrack?.title}
+            trackArtist={cleanDisplayInfo?.cleanArtist || currentTrack?.artist}
+            artworkUrl={currentTrack?.artworkUrl}
+            isInstrumental={Boolean(lyricsResult?.instrumental)}
+          />
+        );
       case 'fisheye':
         return <FisheyeStage {...commonProps} />;
       case 'codestyle':
@@ -1755,7 +1773,18 @@ export default function LyricsPage() {
             lyricColor={palette.lyric}
           />
         )}
-        {!currentTrack && settings.style !== 'disc' && (
+        {!currentTrack && settings.style === 'windows98' && (
+          <Windows98Stage
+            lines={[]}
+            activeLineIndex={-1}
+            activeWordIndex={-1}
+            effectiveTimeRef={effectiveTimeRef}
+            win98Settings={settings.windows98}
+            font={settings.font}
+            textSize={settings.textSize}
+          />
+        )}
+        {!currentTrack && settings.style !== 'disc' && settings.style !== 'windows98' && (
           <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
             <div className="w-16 h-16 rounded-full bg-[#181818] border border-[#2a2a2a] flex items-center justify-center text-3xl">
               🎵

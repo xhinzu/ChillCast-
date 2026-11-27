@@ -7,6 +7,7 @@ export type LyricsStyle =
   | 'ship'
   | 'camera'
   | 'disc'
+  | 'windows98'
   | 'fisheye'
   | 'codestyle'
   | 'branches'
@@ -104,6 +105,32 @@ export type EffectStrength = 'subtle' | 'normal' | 'strong';
 
 export const DEFAULT_INTENSE_EFFECTS = false;
 
+export interface Windows98StyleSettings {
+  titlebarTheme: 'xp_blue' | 'classic_navy' | 'teal' | 'silver';
+  revealMode: 'word' | 'line';
+  stickerMode: 'per_line' | 'per_song' | 'pinned';
+  pinnedStickerIndex: number;
+  stickerSizePx: number;
+  showSticker: boolean;
+  showNowPlayingCard: boolean;
+  showMyujikuLogo: boolean;
+  showTransportBar: boolean;
+  windowWidthPct: number;
+}
+
+export const DEFAULT_WINDOWS98_SETTINGS: Windows98StyleSettings = {
+  titlebarTheme: 'xp_blue',
+  revealMode: 'word',
+  stickerMode: 'per_line',
+  pinnedStickerIndex: 2,
+  stickerSizePx: 148,
+  showSticker: true,
+  showNowPlayingCard: true,
+  showMyujikuLogo: true,
+  showTransportBar: true,
+  windowWidthPct: 88,
+};
+
 export interface LyricsSettings {
   version: number;
   style: LyricsStyle;
@@ -141,6 +168,7 @@ export interface LyricsSettings {
   quality: LyricsQuality;
   devOverlayEnabled: boolean;
   disc: DiscStyleSettings;
+  windows98: Windows98StyleSettings;
   offsets: Record<string, number>; // trackId -> offset seconds (-3.0 to +3.0)
 }
 
@@ -181,6 +209,7 @@ export const DEFAULT_LYRICS_SETTINGS: LyricsSettings = {
   quality: 'auto',
   devOverlayEnabled: false,
   disc: { ...DEFAULT_DISC_SETTINGS, tuning: { ...DEFAULT_DISC_TUNING } },
+  windows98: { ...DEFAULT_WINDOWS98_SETTINGS },
   offsets: {},
 };
 
@@ -208,6 +237,7 @@ export function loadLyricsSettings(): LyricsSettings {
       'ship',
       'camera',
       'disc',
+      'windows98',
       'fisheye',
       'codestyle',
       'branches',
@@ -333,6 +363,10 @@ export function loadLyricsSettings(): LyricsSettings {
       quality,
       devOverlayEnabled: Boolean(parsed.devOverlayEnabled),
       disc,
+      windows98: {
+        ...DEFAULT_WINDOWS98_SETTINGS,
+        ...(parsed.windows98 && typeof parsed.windows98 === 'object' ? parsed.windows98 : {}),
+      },
       offsets: { ...parsed.offsets },
     };
   } catch {

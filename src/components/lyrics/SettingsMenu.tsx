@@ -9,6 +9,7 @@ import {
   LyricsQuality,
   DiscStyleSettings,
   DiscTuningSettings,
+  Windows98StyleSettings,
   EdgeGlowMode,
   EdgeGlowColorSource,
   EdgeGlowStyleOption,
@@ -16,8 +17,10 @@ import {
   DEFAULT_LYRICS_SETTINGS,
   DEFAULT_DISC_SETTINGS,
   DEFAULT_DISC_TUNING,
+  DEFAULT_WINDOWS98_SETTINGS,
   DEFAULT_INTENSE_EFFECTS,
 } from '@/lib/lyrics/settings';
+import { WINDOWS98_STICKERS } from './styles/Windows98Stage';
 import { loadLyricTransform, saveLyricTransform } from '@/lib/lyrics/transform';
 import { Z_INDEX } from '@/constants/zIndex';
 
@@ -31,6 +34,7 @@ type MenuPage =
   | 'main'
   | 'style'
   | 'disc'
+  | 'windows98'
   | 'font'
   | 'edge-glow'
   | 'colors'
@@ -45,6 +49,7 @@ const STYLE_LABELS: { id: LyricsStyle; label: string; badge?: string }[] = [
   { id: 'ship', label: 'Ship', badge: '3D Wall' },
   { id: 'camera', label: 'Camera', badge: 'Dynamic' },
   { id: 'disc', label: 'Disc', badge: 'Spinning CD' },
+  { id: 'windows98', label: 'Windows 98', badge: 'Media Player' },
   { id: 'fisheye', label: 'Fisheye', badge: '3D Cylinder' },
   { id: 'codestyle', label: 'Codestyle', badge: 'Editor' },
   { id: 'branches', label: 'Branches', badge: 'Tree' },
@@ -394,6 +399,32 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                       </p>
                       <p className="text-[11px] text-zinc-400">
                         {settings.disc?.discFinish === 'cover' ? 'Cover colors' : 'Silver'} • {settings.disc?.wordsPerPhrase || 3} words/phrase
+                      </p>
+                    </div>
+                  </div>
+                  <svg className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Windows 98 Style Settings (visible only when Windows 98 style is active) */}
+              {settings.style === 'windows98' && (
+                <button
+                  type="button"
+                  onClick={() => setActivePage('windows98')}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#18181c] hover:bg-[#222228] border border-white/15 hover:border-white/30 transition-all cursor-pointer group text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#0053ee]/25 border border-[#0053ee]/50 text-[#60a5fa] flex items-center justify-center shrink-0 text-[10px] font-bold">
+                      98
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">
+                        Windows 98 (Media Player)
+                      </p>
+                      <p className="text-[11px] text-zinc-400">
+                        {settings.windows98?.stickerMode === 'pinned' ? 'Pinned sticker' : settings.windows98?.stickerMode === 'per_song' ? 'Per song' : 'Changes per line'} • {settings.windows98?.revealMode === 'line' ? 'Full line' : 'Word by word'}
                       </p>
                     </div>
                   </div>
@@ -1590,6 +1621,167 @@ export default function SettingsMenu({ settings, trackId, onUpdate }: SettingsMe
                     })}
                   </div>
                 )}
+              </div>
+            );
+          })()}
+
+          {/* ============================================================== */}
+          {/* PAGE: 9. WINDOWS 98 (MEDIA PLAYER) CUSTOMIZATION               */}
+          {/* ============================================================== */}
+          {activePage === 'windows98' && (() => {
+            const w98 = settings.windows98 || DEFAULT_WINDOWS98_SETTINGS;
+            const updateWin98 = (partial: Partial<Windows98StyleSettings>) =>
+              updateSettings({ windows98: { ...w98, ...partial } });
+
+            return (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                {renderSubmenuHeader('Windows 98 Settings', () =>
+                  updateSettings({ windows98: { ...DEFAULT_WINDOWS98_SETTINGS } })
+                )}
+
+                {/* Titlebar Theme */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Window Titlebar</span>
+                  <div className="grid grid-cols-2 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'xp_blue', label: 'XP Blue' },
+                      { id: 'classic_navy', label: '98 Navy' },
+                      { id: 'teal', label: '98 Teal' },
+                      { id: 'silver', label: 'Silver' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateWin98({ titlebarTheme: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          w98.titlebarTheme === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lyric Reveal Mode */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Lyric Reveal</span>
+                  <div className="grid grid-cols-2 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'word', label: 'Word by word' },
+                      { id: 'line', label: 'Full line' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateWin98({ revealMode: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          w98.revealMode === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Corner Sticker Mode */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Corner Sticker</span>
+                  <div className="grid grid-cols-3 gap-1 bg-[#18181c] p-1 rounded-xl border border-[#26262e]">
+                    {([
+                      { id: 'per_line', label: 'Per line' },
+                      { id: 'per_song', label: 'Per song' },
+                      { id: 'pinned', label: 'Pinned' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => updateWin98({ stickerMode: opt.id })}
+                        className={`py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                          w98.stickerMode === opt.id ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sticker Picker when Pinned */}
+                {w98.stickerMode === 'pinned' && (
+                  <div className="grid grid-cols-3 gap-1.5 bg-[#18181c] p-2 rounded-xl border border-[#26262e]">
+                    {WINDOWS98_STICKERS.map((src, idx) => (
+                      <button
+                        key={src}
+                        type="button"
+                        onClick={() => updateWin98({ pinnedStickerIndex: idx })}
+                        className={`p-1 rounded-lg bg-white border-2 cursor-pointer flex items-center justify-center h-14 ${
+                          w98.pinnedStickerIndex === idx ? 'border-emerald-400' : 'border-transparent opacity-75 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={src} alt={`Sticker ${idx + 1}`} className="max-h-full max-w-full object-contain" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sticker Size & Window Width */}
+                <div className="p-3 rounded-xl bg-[#18181c] border border-[#26262e] space-y-2.5 text-xs">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">Sticker Size</span>
+                      <span className="font-mono text-zinc-200">{w98.stickerSizePx}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={90}
+                      max={220}
+                      step={4}
+                      value={w98.stickerSizePx}
+                      onChange={(e) => updateWin98({ stickerSizePx: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-zinc-300">Window Width</span>
+                      <span className="font-mono text-zinc-200">{w98.windowWidthPct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={60}
+                      max={100}
+                      step={2}
+                      value={w98.windowWidthPct}
+                      onChange={(e) => updateWin98({ windowWidthPct: parseInt(e.target.value, 10) })}
+                      className="w-full h-1 bg-[#252528] rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Visibility Toggles */}
+                <div className="space-y-1.5">
+                  {([
+                    { key: 'showSticker', label: 'Show Corner Sticker' },
+                    { key: 'showMyujikuLogo', label: 'Show MyuJiku Logo' },
+                    { key: 'showNowPlayingCard', label: 'Show Now Playing Card' },
+                    { key: 'showTransportBar', label: 'Show Transport Controls' },
+                  ] as const).map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#18181c] border border-[#26262e] text-xs cursor-pointer select-none"
+                    >
+                      <span className="text-white font-semibold">{item.label}</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(w98[item.key])}
+                        onChange={(e) => updateWin98({ [item.key]: e.target.checked })}
+                        className="w-4 h-4 rounded bg-[#202020] border-zinc-600 cursor-pointer accent-white"
+                      />
+                    </label>
+                  ))}
+                </div>
               </div>
             );
           })()}
