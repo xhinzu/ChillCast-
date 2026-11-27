@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { ParsedLyricLine } from '@/lib/lrc-parser';
+import { SyncedLyricLine } from '@/lib/lyrics/providers/types';
 import {
   DEFAULT_WINDOWS98_SETTINGS,
   LyricsFont,
@@ -45,7 +45,7 @@ const TITLEBAR_THEMES: Record<
 };
 
 interface Windows98StageProps {
-  lines: ParsedLyricLine[];
+  lines: SyncedLyricLine[];
   activeLineIndex: number;
   activeWordIndex: number;
   effectiveTimeRef: React.MutableRefObject<number>;
